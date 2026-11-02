@@ -101,8 +101,8 @@
 
     .btn-toggle.active {
       color: #fff;
-      border-color: var(--accent-active);
-      background: #1c2022;
+      border-color: var(--border-focus);
+      background: #252b2e;
     }
 
     .btn-online {
@@ -113,7 +113,7 @@
 
     .btn-online:hover {
       background: #1c2022;
-      border-color: var(--accent-active);
+      border-color: #4b5860;
       color: #fff;
     }
 
@@ -294,64 +294,46 @@
       }
     }
 
-    /* Modal Flutuante de Ação: Topo no Web / Base no Mobile */
-    .floating-action-modal {
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      top: 54px; /* Logo abaixo do header fixo no desktop/web */
-      background: #181d20;
-      border: 1.5px solid var(--accent-active);
-      border-radius: 10px;
-      padding: 6px 14px;
-      display: none;
-      z-index: 90;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.25);
+    /* Barra de Ação Integrada ao Card do Jogador Ativo (Substitui o modal flutuante) */
+    .card-action-bar {
+      display: flex;
       align-items: center;
-      gap: 12px;
-      backdrop-filter: blur(10px);
-      animation: modalSlideDown 0.2s ease-out;
-      white-space: nowrap;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 5px 8px;
+      background: linear-gradient(135deg, rgba(20, 25, 28, 0.98), rgba(15, 23, 42, 0.98));
+      border: 1px solid var(--accent-active);
+      border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.2);
+      animation: cardBarSlide 0.18s ease-out;
+      margin-bottom: 2px;
+      flex-shrink: 0;
+      box-sizing: border-box;
     }
 
-    @keyframes modalSlideDown {
+    @keyframes cardBarSlide {
       from {
         opacity: 0;
-        transform: translate(-50%, -10px);
+        transform: translateY(-4px);
       }
+
       to {
         opacity: 1;
-        transform: translate(-50%, 0);
+        transform: translateY(0);
       }
     }
 
-    @keyframes modalSlideUp {
-      from {
-        opacity: 0;
-        transform: translate(-50%, 15px);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-      }
-    }
-
-    .modal-player-tag {
-      font-size: 12px;
-      font-weight: 700;
-      color: #94a3b8;
-      letter-spacing: 0.3px;
-    }
-
-    .modal-tiles-preview {
-      display: inline-flex;
+    .card-action-info {
+      display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
     }
 
-    .modal-mini-tile {
-      width: 28px;
-      height: 24px;
+    .card-mini-tile {
+      width: 24px;
+      height: 22px;
       border-radius: 4px;
       font-size: 11px;
       font-weight: 900;
@@ -359,74 +341,80 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.3);
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
       user-select: none;
+      flex-shrink: 0;
     }
 
-    .modal-mini-tile.white {
+    .card-mini-tile.white {
       color: #0f1216 !important;
       text-shadow: none;
     }
 
-    .modal-action-btns {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+    .card-action-dest {
+      font-size: 11.5px;
+      color: #94a3b8;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .modal-btn-confirm,
-    .modal-btn-cancel {
-      padding: 6px 16px;
-      font-size: 12.5px;
+    .card-action-dest.staged {
+      color: var(--accent-active);
       font-weight: 800;
-      border-radius: 6px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      letter-spacing: 0.3px;
-      box-sizing: border-box;
-      transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      text-shadow: 0 0 6px rgba(56, 189, 248, 0.3);
     }
 
-    .modal-btn-confirm {
-      background: #3ca34d;
+    .card-action-btns {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .card-btn-confirm,
+    .card-btn-cancel {
+      padding: 5px 12px;
+      font-size: 11.5px;
+      font-weight: 800;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.12s ease;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-btn-confirm {
+      background: #16a34a;
       color: #fff;
       border: 1px solid #4ade80;
-      box-shadow: 0 2px 8px rgba(60, 163, 77, 0.4);
+      box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
     }
 
-    .modal-btn-confirm:hover {
-      background: #46b859;
+    .card-btn-confirm:hover,
+    .card-btn-confirm:active {
+      background: #22c55e;
+      box-shadow: 0 3px 12px rgba(34, 197, 94, 0.6);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(60, 163, 77, 0.6);
     }
 
-    .modal-btn-cancel {
+    .card-btn-cancel {
       background: #222729;
       color: #f87171;
-      border: 1px solid #d85040;
+      border: 1px solid #ef4444;
     }
 
-    .modal-btn-cancel:hover {
+    .card-btn-cancel:hover,
+    .card-btn-cancel:active {
       background: #341e21;
       color: #fca5a5;
       transform: translateY(-1px);
-    }
-
-    /* No Mobile/Android: modal flutua no Bottom (base da tela) */
-    @media (max-width: 600px) {
-      .floating-action-modal {
-        top: auto;
-        bottom: 16px;
-        width: calc(100% - 32px);
-        max-width: 360px;
-        justify-content: space-between;
-        padding: 8px 14px;
-        animation: modalSlideUp 0.2s ease-out;
-      }
     }
 
     /* Player Boards Grid */
@@ -642,10 +630,30 @@
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
+    .wall-cell.bonus-highlight {
+      opacity: 1 !important;
+      filter: none !important;
+      transform: scale(1.18);
+      box-shadow: 0 0 16px #f59e0b, inset 0 0 8px #fbbf24;
+      z-index: 25;
+      color: #fff !important;
+      font-weight: 900;
+      font-size: clamp(11px, 1.4vw, 16px);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
     .player-pts.pts-bump {
       transform: scale(1.35);
       color: var(--accent-active);
       text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+      transition: transform 0.25s ease, color 0.25s ease;
+    }
+
+    .player-pts.bonus-pts-bump {
+      transform: scale(1.4);
+      color: #fbbf24 !important;
+      text-shadow: 0 0 14px rgba(251, 191, 36, 0.9);
       transition: transform 0.25s ease, color 0.25s ease;
     }
 
@@ -660,20 +668,37 @@
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
     }
 
+    .bonus-floating-badge {
+      position: absolute;
+      font-weight: 900;
+      font-size: clamp(14px, 1.8vw, 20px);
+      color: #fbbf24;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #f59e0b;
+      padding: 3px 8px;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 60;
+      transform: translate(-50%, 0);
+      animation: floatUpFade 1.4s ease-out forwards;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
+
     @keyframes floatUpFade {
       0% {
         opacity: 0;
-        transform: translateY(2px) scale(0.9);
+        transform: translate(-50%, 4px) scale(0.9);
       }
 
       25% {
         opacity: 1;
-        transform: translateY(-8px) scale(1.2);
+        transform: translate(-50%, -10px) scale(1.15);
       }
 
       100% {
         opacity: 0;
-        transform: translateY(-30px) scale(1);
+        transform: translate(-50%, -36px) scale(1);
       }
     }
 
@@ -682,12 +707,14 @@
       display: flex;
       gap: var(--gap-board);
       align-items: center;
+      justify-content: flex-start;
       background: #101315;
       padding: 4px 6px;
       border-radius: 6px;
       border: 1px solid var(--border-subtle);
       width: 100%;
       margin: 0 auto;
+      box-sizing: border-box;
     }
 
     .floor-line.targetable {
@@ -707,8 +734,10 @@
     }
 
     .floor-slot {
-      flex: 1;
+      width: var(--tile-size);
       height: var(--tile-size);
+      flex: 0 0 var(--tile-size);
+      box-sizing: border-box;
       border-radius: var(--radius-tile);
       border: 1px dashed var(--border-subtle);
       display: flex;
@@ -760,6 +789,121 @@
       line-height: 1.6;
     }
 
+    .endgame-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 16px 0 20px 0;
+      text-align: left;
+    }
+
+    .endgame-item {
+      display: flex;
+      flex-direction: column;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      gap: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .endgame-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+    }
+
+    .endgame-item.winner {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+    }
+
+    .endgame-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .endgame-rank {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-mid);
+      flex-shrink: 0;
+    }
+
+    .endgame-item.winner .endgame-rank {
+      background: #f59e0b;
+      color: #0b0e11;
+      font-weight: 900;
+    }
+
+    .endgame-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-pri);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .endgame-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    .endgame-score {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .endgame-bonus {
+      font-size: 10px;
+      font-weight: 600;
+      color: #fbbf24;
+    }
+
+    .endgame-breakdown {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 11px;
+    }
+
+    .endgame-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      color: #94a3b8;
+      font-size: 10.5px;
+    }
+
+    .endgame-tag.board {
+      color: #cbd5e1;
+    }
+
+    .endgame-tag.bonus-tag {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      font-weight: 600;
+    }
+
     .modal-input {
       width: 100%;
       padding: 8px 12px;
@@ -775,6 +919,26 @@
       text-align: center;
       letter-spacing: 6px;
       margin-bottom: 12px;
+    }
+
+    .modal-name-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0f1216;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
+    }
+
+    .modal-name-input:focus {
+      border-color: var(--accent-active);
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
     }
 
     .modal-input:focus {
@@ -856,8 +1020,6 @@
     <section id="boardsGrid" class="grid-2p"></section>
   </main>
 
-  <!-- Modal Flutuante de Ação (Top no Desktop / Bottom no Mobile) -->
-  <div id="floatingActionModal" class="floating-action-modal"></div>
 
   <!-- Modal Fim de Jogo -->
   <div id="endModal" class="modal-overlay">
@@ -866,6 +1028,21 @@
       <p id="winnerDesc"></p>
       <button class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar
         Novamente</button>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação para Sair da Partida -->
+  <div id="confirmExitModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px;">
+      <h2>Sair da Partida</h2>
+      <p style="margin-bottom: 20px;">Tem certeza que deseja sair da partida atual? O progresso em execução será
+        finalizado.</p>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-toggle btn-online" style="flex: 1; padding: 10px; font-weight: 700;"
+          onclick="confirmExitGame()">Sim</button>
+        <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;"
+          onclick="closeConfirmExitModal()">Não</button>
+      </div>
     </div>
   </div>
 
@@ -889,16 +1066,55 @@
         Jogar vs Bot (2 Jogadores)
       </button>
 
-      <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px; margin-bottom: 8px;">
-        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 10px;">Jogar Local (Pass & Play):</div>
-        <div style="display: flex; gap: 8px; justify-content: center;">
-          <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;" onclick="chooseLocalMode(2)">2
-            Jogadores</button>
-          <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;" onclick="chooseLocalMode(3)">3
-            Jogadores</button>
-          <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;" onclick="chooseLocalMode(4)">4
-            Jogadores</button>
+      <button class="btn-toggle btn-online"
+        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; border-color: var(--border-focus); letter-spacing: 0.5px;"
+        onclick="openLocalModal()">
+        Jogar Local (Pass & Play)
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Configuração Jogo Local -->
+  <div id="localModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 380px;">
+      <h2>Jogar Local (Pass & Play)</h2>
+      <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 16px;">Jogue com seus amigos no mesmo
+        dispositivo, passando a vez!</p>
+
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 8px; text-align: left;">Escolha a quantidade
+          de jogadores:</div>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 14px;">
+          <button class="btn-toggle active" id="local2pBtn" style="flex: 1; padding: 10px; font-weight: 600;"
+            onclick="selectLocalPlayerCount(2)">2 Jogadores</button>
+          <button class="btn-toggle" id="local3pBtn" style="flex: 1; padding: 10px; font-weight: 600;"
+            onclick="selectLocalPlayerCount(3)">3 Jogadores</button>
+          <button class="btn-toggle" id="local4pBtn" style="flex: 1; padding: 10px; font-weight: 600;"
+            onclick="selectLocalPlayerCount(4)">4 Jogadores</button>
         </div>
+
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Nomes dos Jogadores:
+        </div>
+        <div id="localNamesContainer"
+          style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; text-align: left;">
+          <input type="text" id="localNameP1" class="modal-name-input" placeholder="Nome do Jogador 1" maxlength="15"
+            value="Jogador 1">
+          <input type="text" id="localNameP2" class="modal-name-input" placeholder="Nome do Jogador 2" maxlength="15"
+            value="Jogador 2">
+          <input type="text" id="localNameP3" class="modal-name-input" placeholder="Nome do Jogador 3" maxlength="15"
+            value="Jogador 3" style="display: none;">
+          <input type="text" id="localNameP4" class="modal-name-input" placeholder="Nome do Jogador 4" maxlength="15"
+            value="Jogador 4" style="display: none;">
+        </div>
+
+        <button class="btn-toggle btn-online"
+          style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.5px;"
+          onclick="startConfiguredLocalGame()">
+          Iniciar Jogo Local
+        </button>
+        <button class="btn-toggle" style="width: 100%; color: var(--text-muted);" onclick="closeLocalModal()">
+          Voltar ao Menu Principal
+        </button>
       </div>
     </div>
   </div>
@@ -909,6 +1125,12 @@
       <h2>Multiplayer Online (P2P)</h2>
       <p style="color: var(--text-pri); font-size: 11px;">Jogue com 2, 3 ou 4 amigos no mesmo link, sem servidor
         próprio!</p>
+
+      <div style="margin-bottom: 14px; text-align: left;">
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 4px;">Seu Nome de Jogador:</div>
+        <input type="text" id="onlineMyNameInput" class="modal-name-input" placeholder="Seu nome no jogo" maxlength="15"
+          value="Jogador 1">
+      </div>
 
       <div style="margin-bottom: 16px;">
         <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">1. Escolha a quantidade de jogadores:
@@ -939,13 +1161,14 @@
       <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-bottom: 14px;">
         <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">Ou entrar com código de 4 dígitos:
         </div>
-        <input type="text" id="roomCodeInput" class="modal-input" placeholder="CÓDIGO (EX: A7K9)" maxlength="4">
+        <input type="text" id="roomCodeInput" class="modal-input" placeholder="EX: A7K9" maxlength="4">
         <button class="btn-toggle" style="width: 100%; padding: 8px;" onclick="p2pJoinRoom()">
           Entrar na Sala
         </button>
       </div>
 
-      <button class="btn-toggle" style="width: 100%; color: var(--text-muted);" onclick="closeMultiplayerModal()">
+      <button class="btn-toggle" style="width: 100%; color: var(--text-muted);"
+        onclick="backFromMultiplayerToMainMenu()">
         Voltar ao Menu Principal
       </button>
     </div>
@@ -985,6 +1208,8 @@
     // Bot Mode State (vs Bot apenas 2 jogadores)
     let isBotMode = false;
     let botTurnTimer = null;
+    let isGameActive = false;
+    let hasMatchEndedByAbandon = false;
 
     /* =====================================================================
        MULTIPLAYER P2P (WEBRTC VIA PEERJS) - SUPORTE A 2, 3 E 4 JOGADORES
@@ -1000,6 +1225,8 @@
     let hostGuestConnections = [];
     // Para o Convidado: conexão direta com o Host
     let clientHostConn = null;
+    let guestDisconnectTimers = {};
+    let hostDisconnectTimer = null;
 
     // Conjunto de caracteres legíveis (3 letras e números)
     // Omitimos letras facilmente confusas, mas garantimos suporte a 'O' e '0' com visual cortado (slashed-zero)
@@ -1013,6 +1240,47 @@
       return code;
     }
 
+    let selectedLocalCount = 2;
+
+    function openLocalModal() {
+      document.getElementById('mainMenuModal').style.display = 'none';
+      const modal = document.getElementById('localModal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeLocalModal() {
+      const modal = document.getElementById('localModal');
+      if (modal) modal.style.display = 'none';
+      document.getElementById('mainMenuModal').style.display = 'flex';
+    }
+
+    function selectLocalPlayerCount(count) {
+      selectedLocalCount = count;
+      [2, 3, 4].forEach(n => {
+        const btn = document.getElementById(`local${n}pBtn`);
+        if (btn) {
+          if (n === count) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+        const input = document.getElementById(`localNameP${n}`);
+        if (input) {
+          input.style.display = (n <= count) ? 'block' : 'none';
+        }
+      });
+    }
+
+    function startConfiguredLocalGame() {
+      const modal = document.getElementById('localModal');
+      if (modal) modal.style.display = 'none';
+      const names = [];
+      for (let i = 1; i <= selectedLocalCount; i++) {
+        const el = document.getElementById(`localNameP${i}`);
+        const val = el ? el.value.trim() : '';
+        names.push(val || `Jogador ${i}`);
+      }
+      chooseLocalMode(selectedLocalCount, names);
+    }
+
     function chooseOnlineMode() {
       document.getElementById('mainMenuModal').style.display = 'none';
       isBotMode = false;
@@ -1023,20 +1291,24 @@
       document.getElementById('mainMenuModal').style.display = 'none';
       isP2P = false;
       isBotMode = true;
+      isGameActive = true;
       myP2PIndex = null;
       playerCount = 2;
       updateP2PBadge('offline', 'vs Bot (2P)');
-      initGame();
+      initGame(['Jogador 1', 'Jogador 2 (Bot)']);
+      saveSessionToStorage();
     }
 
-    function chooseLocalMode(count = 2) {
+    function chooseLocalMode(count = 2, customNames = null) {
       document.getElementById('mainMenuModal').style.display = 'none';
       isP2P = false;
       isBotMode = false;
+      isGameActive = true;
       myP2PIndex = null;
       playerCount = count;
       updateP2PBadge('offline', `Local (${count}P)`);
-      initGame();
+      initGame(customNames);
+      saveSessionToStorage();
     }
 
     function selectHostPCount(count) {
@@ -1079,6 +1351,11 @@
             return;
           }
         }
+        if (err.type === 'peer-unavailable') {
+          alert('Sala não encontrada ou Host desconectado. Verifique se o código de 4 dígitos está correto e se o Host ainda está com a sala aberta.');
+          updateP2PBadge('offline', 'Sala não encontrada');
+          return;
+        }
         alert('Erro P2P: ' + err.type);
       });
     }
@@ -1101,9 +1378,18 @@
         hostGuestConnections = [];
 
         playerCount = targetOnlinePlayers;
+        const myNameInput = document.getElementById('onlineMyNameInput');
+        const hostName = (myNameInput && myNameInput.value.trim()) || 'Jogador 1';
+
+        // Inicializa jogadores com o nome do Host em P1
+        const initialNames = [hostName];
+        for (let i = 2; i <= playerCount; i++) initialNames.push(`Jogador ${i}`);
+        initGame(initialNames);
+
         updateHeaderPlayerButtons(playerCount);
         updateHostWaitingUI();
-        updateP2PBadge('waiting', `P1 (Aguardando...)`);
+        updateP2PBadge('waiting', hostName);
+        saveSessionToStorage();
       });
     }
 
@@ -1116,46 +1402,82 @@
     }
 
     function handleGuestIncoming(conn) {
-      if (hostGuestConnections.length >= targetOnlinePlayers - 1) {
-        conn.on('open', () => {
-          conn.send({ type: 'ROOM_FULL' });
-          setTimeout(() => conn.close(), 1000);
-        });
-        return;
+      // Se não está em jogo e já atingiu o limite de participantes
+      if (!isGameActive && hostGuestConnections.length >= targetOnlinePlayers - 1) {
+        const existingConnIdx = hostGuestConnections.findIndex(c => c.peer === conn.peer);
+        if (existingConnIdx === -1) {
+          const sendRoomFull = () => {
+            try { conn.send({ type: 'ROOM_FULL' }); } catch (e) { }
+            setTimeout(() => { try { conn.close(); } catch (e) { } }, 1000);
+          };
+          if (conn.open) sendRoomFull();
+          else conn.on('open', sendRoomFull);
+          return;
+        }
       }
 
-      conn.on('open', () => {
-        const assignedIndex = hostGuestConnections.length + 1; // 1, 2 ou 3
-        conn.assignedIndex = assignedIndex;
-        hostGuestConnections.push(conn);
+      const onConnectionReady = () => {
+        // Se a partida ainda não começou (sala de espera), atribui index sequencial
+        if (!isGameActive) {
+          let assignedIndex = hostGuestConnections.length + 1; // 1, 2 ou 3
+          conn.assignedIndex = assignedIndex;
+          hostGuestConnections.push(conn);
 
-        conn.send({
-          type: 'WELCOME',
-          playerIndex: assignedIndex,
-          totalPlayers: targetOnlinePlayers
-        });
+          conn.send({
+            type: 'WELCOME',
+            playerIndex: assignedIndex,
+            totalPlayers: targetOnlinePlayers,
+            roomCode: currentRoomCode
+          });
 
-        updateHostWaitingUI();
-
-        // Se completou a sala, inicia a partida sincronizada
-        if (1 + hostGuestConnections.length === targetOnlinePlayers) {
-          closeMultiplayerModal();
-          updateP2PBadge('online', `P1 (Host - ${targetOnlinePlayers}P)`);
-          initGame();
-          broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
-        } else {
-          updateP2PBadge('waiting', `P1 (${1 + hostGuestConnections.length}/${targetOnlinePlayers})`);
+          if (1 + hostGuestConnections.length >= targetOnlinePlayers) {
+            isGameActive = true;
+            closeMultiplayerModal();
+            document.getElementById('mainMenuModal').style.display = 'none';
+            const hostName = (players && players[0] && players[0].name) ? players[0].name : 'P1';
+            updateP2PBadge('online', `${hostName} (Host - ${targetOnlinePlayers}P)`);
+            const fullState = getFullGameState();
+            conn.send({ type: 'SYNC_STATE', state: fullState });
+            broadcastP2P({ type: 'SYNC_STATE', state: fullState });
+          } else {
+            updateHostWaitingUI();
+            updateP2PBadge('waiting', `P1 (${1 + hostGuestConnections.length}/${targetOnlinePlayers})`);
+          }
         }
-      });
+        saveSessionToStorage();
+      };
+
+      if (conn.open) {
+        onConnectionReady();
+      } else {
+        conn.on('open', onConnectionReady);
+      }
 
       conn.on('data', (data) => {
         handleHostReceivedMessage(conn, data);
       });
 
       conn.on('close', () => {
-        hostGuestConnections = hostGuestConnections.filter(c => c !== conn);
+        const idx = hostGuestConnections.indexOf(conn);
+        const assignedIdx = conn.assignedIndex || (idx !== -1 ? idx + 1 : 1);
+        if (idx !== -1) {
+          hostGuestConnections.splice(idx, 1);
+        }
         updateHostWaitingUI();
-        updateP2PBadge('waiting', `P1 (${1 + hostGuestConnections.length}/${targetOnlinePlayers})`);
+
+        // Se a partida online estiver ativa e o convidado desconectar temporariamente (ex: reload/refresh)
+        if (isGameActive && !hasMatchEndedByAbandon) {
+          updateP2PBadge('waiting', `Aguardando reconexão...`);
+          if (guestDisconnectTimers[assignedIdx]) clearTimeout(guestDisconnectTimers[assignedIdx]);
+          guestDisconnectTimers[assignedIdx] = setTimeout(() => {
+            if (isGameActive && !hasMatchEndedByAbandon) {
+              const leavingName = (players && players[assignedIdx] && players[assignedIdx].name)
+                ? players[assignedIdx].name
+                : `Jogador ${assignedIdx + 1}`;
+              handlePlayerAbandoned(assignedIdx, leavingName);
+            }
+          }, 6000);
+        }
       });
     }
 
@@ -1166,6 +1488,7 @@
         return;
       }
 
+      currentRoomCode = code.toUpperCase();
       // Normaliza código para o ID do PeerJS: 'azul-' + code em minúsculas
       let targetPeerId = code.startsWith('azul-') ? code.toLowerCase() : ('azul-' + code.toLowerCase());
 
@@ -1178,20 +1501,43 @@
     }
 
     function setupClientConnection() {
-      clientHostConn.on('open', () => {
+      const onClientOpen = () => {
         isP2P = true;
         console.log('Conectado ao Host com sucesso!');
-      });
+        if (hostDisconnectTimer) {
+          clearTimeout(hostDisconnectTimer);
+          hostDisconnectTimer = null;
+        }
+        const myNameInput = document.getElementById('onlineMyNameInput');
+        const myName = (myNameInput && myNameInput.value.trim())
+          || (myP2PIndex !== null && players && players[myP2PIndex] && players[myP2PIndex].name)
+          || null;
+        clientHostConn.send({ type: 'REQUEST_SYNC', requestedIndex: myP2PIndex, playerName: myName });
+      };
+
+      if (clientHostConn.open) {
+        onClientOpen();
+      } else {
+        clientHostConn.on('open', onClientOpen);
+      }
 
       clientHostConn.on('data', (data) => {
         handleClientReceivedMessage(data);
       });
 
       clientHostConn.on('close', () => {
-        alert('A sala foi encerrada pelo Host.');
-        updateP2PBadge('offline', 'Desconectado');
-        isP2P = false;
-        myP2PIndex = null;
+        if (isGameActive && !hasMatchEndedByAbandon) {
+          updateP2PBadge('waiting', 'Reconectando ao Host...');
+          if (hostDisconnectTimer) clearTimeout(hostDisconnectTimer);
+          hostDisconnectTimer = setTimeout(() => {
+            if (isGameActive && !hasMatchEndedByAbandon) {
+              const hostName = (players && players[0] && players[0].name) ? players[0].name : 'Host';
+              handlePlayerAbandoned(0, hostName);
+            }
+          }, 6000);
+        } else {
+          updateP2PBadge('offline', 'Desconectado');
+        }
       });
     }
 
@@ -1205,6 +1551,64 @@
             c.send(msg);
           }
         });
+      } else if (msg.type === 'REQUEST_SYNC') {
+        const idx = (typeof msg.requestedIndex === 'number' && msg.requestedIndex > 0)
+          ? msg.requestedIndex
+          : (senderConn.assignedIndex || (hostGuestConnections.indexOf(senderConn) + 1));
+        senderConn.assignedIndex = idx;
+
+        // Cancela qualquer timer de abandono por desconexão para este jogador
+        if (guestDisconnectTimers[idx]) {
+          clearTimeout(guestDisconnectTimers[idx]);
+          delete guestDisconnectTimers[idx];
+        }
+
+        // Garante que a nova conexão esteja em hostGuestConnections
+        const existingIdx = hostGuestConnections.findIndex(c => c.assignedIndex === idx || c === senderConn);
+        if (existingIdx !== -1) {
+          hostGuestConnections[existingIdx] = senderConn;
+        } else {
+          hostGuestConnections.push(senderConn);
+        }
+
+        if (msg.playerName && players && players[idx]) {
+          players[idx].name = msg.playerName;
+        }
+        senderConn.send({
+          type: 'WELCOME',
+          playerIndex: idx,
+          totalPlayers: targetOnlinePlayers,
+          roomCode: currentRoomCode
+        });
+        const fullState = getFullGameState();
+        senderConn.send({ type: 'SYNC_STATE', state: fullState });
+        // Sincroniza nome para os outros participantes
+        broadcastP2P({ type: 'SYNC_STATE', state: fullState });
+
+        const hostName = (players && players[0] && players[0].name) ? players[0].name : 'P1';
+        updateP2PBadge('online', `${hostName} (Host - ${targetOnlinePlayers}P)`);
+        renderBoards();
+        saveSessionToStorage();
+
+        // Garante que o host também feche o modal caso ainda esteja aberto
+        if (1 + hostGuestConnections.length >= targetOnlinePlayers) {
+          closeMultiplayerModal();
+          document.getElementById('mainMenuModal').style.display = 'none';
+        }
+      } else if (msg.type === 'SET_PLAYER_NAME') {
+        if (typeof msg.playerIndex === 'number' && players && players[msg.playerIndex]) {
+          players[msg.playerIndex].name = msg.name;
+          broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+          renderBoards();
+          saveSessionToStorage();
+        }
+      } else if (msg.type === 'PLAYER_ABANDONED') {
+        handlePlayerAbandoned(msg.playerIndex, msg.playerName);
+        hostGuestConnections.forEach(c => {
+          if (c !== senderConn && c.open) {
+            c.send(msg);
+          }
+        });
       }
     }
 
@@ -1213,15 +1617,28 @@
       if (msg.type === 'WELCOME') {
         myP2PIndex = msg.playerIndex;
         playerCount = msg.totalPlayers;
+        if (msg.roomCode) currentRoomCode = msg.roomCode;
         updateHeaderPlayerButtons(playerCount);
-        updateP2PBadge('online', `P${myP2PIndex + 1} (${playerCount}P)`);
-        closeMultiplayerModal();
+
+        const myNameInput = document.getElementById('onlineMyNameInput');
+        const myName = (myNameInput && myNameInput.value.trim()) || `P${myP2PIndex + 1}`;
+        updateP2PBadge('waiting', `${myName} (Conectado à sala ${currentRoomCode})`);
       } else if (msg.type === 'ROOM_FULL') {
         alert('Esta sala já atingiu o número máximo de jogadores.');
       } else if (msg.type === 'SYNC_STATE') {
+        isGameActive = true;
         applyFullGameState(msg.state);
+        closeMultiplayerModal();
+        document.getElementById('mainMenuModal').style.display = 'none';
+        const myName = (myP2PIndex !== null && players[myP2PIndex] && players[myP2PIndex].name)
+          ? players[myP2PIndex].name
+          : (myP2PIndex !== null ? `P${myP2PIndex + 1}` : '?');
+        updateP2PBadge('online', `${myName} (${playerCount}P)`);
+        saveSessionToStorage();
       } else if (msg.type === 'ACTION') {
         executeGameAction(msg.action, false);
+      } else if (msg.type === 'PLAYER_ABANDONED') {
+        handlePlayerAbandoned(msg.playerIndex, msg.playerName);
       }
     }
 
@@ -1253,6 +1670,7 @@
       if (broadcast && isP2P) {
         broadcastP2P({ type: 'ACTION', action });
       }
+      saveSessionToStorage();
     }
 
     function updateHeaderPlayerButtons(count) {
@@ -1282,6 +1700,42 @@
       };
     }
 
+    function saveSessionToStorage() {
+      try {
+        if (!isGameActive) {
+          clearSavedSession();
+          return;
+        }
+
+        let mode = 'local';
+        if (isP2P) mode = 'online';
+        else if (isBotMode) mode = 'bot';
+
+        const session = {
+          mode,
+          isGameActive,
+          isP2P,
+          isHost,
+          myP2PIndex,
+          currentRoomCode,
+          targetOnlinePlayers,
+          isBotMode,
+          playerCount,
+          gameState: getFullGameState()
+        };
+        sessionStorage.setItem('azul_saved_session', JSON.stringify(session));
+      } catch (e) {
+        console.warn('Erro ao salvar sessão local:', e);
+      }
+    }
+
+    function clearSavedSession() {
+      try {
+        sessionStorage.removeItem('azul_saved_session');
+        localStorage.removeItem('azul_saved_session');
+      } catch (e) { }
+    }
+
     function applyFullGameState(state) {
       playerCount = state.playerCount;
       players = state.players;
@@ -1297,6 +1751,7 @@
       stagedMove = state.stagedMove || null;
       updateHeaderPlayerButtons(playerCount);
       renderAll();
+      saveSessionToStorage();
     }
 
     function updateP2PBadge(status, text) {
@@ -1319,6 +1774,7 @@
     }
 
     function openMultiplayerModal() {
+      document.getElementById('mainMenuModal').style.display = 'none';
       document.getElementById('multiplayerModal').style.display = 'flex';
     }
 
@@ -1326,17 +1782,10 @@
       document.getElementById('multiplayerModal').style.display = 'none';
     }
 
-    function exitToMainMenu() {
-      if (isP2P) {
-        if (!confirm('Deseja realmente sair da partida online?')) return;
-        // Fecha conexões com outros peers
-        if (isHost) {
-          hostGuestConnections.forEach(c => { try { c.close(); } catch (e) { } });
-          hostGuestConnections = [];
-        } else if (clientHostConn) {
-          try { clientHostConn.close(); } catch (e) { }
-          clientHostConn = null;
-        }
+    function backFromMultiplayerToMainMenu() {
+      closeMultiplayerModal();
+      // Se não estiver em jogo ativo, fecha conexões pendentes e volta ao menu principal
+      if (!isP2P || myP2PIndex === null) {
         if (peer && !peer.destroyed) {
           try { peer.destroy(); } catch (e) { }
           peer = null;
@@ -1345,6 +1794,151 @@
         isHost = false;
         myP2PIndex = null;
         currentRoomCode = null;
+        const badge = document.getElementById('p2pStatus');
+        if (badge) badge.style.display = 'none';
+      }
+      document.getElementById('mainMenuModal').style.display = 'flex';
+    }
+
+    function exitToMainMenu() {
+      const confirmModal = document.getElementById('confirmExitModal');
+      if (confirmModal) {
+        confirmModal.style.display = 'flex';
+      } else {
+        confirmExitGame();
+      }
+    }
+
+    function closeConfirmExitModal() {
+      const confirmModal = document.getElementById('confirmExitModal');
+      if (confirmModal) confirmModal.style.display = 'none';
+    }
+
+    function handlePlayerAbandoned(abandonedIndex, abandonedName) {
+      if (!isGameActive || hasMatchEndedByAbandon) return;
+      hasMatchEndedByAbandon = true;
+      isGameActive = false;
+      clearSavedSession();
+
+      if (botTurnTimer) {
+        clearTimeout(botTurnTimer);
+        botTurnTimer = null;
+      }
+
+      // Identifica quem abandonou e quem permaneceu na partida
+      const leavingName = abandonedName || (players && players[abandonedIndex] && players[abandonedIndex].name) || `Jogador ${abandonedIndex + 1}`;
+      const remainingPlayers = (players || []).filter((p, idx) => idx !== abandonedIndex);
+      const remainingWinner = remainingPlayers.length === 1 ? remainingPlayers[0] : null;
+
+      const modal = document.getElementById('endModal');
+      const title = modal ? modal.querySelector('h2') : null;
+      if (title) title.innerHTML = '🏆 Vitória por Abandono!';
+
+      const desc = document.getElementById('winnerDesc');
+      if (desc) {
+        let listHtml = '';
+        if (remainingWinner) {
+          const isMe = (isP2P && remainingWinner.id === myP2PIndex);
+          const baseName = remainingWinner.name || `Jogador ${remainingWinner.id + 1}`;
+          const winnerLabel = isMe ? `${baseName} (Você)` : baseName;
+
+          listHtml = `
+            <div style="margin-bottom: 16px; color: #94a3b8; font-size: 13px;">
+              <strong style="color: #f87171;">${leavingName}</strong> saiu da partida.
+            </div>
+            <div class="endgame-list">
+              <div class="endgame-item winner">
+                <div class="endgame-header-row">
+                  <div class="endgame-left">
+                    <span class="endgame-rank">🏆 1º</span>
+                    <span class="endgame-name">${winnerLabel}</span>
+                  </div>
+                  <div class="endgame-right">
+                    <span class="endgame-score">${remainingWinner.score} pts</span>
+                    <span class="endgame-bonus" style="color: #4ade80;">Vencedor</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          // No caso de mais de um jogador restante (3P / 4P)
+          const sorted = [...remainingPlayers].sort((a, b) => b.score - a.score);
+          listHtml = `
+            <div style="margin-bottom: 16px; color: #94a3b8; font-size: 13px;">
+              <strong style="color: #f87171;">${leavingName}</strong> saiu da partida.
+            </div>
+            <div class="endgame-list">
+              ${sorted.map((p, idx) => {
+            const isWinner = idx === 0;
+            const isMe = (isP2P && p.id === myP2PIndex);
+            const baseName = p.name || `Jogador ${p.id + 1}`;
+            const pLabel = isMe ? `${baseName} (Você)` : baseName;
+            return `
+                  <div class="endgame-item ${isWinner ? 'winner' : ''}">
+                    <div class="endgame-header-row">
+                      <div class="endgame-left">
+                        <span class="endgame-rank">${idx === 0 ? '🏆 1º' : `${idx + 1}º`}</span>
+                        <span class="endgame-name">${pLabel}</span>
+                      </div>
+                      <div class="endgame-right">
+                        <span class="endgame-score">${p.score} pts</span>
+                        ${isWinner ? '<span class="endgame-bonus" style="color: #4ade80;">Vencedor</span>' : ''}
+                      </div>
+                    </div>
+                  </div>
+                `;
+          }).join('')}
+            </div>
+          `;
+        }
+        desc.innerHTML = listHtml;
+      }
+
+      if (modal) modal.style.display = 'flex';
+      updateP2PBadge('offline', 'Partida Finalizada');
+    }
+
+    function confirmExitGame() {
+      closeConfirmExitModal();
+
+      // Notifica os outros jogadores que este jogador abandonou a partida
+      if (isP2P && isGameActive) {
+        const myName = (myP2PIndex !== null && players && players[myP2PIndex] && players[myP2PIndex].name)
+          ? players[myP2PIndex].name
+          : (isHost ? 'Host' : `Jogador ${(myP2PIndex !== null ? myP2PIndex : 0) + 1}`);
+
+        try {
+          broadcastP2P({
+            type: 'PLAYER_ABANDONED',
+            playerIndex: myP2PIndex,
+            playerName: myName
+          });
+        } catch (e) { }
+      }
+
+      clearSavedSession();
+      hasMatchEndedByAbandon = false;
+
+      if (isP2P) {
+        // Aguarda 100ms para envio da mensagem pelo socket antes de fechar conexões
+        setTimeout(() => {
+          if (isHost) {
+            hostGuestConnections.forEach(c => { try { c.close(); } catch (e) { } });
+            hostGuestConnections = [];
+          } else if (clientHostConn) {
+            try { clientHostConn.close(); } catch (e) { }
+            clientHostConn = null;
+          }
+          if (peer && !peer.destroyed) {
+            try { peer.destroy(); } catch (e) { }
+            peer = null;
+          }
+          isP2P = false;
+          isHost = false;
+          myP2PIndex = null;
+          currentRoomCode = null;
+        }, 100);
       }
 
       if (botTurnTimer) {
@@ -1352,6 +1946,7 @@
         botTurnTimer = null;
       }
       isBotMode = false;
+      isGameActive = false;
 
       const badge = document.getElementById('p2pStatus');
       if (badge) badge.style.display = 'none';
@@ -1361,7 +1956,12 @@
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
+      // Reinicia tabuleiro base limpo
+      initGame();
+
       document.getElementById('multiplayerModal').style.display = 'none';
+      const localModal = document.getElementById('localModal');
+      if (localModal) localModal.style.display = 'none';
       document.getElementById('endModal').style.display = 'none';
       document.getElementById('mainMenuModal').style.display = 'flex';
     }
@@ -1423,7 +2023,11 @@
       initGame();
     }
 
-    function initGame() {
+    function initGame(names = null) {
+      hasMatchEndedByAbandon = false;
+      const endTitle = document.querySelector('#endModal h2');
+      if (endTitle) endTitle.textContent = 'Fim de Jogo';
+
       bag = createBag();
       discard = [];
       round = 1;
@@ -1434,8 +2038,11 @@
 
       players = [];
       for (let i = 0; i < playerCount; i++) {
+        let pName = (names && names[i]) ? names[i] : `Jogador ${i + 1}`;
+        if (isBotMode && i === 1) pName = 'Jogador 2 (Bot)';
         players.push({
           id: i,
+          name: pName,
           score: 0,
           pattern: [
             { size: 1, count: 0, color: null },
@@ -1714,6 +2321,7 @@
         triggerBotIfNeeded();
       }
       renderAll();
+      saveSessionToStorage();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -1794,6 +2402,7 @@
         startRound();
         renderAll();
         triggerBotIfNeeded();
+        saveSessionToStorage();
       }
     }
 
@@ -1860,48 +2469,173 @@
       return 1;
     }
 
-    function endGame() {
-      players.forEach(p => {
-        let bRow = 0, bCol = 0, bSet = 0;
+    function animateBonusStep(pId, cells, label, badgeText) {
+      cells.forEach(({ r, c }) => {
+        const cell = document.getElementById(`wallCell_${pId}_${r}_${c}`);
+        if (cell) {
+          cell.classList.add('bonus-highlight');
+          const prevText = cell.textContent;
+          cell.textContent = label;
+          setTimeout(() => {
+            cell.classList.remove('bonus-highlight');
+            cell.textContent = prevText;
+          }, Math.max(800, SCORING_STEP_DELAY_MS));
+        }
+      });
 
+      const ptsEl = document.getElementById(`playerPts_${pId}`);
+      if (ptsEl) {
+        ptsEl.classList.add('bonus-pts-bump');
+        setTimeout(() => ptsEl.classList.remove('bonus-pts-bump'), 600);
+
+        if (badgeText) {
+          const rect = ptsEl.getBoundingClientRect();
+          const badge = document.createElement('div');
+          badge.className = 'bonus-floating-badge';
+          badge.textContent = badgeText;
+          badge.style.left = `${rect.left + rect.width / 2}px`;
+          badge.style.top = `${rect.top}px`;
+          document.body.appendChild(badge);
+          setTimeout(() => badge.remove(), 1400);
+        }
+      }
+    }
+
+    async function animateEndGameBonuses() {
+      isScoringAnimationActive = true;
+
+      // Anima bônus jogador por jogador na ordem oficial: Linha (+2), Coluna (+7), Cores completas (+10)
+      for (let pIdx = 0; pIdx < players.length; pIdx++) {
+        const p = players[pIdx];
+        const initialBoardScore = p.score;
+        let lineBonus = 0;
+        let colBonus = 0;
+        let colorBonus = 0;
+
+        // 1. Linhas completas (+2)
         for (let r = 0; r < 5; r++) {
-          if (p.wall[r].every(v => v)) bRow += 2;
+          if (p.wall[r].every(v => v)) {
+            const cells = [];
+            for (let c = 0; c < 5; c++) cells.push({ r, c });
+
+            p.score += 2;
+            lineBonus += 2;
+            renderBoards();
+            animateBonusStep(p.id, cells, '+2', 'Linha +2');
+            await waitMs(SCORING_STEP_DELAY_MS + 250);
+          }
         }
 
+        // 2. Colunas completas (+7)
         for (let c = 0; c < 5; c++) {
           let full = true;
           for (let r = 0; r < 5; r++) {
             if (!p.wall[r][c]) { full = false; break; }
           }
-          if (full) bCol += 7;
+          if (full) {
+            const cells = [];
+            for (let r = 0; r < 5; r++) cells.push({ r, c });
+
+            p.score += 7;
+            colBonus += 7;
+            renderBoards();
+            animateBonusStep(p.id, cells, '+7', 'Coluna +7');
+            await waitMs(SCORING_STEP_DELAY_MS + 250);
+          }
         }
 
-        COLORS.forEach(clr => {
+        // 3. Todas as 5 peças de uma mesma cor (+10)
+        for (let colorIdx = 0; colorIdx < COLORS.length; colorIdx++) {
+          const clr = COLORS[colorIdx];
           let full = true;
           for (let r = 0; r < 5; r++) {
             const c = WALL_LAYOUT[r].indexOf(clr);
             if (!p.wall[r][c]) { full = false; break; }
           }
-          if (full) bSet += 10;
-        });
+          if (full) {
+            const cells = [];
+            for (let r = 0; r < 5; r++) {
+              cells.push({ r, c: WALL_LAYOUT[r].indexOf(clr) });
+            }
 
-        p.finalBonus = bRow + bCol + bSet;
-        p.score += p.finalBonus;
-      });
+            p.score += 10;
+            colorBonus += 10;
+            renderBoards();
+            animateBonusStep(p.id, cells, '+10', 'Cor +10');
+            await waitMs(SCORING_STEP_DELAY_MS + 250);
+          }
+        }
 
+        p.boardScore = initialBoardScore;
+        p.lineBonus = lineBonus;
+        p.colBonus = colBonus;
+        p.colorBonus = colorBonus;
+        p.finalBonus = lineBonus + colBonus + colorBonus;
+      }
+
+      await waitMs(500);
+      isScoringAnimationActive = false;
+
+      // Exibe modal final com os vencedores e pontuações calculadas
       const sorted = [...players].sort((a, b) => b.score - a.score);
       const modal = document.getElementById('endModal');
       const desc = document.getElementById('winnerDesc');
-      desc.textContent = sorted.map((p, idx) => {
-        const name = (isBotMode && p.id === 1) ? 'Jogador 2 (Bot)' : `Jogador ${p.id + 1}`;
-        return `${idx === 0 ? '[1º]' : '    '} ${name}: ${p.score} pts (+${p.finalBonus} bônus)`;
-      }).join('\n');
+
+      desc.innerHTML = `
+        <div class="endgame-list">
+          ${sorted.map((p, idx) => {
+        const isWinner = idx === 0;
+        const rankLabel = isWinner ? '1º' : `${idx + 1}º`;
+        const name = p.name || ((isBotMode && p.id === 1) ? 'Jogador 2 (Bot)' : `Jogador ${p.id + 1}`);
+        const boardPts = (p.boardScore !== undefined) ? p.boardScore : (p.score - (p.finalBonus || 0));
+        const lBonus = p.lineBonus || 0;
+        const cBonus = p.colBonus || 0;
+        const clrBonus = p.colorBonus || 0;
+        const totBonus = p.finalBonus || 0;
+
+        return `
+              <div class="endgame-item ${isWinner ? 'winner' : ''}">
+                <div class="endgame-header-row">
+                  <div class="endgame-left">
+                    <span class="endgame-rank">${rankLabel}</span>
+                    <span class="endgame-name">${name}</span>
+                  </div>
+                  <div class="endgame-right">
+                    <span class="endgame-score">${p.score} pts</span>
+                    ${totBonus > 0 ? `<span class="endgame-bonus">+${totBonus} bônus</span>` : ''}
+                  </div>
+                </div>
+                <div class="endgame-breakdown">
+                  <span class="endgame-tag board" title="Pontos conquistados durante as rodadas">Tabuleiro: <strong>${boardPts}</strong></span>
+                  ${lBonus > 0 ? `<span class="endgame-tag bonus-tag" title="Bônus por linhas horizontais completas">Linha: <strong>+${lBonus}</strong></span>` : ''}
+                  ${cBonus > 0 ? `<span class="endgame-tag bonus-tag" title="Bônus por colunas verticais completas">Coluna: <strong>+${cBonus}</strong></span>` : ''}
+                  ${clrBonus > 0 ? `<span class="endgame-tag bonus-tag" title="Bônus por todas as 5 peças de uma cor">Cor: <strong>+${clrBonus}</strong></span>` : ''}
+                </div>
+              </div>
+            `;
+      }).join('')}
+        </div>
+      `;
       modal.style.display = 'flex';
+      saveSessionToStorage();
+    }
+
+    async function endGame() {
+      await animateEndGameBonuses();
     }
 
     function closeModalAndRestart() {
-      document.getElementById('endModal').style.display = 'none';
-      restartLocalGame();
+      const modal = document.getElementById('endModal');
+      if (modal) modal.style.display = 'none';
+      const title = modal ? modal.querySelector('h2') : null;
+      if (title) title.textContent = 'Fim de Jogo';
+
+      if (hasMatchEndedByAbandon || isP2P) {
+        hasMatchEndedByAbandon = false;
+        confirmExitGame();
+      } else {
+        restartLocalGame();
+      }
     }
 
     // UI RENDER
@@ -1911,49 +2645,6 @@
 
       renderDraftingArea();
       renderBoards();
-      renderFloatingActionModal();
-    }
-
-    function renderFloatingActionModal() {
-      const modal = document.getElementById('floatingActionModal');
-      if (!modal) return;
-
-      if (!selected) {
-        modal.style.display = 'none';
-        modal.innerHTML = '';
-        return;
-      }
-
-      let pLabel = `Jogador ${turn + 1}`;
-      if (isP2P && turn === myP2PIndex) {
-        pLabel = 'Você';
-      } else if (isBotMode && turn === 1) {
-        pLabel = 'Jogador 2 (Bot)';
-      }
-      const canAct = canPlayerAct();
-
-      let miniTile = `<div class="modal-mini-tile tile ${selected.color}">${selected.count}x</div>`;
-
-      let confirmBtn = '';
-      if (canAct && stagedMove) {
-        confirmBtn = `<button class="modal-btn-confirm" onclick="confirmMove()">Confirmar</button>`;
-      }
-
-      let cancelBtn = '';
-      if (canAct) {
-        cancelBtn = `<button class="modal-btn-cancel" onclick="cancelMove()">Cancelar</button>`;
-      }
-
-      modal.innerHTML = `
-        <span class="modal-player-tag">${pLabel}:</span>
-        <div class="modal-tiles-preview">${miniTile}</div>
-        <div class="modal-action-btns">
-          ${confirmBtn}
-          ${cancelBtn}
-        </div>
-      `;
-
-      modal.style.display = 'flex';
     }
 
     function renderDraftingArea() {
@@ -2036,14 +2727,26 @@
       const container = document.getElementById('boardsGrid');
       container.innerHTML = '';
 
-      players.forEach(p => {
+      // No modo online (P2P), ordena para que "Você" apareça sempre primeiro
+      // e os próximos jogadores fiquem na sequência exata de turnos após você.
+      let displayPlayers = players;
+      if (isP2P && myP2PIndex !== null && myP2PIndex >= 0 && myP2PIndex < players.length) {
+        displayPlayers = [];
+        for (let i = 0; i < players.length; i++) {
+          const idx = (myP2PIndex + i) % players.length;
+          displayPlayers.push(players[idx]);
+        }
+      }
+
+      displayPlayers.forEach(p => {
         const isCurrentTurn = (p.id === turn);
         const card = document.createElement('div');
         card.className = `player-card ${isCurrentTurn ? 'active-turn' : ''}`;
 
         const isMe = (isP2P && p.id === myP2PIndex);
-        let playerTitle = isMe ? `Jogador ${p.id + 1} (Você)` : `Jogador ${p.id + 1}`;
-        if (isBotMode && p.id === 1) {
+        const baseName = p.name || `Jogador ${p.id + 1}`;
+        let playerTitle = isMe ? `${baseName} (Você)` : baseName;
+        if (isBotMode && p.id === 1 && !p.name) {
           playerTitle = `Jogador 2 (Bot)`;
         }
 
@@ -2058,6 +2761,42 @@
             <span class="player-pts" id="playerPts_${p.id}">${p.score} pts</span>
           `;
         card.appendChild(top);
+
+        // Barra de Ação Integrada ao Card do Jogador Ativo:
+        // Exibida para todos os jogadores para que todos vejam o que o jogador da vez selecionou
+        if (isCurrentTurn && selected) {
+          const actionBar = document.createElement('div');
+          actionBar.className = 'card-action-bar';
+
+          const canAct = canPlayerAct();
+          let rightContent = '';
+
+          if (canAct) {
+            const confirmBtn = stagedMove
+              ? `<button class="card-btn-confirm" onclick="confirmMove()">Confirmar</button>`
+              : '';
+            rightContent = `
+              <div class="card-action-btns">
+                ${confirmBtn}
+                <button class="card-btn-cancel" onclick="cancelMove()">Cancelar</button>
+              </div>
+            `;
+          } else {
+            rightContent = `
+              <span class="card-action-waiting" style="font-size: 11px; color: #94a3b8; font-weight: 600;">
+                ${stagedMove ? 'Aguardando confirmação...' : 'Escolhendo destino...'}
+              </span>
+            `;
+          }
+
+          actionBar.innerHTML = `
+            <div class="card-action-info">
+              <div class="card-mini-tile tile ${selected.color}">${selected.count}x</div>
+            </div>
+            ${rightContent}
+          `;
+          card.appendChild(actionBar);
+        }
 
         const body = document.createElement('div');
         body.className = 'board-body';
@@ -2082,7 +2821,13 @@
           const isStagedRow = isCurrentTurn && stagedMove && stagedMove.target === 'row' && stagedMove.rIdx === r;
           rowDiv.className = `pattern-row ${canTarget ? 'targetable' : ''} ${isStagedRow ? 'staged-row' : ''}`;
           if (canTarget) {
-            rowDiv.onclick = () => stagePlacement('row', r);
+            rowDiv.onclick = () => {
+              if (isStagedRow) {
+                confirmMove();
+              } else {
+                stagePlacement('row', r);
+              }
+            };
           }
 
           // Calcula preview se esta linha for a selecionada para staging
@@ -2141,7 +2886,13 @@
         const isStagedFloor = isCurrentTurn && stagedMove && stagedMove.target === 'floor';
         floor.className = `floor-line ${canFloor ? 'targetable' : ''} ${isStagedFloor ? 'staged-floor' : ''}`;
         if (canFloor) {
-          floor.onclick = () => stagePlacement('floor');
+          floor.onclick = () => {
+            if (isStagedFloor) {
+              confirmMove();
+            } else {
+              stagePlacement('floor');
+            }
+          };
         }
 
         // Calcula itens de pré-visualização no chão (starter tile + overflow ou direto no chão)
@@ -2190,20 +2941,108 @@
       });
     }
 
+    function restoreSessionFromStorage() {
+      try {
+        const raw = sessionStorage.getItem('azul_saved_session') || localStorage.getItem('azul_saved_session');
+        if (!raw) return false;
+        const session = JSON.parse(raw);
+        if (!session || !session.gameState || !session.isGameActive) {
+          clearSavedSession();
+          return false;
+        }
+
+        isGameActive = true;
+        document.getElementById('mainMenuModal').style.display = 'none';
+
+        if (session.mode === 'online') {
+          isP2P = true;
+          isHost = !!session.isHost;
+          myP2PIndex = session.myP2PIndex;
+          currentRoomCode = session.currentRoomCode;
+          targetOnlinePlayers = session.targetOnlinePlayers || session.playerCount || 2;
+          isBotMode = false;
+
+          // Atualiza URL com o código da sala
+          if (currentRoomCode && window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, `${window.location.pathname}?sala=${currentRoomCode}`);
+          }
+
+          if (isHost) {
+            updateP2PBadge('waiting', `P1 (Reconectando Host...)`);
+            applyFullGameState(session.gameState);
+            initPeerJS('azul-' + currentRoomCode.toLowerCase(), (peerId) => {
+              updateP2PBadge('online', `P1 (Host - ${targetOnlinePlayers}P)`);
+            });
+          } else {
+            updateP2PBadge('waiting', `Reconectando...`);
+            applyFullGameState(session.gameState);
+            initPeerJS(null, (myId) => {
+              clientHostConn = peer.connect('azul-' + currentRoomCode.toLowerCase());
+              setupClientConnection();
+            });
+          }
+          return true;
+        } else if (session.mode === 'bot') {
+          isP2P = false;
+          isHost = false;
+          myP2PIndex = null;
+          isBotMode = true;
+          playerCount = 2;
+          updateP2PBadge('offline', 'vs Bot (2P)');
+          applyFullGameState(session.gameState);
+          triggerBotIfNeeded();
+          return true;
+        } else {
+          // Local Pass & Play
+          isP2P = false;
+          isHost = false;
+          myP2PIndex = null;
+          isBotMode = false;
+          playerCount = session.playerCount || 2;
+          updateP2PBadge('offline', `Local (${playerCount}P)`);
+          applyFullGameState(session.gameState);
+          return true;
+        }
+      } catch (e) {
+        console.warn('Erro ao restaurar sessão anterior:', e);
+        return false;
+      }
+    }
+
     // Inicialização e checagem de parâmetros de URL (?sala=...)
     window.onload = () => {
-      initGame();
+      // 1. Tenta restaurar sessão salva (reload/F5)
+      const restored = restoreSessionFromStorage();
+      if (restored) return;
 
-      // Se a URL tiver ?sala=XYZ, fecha menu inicial e entra direto na sala
+      // 2. Se a URL tiver ?sala=XYZ e não tinha sessão restaurada, preenche o código e abre a tela para o jogador conferir o nome e entrar
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('sala') || urlParams.get('room');
       if (roomParam) {
         document.getElementById('mainMenuModal').style.display = 'none';
-        document.getElementById('roomCodeInput').value = roomParam;
+        const codeInput = document.getElementById('roomCodeInput');
+        if (codeInput) codeInput.value = roomParam.toUpperCase();
+        const nameInput = document.getElementById('onlineMyNameInput');
+        if (nameInput && nameInput.value === 'Jogador 1') {
+          nameInput.value = 'Jogador 2';
+          nameInput.select();
+        }
         openMultiplayerModal();
-        p2pJoinRoom();
+        return;
       }
+
+      // 3. Caso padrão inicial: prepara tabuleiro base e mostra menu
+      initGame();
     };
+
+    window.addEventListener('beforeunload', () => {
+      // Salva estado antes de fechar/recarregar
+      saveSessionToStorage();
+      // Desconecta socket do peer de forma limpa para evitar bloqueio de ID pelo broker
+      if (peer && !peer.destroyed) {
+        try { peer.disconnect(); } catch (e) { }
+      }
+    });
   </script>
 </body>
 
