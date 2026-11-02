@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Azul - Minimalist</title>
+  <style>
+    :root {
+      --bg-canvas: #0f1216;
+      --bg-card: #151819;
+      --bg-header: #1c2022;
+      --border-subtle: #222729;
+      --border-focus: #3b454b;
+      --text-pri: #8d9a9e;
+      --text-mid: #5a6568;
+      --text-muted: #333a3d;
+      --accent-active: #38bdf8;
+      --accent-red: #d85040;
+      --accent-yellow: #d99c2b;
+      --accent-green: #3ca34d;
+      
+      /* Tiles */
+      --tile-blue: #3b82f6;
+      --tile-yellow: #eab308;
+      --tile-red: #ef4444;
+      --tile-black: #2b333a;
+      --tile-white: #e2e8f0;
+      --tile-starter: #d99c2b;
+
+      /* Dynamic tile sizing */
+      --tile-size: clamp(24px, 3.8vw, 44px);
+      --tile-size-factory: clamp(22px, 3.2vw, 36px);
+      --gap-board: clamp(3px, 0.6vw, 6px);
+      --radius-tile: 5px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-pri);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      font-size: clamp(11px, 1.2vw, 13px);
+      line-height: 1.2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top minimalist header */
+    header {
+      background-color: var(--bg-header);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 42px;
+      flex-shrink: 0;
+    }
+
+    .mac-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .mac-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .mac-dot.red { background-color: var(--accent-red); }
+    .mac-dot.yellow { background-color: var(--accent-yellow); }
+    .mac-dot.green { background-color: var(--accent-green); }
+
+    .header-ctrls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-toggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-mid);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+    .btn-toggle:hover, .btn-toggle.active {
+      color: #fff;
+      border-color: var(--border-focus);
+      background: #1c2225;
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      gap: 10px;
+      width: 100%;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* Central Drafting Area */
+    #draftingArea {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .factories-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .factory-disc {
+      border-radius: 50%;
+      background: #101315;
+      border: 1px solid var(--border-subtle);
+      display: grid;
+      grid-template-columns: repeat(2, var(--tile-size-factory));
+      grid-gap: 4px;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+    }
+
+    .center-table-disc {
+      min-width: calc(var(--tile-size-factory) * 3);
+      max-width: 500px;
+      min-height: calc(var(--tile-size-factory) * 2 + 16px);
+      background: #101315;
+      border: 1px dashed var(--border-subtle);
+      border-radius: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+    }
+
+    /* Tiles */
+    .tile {
+      width: var(--tile-size);
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(9px, 1.1vw, 12px);
+      font-weight: 700;
+      transition: transform 0.1s ease, box-shadow 0.15s ease, outline 0.15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+    .tile:active { transform: scale(0.92); }
+
+    .tile-factory {
+      width: var(--tile-size-factory);
+      height: var(--tile-size-factory);
+    }
+
+    .tile.blue { background-color: var(--tile-blue); }
+    .tile.yellow { background-color: var(--tile-yellow); }
+    .tile.red { background-color: var(--tile-red); }
+    .tile.black {
+      background-color: var(--tile-black);
+      border: 1px solid #455057;
+    }
+    .tile.white {
+      background-color: var(--tile-white);
+      color: #0f1216;
+    }
+    .tile.starter {
+      background-color: var(--tile-starter);
+      color: #0f1216;
+      font-weight: 800;
+    }
+
+    .tile.selected {
+      outline: 2px solid #fff;
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 0 10px rgba(255,255,255,0.4);
+      z-index: 10;
+    }
+
+    /* Selected preview banner */
+    #selectionPrompt {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e2428;
+      border: 1px solid #3b454b;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 11px;
+      color: #e2e8f0;
+      white-space: nowrap;
+      display: none;
+      z-index: 20;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    /* Player Boards Grid */
+    #boardsGrid {
+      flex: 1;
+      display: grid;
+      gap: 10px;
+      width: 100%;
+      align-content: stretch;
+    }
+
+    /* Responsive grid variants */
+    .grid-2p {
+      grid-template-columns: repeat(2, 1fr);
+      --tile-size: clamp(26px, 4.2vw, 50px);
+    }
+    .grid-3p {
+      grid-template-columns: repeat(3, 1fr);
+      --tile-size: clamp(22px, 3.2vw, 42px);
+    }
+    .grid-4p {
+      grid-template-columns: repeat(2, 1fr);
+      --tile-size: clamp(22px, 2.8vw, 38px);
+    }
+
+    @media (max-width: 900px) {
+      .grid-3p { grid-template-columns: 1fr; }
+      .grid-4p { grid-template-columns: 1fr; }
+      .grid-2p { grid-template-columns: 1fr; }
+      :root {
+        --tile-size: clamp(22px, 6vw, 36px);
+      }
+    }
+
+    /* Player Board Card */
+    .player-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: clamp(8px, 1.2vw, 14px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: clamp(8px, 1.2vw, 14px);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .player-card.active-turn {
+      border-color: var(--accent-active);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.16);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .player-label {
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: clamp(12px, 1.3vw, 15px);
+    }
+    .player-label .turn-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-active);
+      display: inline-block;
+      visibility: hidden;
+      box-shadow: 0 0 8px var(--accent-active);
+    }
+    .player-card.active-turn .turn-indicator {
+      visibility: visible;
+    }
+
+    .player-pts {
+      font-weight: 700;
+      color: #cbd5e1;
+      font-size: clamp(12px, 1.3vw, 15px);
+    }
+
+    /* Main Board Body: Patterns & Wall */
+    .board-body {
+      flex: 1;
+      display: flex;
+      gap: clamp(8px, 1.8vw, 24px);
+      align-items: center;
+      justify-content: center;
+      padding: 4px 0;
+    }
+
+    /* Pattern Lines (Left) */
+    .pattern-lines {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-board);
+      align-items: flex-end;
+    }
+
+    .pattern-row {
+      display: flex;
+      gap: var(--gap-board);
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      cursor: default;
+      transition: all 0.15s ease;
+    }
+
+    .pattern-row.targetable {
+      border-color: rgba(56, 189, 248, 0.5);
+      background: rgba(56, 189, 248, 0.1);
+      cursor: pointer;
+    }
+    .pattern-row.targetable:hover {
+      background: rgba(56, 189, 248, 0.22);
+      transform: translateX(-2px);
+    }
+
+    .slot-empty {
+      width: var(--tile-size);
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      border: 1px dashed var(--border-subtle);
+      background: #101315;
+    }
+
+    /* Mosaic Wall (5x5) */
+    .wall-grid {
+      display: grid;
+      grid-template-columns: repeat(5, var(--tile-size));
+      gap: var(--gap-board);
+      padding: clamp(4px, 0.8vw, 8px);
+      background: #101315;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .wall-cell {
+      width: var(--tile-size);
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      opacity: 0.16;
+      filter: grayscale(60%);
+      transition: opacity 0.2s, filter 0.2s;
+    }
+
+    .wall-cell.filled {
+      opacity: 1;
+      filter: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    /* Floor Line */
+    .floor-line {
+      display: flex;
+      gap: clamp(3px, 0.5vw, 6px);
+      align-items: center;
+      background: #101315;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      width: 100%;
+      max-width: calc(var(--tile-size) * 11);
+      margin: 0 auto;
+    }
+
+    .floor-line.targetable {
+      border-color: rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.1);
+      cursor: pointer;
+    }
+    .floor-line.targetable:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .floor-slot {
+      flex: 1;
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      border: 1px dashed var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(9px, 1vw, 11px);
+      color: var(--text-muted);
+      position: relative;
+    }
+
+    .floor-slot.occupied {
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    /* End game modal */
+    #endModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 22px;
+      border-radius: 10px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    .modal-box h2 {
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .modal-box p {
+      font-size: 12px;
+      color: var(--text-pri);
+      margin-bottom: 16px;
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="mac-dots">
+      <div class="mac-dot red"></div>
+      <div class="mac-dot yellow"></div>
+      <div class="mac-dot green"></div>
+      <span style="font-weight:700; color: #cbd5e1; font-size:11px; margin-left: 6px;">AZUL</span>
+      <span id="roundIndicator" style="color: var(--text-mid); font-size: 10px; margin-left: 4px;">R1</span>
+    </div>
+
+    <div class="header-ctrls">
+      <button class="btn-toggle active" id="btn2p" onclick="changePlayerCount(2)">2P</button>
+      <button class="btn-toggle" id="btn3p" onclick="changePlayerCount(3)">3P</button>
+      <button class="btn-toggle" id="btn4p" onclick="changePlayerCount(4)">4P</button>
+      <button class="btn-toggle" onclick="initGame()" style="margin-left: 4px; color: var(--accent-red);">Novo Jogo</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Factories & Center -->
+    <section id="draftingArea">
+      <div class="factories-wrap" id="factoriesWrap"></div>
+      <div class="center-table-disc" id="centerDisc"></div>
+      <div id="selectionPrompt"></div>
+    </section>
+
+    <!-- Simultaneous Player Boards -->
+    <section id="boardsGrid" class="grid-2p"></section>
+  </main>
+
+  <div id="endModal">
+    <div class="modal-box">
+      <h2>Fim de Jogo</h2>
+      <p id="winnerDesc"></p>
+      <button class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar Novamente</button>
+    </div>
+  </div>
+
+  <script>
+    const COLORS = ['blue', 'yellow', 'red', 'black', 'white'];
+    
+    // Official wall layout
+    const WALL_LAYOUT = [
+      ['blue', 'yellow', 'red', 'black', 'white'],
+      ['white', 'blue', 'yellow', 'red', 'black'],
+      ['black', 'white', 'blue', 'yellow', 'red'],
+      ['red', 'black', 'white', 'blue', 'yellow'],
+      ['yellow', 'red', 'black', 'white', 'blue']
+    ];
+
+    const FLOOR_PENALTIES = [-1, -1, -2, -2, -2, -3, -3];
+
+    let playerCount = 2;
+    let players = [];
+    let factories = [];
+    let center = [];
+    let bag = [];
+    let discard = [];
+    let turn = 0;
+    let round = 1;
+    let nextStartPlayer = 0;
+    let starterTileInCenter = true;
+
+    // Selection state
+    let selected = null; // { source: 'f'|'c', fIdx: number, color: string, count: number }
+
+    function createBag() {
+      const b = [];
+      COLORS.forEach(c => {
+        for (let i = 0; i < 20; i++) b.push(c);
+      });
+      return shuffle(b);
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function drawTiles(n) {
+      const drawn = [];
+      for (let i = 0; i < n; i++) {
+        if (bag.length === 0) {
+          if (discard.length === 0) break;
+          bag = shuffle([...discard]);
+          discard = [];
+        }
+        drawn.push(bag.pop());
+      }
+      return drawn;
+    }
+
+    function changePlayerCount(n) {
+      playerCount = n;
+      document.querySelectorAll('.btn-toggle').forEach(b => {
+        if (b.id === `btn${n}p`) b.classList.add('active');
+        else if (b.id.startsWith('btn')) b.classList.remove('active');
+      });
+      initGame();
+    }
+
+    function initGame() {
+      bag = createBag();
+      discard = [];
+      round = 1;
+      turn = 0;
+      nextStartPlayer = 0;
+      selected = null;
+
+      players = [];
+      for (let i = 0; i < playerCount; i++) {
+        players.push({
+          id: i,
+          score: 0,
+          pattern: [
+            { size: 1, count: 0, color: null },
+            { size: 2, count: 0, color: null },
+            { size: 3, count: 0, color: null },
+            { size: 4, count: 0, color: null },
+            { size: 5, count: 0, color: null }
+          ],
+          wall: Array(5).fill(null).map(() => Array(5).fill(false)),
+          floor: []
+        });
+      }
+
+      startRound();
+      renderAll();
+    }
+
+    function getFactoryCount() {
+      return playerCount === 2 ? 5 : (playerCount === 3 ? 7 : 9);
+    }
+
+    function startRound() {
+      const fCount = getFactoryCount();
+      factories = [];
+      for (let f = 0; f < fCount; f++) {
+        factories.push(drawTiles(4));
+      }
+      center = [];
+      starterTileInCenter = true;
+      turn = nextStartPlayer;
+      selected = null;
+    }
+
+    // Tile Selection Logic
+    function pickFromFactory(fIdx, color) {
+      if (!factories[fIdx] || !factories[fIdx].includes(color)) return;
+      const count = factories[fIdx].filter(c => c === color).length;
+      selected = { source: 'f', fIdx, color, count };
+      renderAll();
+    }
+
+    function pickFromCenter(color) {
+      const count = center.filter(c => c === color).length;
+      if (count === 0) return;
+      selected = { source: 'c', color, count };
+      renderAll();
+    }
+
+    function placeTilesOnRow(rIdx) {
+      if (!selected) return;
+      const p = players[turn];
+      const row = p.pattern[rIdx];
+
+      // Validate: cannot mix colors; cannot place color already on wall
+      if (row.count > 0 && row.color !== selected.color) return;
+      const wallCol = WALL_LAYOUT[rIdx].indexOf(selected.color);
+      if (p.wall[rIdx][wallCol]) return;
+
+      commitDraft();
+
+      row.color = selected.color;
+      const space = row.size - row.count;
+      const toRow = Math.min(space, selected.count);
+      const overflow = selected.count - toRow;
+
+      row.count += toRow;
+      for (let i = 0; i < overflow; i++) {
+        dropToFloor(p, selected.color);
+      }
+
+      finishTurn();
+    }
+
+    function placeTilesOnFloor() {
+      if (!selected) return;
+      const p = players[turn];
+      commitDraft();
+      for (let i = 0; i < selected.count; i++) {
+        dropToFloor(p, selected.color);
+      }
+      finishTurn();
+    }
+
+    function dropToFloor(p, color) {
+      if (p.floor.length < 7) {
+        p.floor.push(color);
+      } else {
+        discard.push(color);
+      }
+    }
+
+    function commitDraft() {
+      const p = players[turn];
+      if (selected.source === 'f') {
+        const remaining = factories[selected.fIdx].filter(c => c !== selected.color);
+        center.push(...remaining);
+        factories[selected.fIdx] = [];
+      } else if (selected.source === 'c') {
+        if (starterTileInCenter) {
+          starterTileInCenter = false;
+          nextStartPlayer = turn;
+          dropToFloor(p, 'starter');
+        }
+        center = center.filter(c => c !== selected.color);
+      }
+    }
+
+    function finishTurn() {
+      selected = null;
+      // Check if all factories and center are empty
+      const emptyFactories = factories.every(f => f.length === 0);
+      const emptyCenter = center.length === 0;
+
+      if (emptyFactories && emptyCenter) {
+        scoreRound();
+      } else {
+        turn = (turn + 1) % playerCount;
+      }
+      renderAll();
+    }
+
+    // Scoring & Tiling
+    function scoreRound() {
+      let gameEnds = false;
+
+      players.forEach(p => {
+        // Tiling completed pattern rows
+        for (let r = 0; r < 5; r++) {
+          const row = p.pattern[r];
+          if (row.count === row.size) {
+            const color = row.color;
+            const c = WALL_LAYOUT[r].indexOf(color);
+            p.wall[r][c] = true;
+
+            // Score tile
+            p.score += calculateTileScore(p.wall, r, c);
+
+            // 1 goes to wall, others to discard
+            for (let i = 0; i < row.size - 1; i++) discard.push(color);
+            row.count = 0;
+            row.color = null;
+
+            // Check if this horizontal row is full
+            if (p.wall[r].every(v => v === true)) {
+              gameEnds = true;
+            }
+          }
+        }
+
+        // Subtract floor penalties
+        let pen = 0;
+        p.floor.forEach((item, idx) => {
+          if (idx < FLOOR_PENALTIES.length) pen += FLOOR_PENALTIES[idx];
+          if (item !== 'starter') discard.push(item);
+        });
+        p.score = Math.max(0, p.score + pen);
+        p.floor = [];
+      });
+
+      if (gameEnds) {
+        endGame();
+      } else {
+        round++;
+        startRound();
+      }
+    }
+
+    function calculateTileScore(wall, r, c) {
+      let hCount = 0;
+      for (let i = c - 1; i >= 0 && wall[r][i]; i--) hCount++;
+      for (let i = c + 1; i < 5 && wall[r][i]; i++) hCount++;
+
+      let vCount = 0;
+      for (let i = r - 1; i >= 0 && wall[i][c]; i--) vCount++;
+      for (let i = r + 1; i < 5 && wall[i][c]; i++) vCount++;
+
+      if (hCount > 0 && vCount > 0) return (hCount + 1) + (vCount + 1);
+      if (hCount > 0) return hCount + 1;
+      if (vCount > 0) return vCount + 1;
+      return 1;
+    }
+
+    function endGame() {
+      // Calculate end-game bonuses
+      players.forEach(p => {
+        let bRow = 0, bCol = 0, bSet = 0;
+
+        for (let r = 0; r < 5; r++) {
+          if (p.wall[r].every(v => v)) bRow += 2;
+        }
+
+        for (let c = 0; c < 5; c++) {
+          let full = true;
+          for (let r = 0; r < 5; r++) {
+            if (!p.wall[r][c]) { full = false; break; }
+          }
+          if (full) bCol += 7;
+        }
+
+        COLORS.forEach(clr => {
+          let full = true;
+          for (let r = 0; r < 5; r++) {
+            const c = WALL_LAYOUT[r].indexOf(clr);
+            if (!p.wall[r][c]) { full = false; break; }
+          }
+          if (full) bSet += 10;
+        });
+
+        p.finalBonus = bRow + bCol + bSet;
+        p.score += p.finalBonus;
+      });
+
+      const sorted = [...players].sort((a,b) => b.score - a.score);
+      const modal = document.getElementById('endModal');
+      const desc = document.getElementById('winnerDesc');
+      desc.textContent = sorted.map((p, idx) => 
+        `${idx === 0 ? '🏆' : '  '} Jogador ${p.id + 1}: ${p.score} pts (+${p.finalBonus} bônus)`
+      ).join('\n');
+      modal.style.display = 'flex';
+    }
+
+    function closeModalAndRestart() {
+      document.getElementById('endModal').style.display = 'none';
+      initGame();
+    }
+
+    // UI RENDER
+    function renderAll() {
+      document.getElementById('roundIndicator').textContent = `R${round}`;
+
+      // Set Grid Layout
+      const boardsGrid = document.getElementById('boardsGrid');
+      boardsGrid.className = `grid-${playerCount}p`;
+
+      renderDraftingArea();
+      renderBoards();
+    }
+
+    function renderDraftingArea() {
+      const fWrap = document.getElementById('factoriesWrap');
+      fWrap.innerHTML = '';
+
+      factories.forEach((factory, fIdx) => {
+        const disc = document.createElement('div');
+        disc.className = 'factory-disc';
+
+        factory.forEach(color => {
+          const t = document.createElement('div');
+          const isSel = selected && selected.source === 'f' && selected.fIdx === fIdx && selected.color === color;
+          t.className = `tile tile-factory ${color} ${isSel ? 'selected' : ''}`;
+          t.onclick = (e) => {
+            e.stopPropagation();
+            pickFromFactory(fIdx, color);
+          };
+          disc.appendChild(t);
+        });
+
+        fWrap.appendChild(disc);
+      });
+
+      // Center
+      const cDisc = document.getElementById('centerDisc');
+      cDisc.innerHTML = '';
+
+      if (starterTileInCenter) {
+        const st = document.createElement('div');
+        st.className = 'tile tile-factory starter';
+        st.textContent = '-1';
+        cDisc.appendChild(st);
+      }
+
+      center.forEach(color => {
+        const t = document.createElement('div');
+        const isSel = selected && selected.source === 'c' && selected.color === color;
+        t.className = `tile tile-factory ${color} ${isSel ? 'selected' : ''}`;
+        t.onclick = (e) => {
+          e.stopPropagation();
+          pickFromCenter(color);
+        };
+        cDisc.appendChild(t);
+      });
+
+      // Selection banner
+      const prompt = document.getElementById('selectionPrompt');
+      if (selected) {
+        prompt.style.display = 'block';
+        prompt.textContent = `P${turn + 1}: ${selected.count}x ${selected.color.toUpperCase()}`;
+      } else {
+        prompt.style.display = 'none';
+      }
+    }
+
+    function renderBoards() {
+      const container = document.getElementById('boardsGrid');
+      container.innerHTML = '';
+
+      players.forEach(p => {
+        const isCurrentTurn = (p.id === turn);
+        const card = document.createElement('div');
+        card.className = `player-card ${isCurrentTurn ? 'active-turn' : ''}`;
+
+        // Top info
+        const top = document.createElement('div');
+        top.className = 'card-top';
+        top.innerHTML = `
+          <div class="player-label">
+            <span class="turn-indicator"></span>
+            <span>Jogador ${p.id + 1}</span>
+          </div>
+          <span class="player-pts">${p.score} pts</span>
+        `;
+        card.appendChild(top);
+
+        // Body: Pattern Rows + Wall
+        const body = document.createElement('div');
+        body.className = 'board-body';
+
+        // Pattern rows (left)
+        const patWrap = document.createElement('div');
+        patWrap.className = 'pattern-lines';
+
+        for (let r = 0; r < 5; r++) {
+          const row = p.pattern[r];
+          const rowDiv = document.createElement('div');
+          
+          let canTarget = false;
+          if (selected && isCurrentTurn) {
+            const wallCol = WALL_LAYOUT[r].indexOf(selected.color);
+            const wallOccupied = p.wall[r][wallCol];
+            const colorMatch = (row.count === 0 || row.color === selected.color);
+            const hasSpace = row.count < row.size;
+            canTarget = !wallOccupied && colorMatch && hasSpace;
+          }
+
+          rowDiv.className = `pattern-row ${canTarget ? 'targetable' : ''}`;
+          if (canTarget) {
+            rowDiv.onclick = () => placeTilesOnRow(r);
+          }
+
+          // Slots: right-aligned
+          for (let s = 0; s < row.size; s++) {
+            const isFilled = s >= (row.size - row.count);
+            if (isFilled && row.color) {
+              const t = document.createElement('div');
+              t.className = `tile ${row.color}`;
+              rowDiv.appendChild(t);
+            } else {
+              const empty = document.createElement('div');
+              empty.className = 'slot-empty';
+              rowDiv.appendChild(empty);
+            }
+          }
+          patWrap.appendChild(rowDiv);
+        }
+        body.appendChild(patWrap);
+
+        // Mosaic Wall (right)
+        const wallGrid = document.createElement('div');
+        wallGrid.className = 'wall-grid';
+        for (let r = 0; r < 5; r++) {
+          for (let c = 0; c < 5; c++) {
+            const color = WALL_LAYOUT[r][c];
+            const filled = p.wall[r][c];
+            const cell = document.createElement('div');
+            cell.className = `wall-cell tile ${color} ${filled ? 'filled' : ''}`;
+            wallGrid.appendChild(cell);
+          }
+        }
+        body.appendChild(wallGrid);
+
+        card.appendChild(body);
+
+        // Floor line
+        const floor = document.createElement('div');
+        const canFloor = selected && isCurrentTurn;
+        floor.className = `floor-line ${canFloor ? 'targetable' : ''}`;
+        if (canFloor) {
+          floor.onclick = () => placeTilesOnFloor();
+        }
+
+        for (let i = 0; i < 7; i++) {
+          const slot = document.createElement('div');
+          const item = p.floor[i];
+          if (item) {
+            slot.className = `floor-slot occupied tile ${item === 'starter' ? 'starter' : item}`;
+            slot.textContent = item === 'starter' ? '-1' : '';
+          } else {
+            slot.className = 'floor-slot';
+            slot.textContent = FLOOR_PENALTIES[i];
+          }
+          floor.appendChild(slot);
+        }
+        card.appendChild(floor);
+
+        container.appendChild(card);
+      });
+    }
+
+    // Startup
+    window.onload = () => {
+      initGame();
+    };
+  </script>
+</body>
+</html>

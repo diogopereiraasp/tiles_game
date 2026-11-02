@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Azul - Minimalist Multiplayer P2P</title>
+  <!-- PeerJS via CDN para WebRTC P2P gratuito sem servidor próprio -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      /* Theme: code-editor-dark */
+      --bg-canvas: #0f1216;
+      --bg-card: #151819;
+      --bg-header: #1c2022;
+      --border-subtle: #222729;
+      --border-focus: #3b454b;
+
+      --text-pri: #8d9a9e;
+      --text-mid: #5a6568;
+      --text-sec: #485154;
+      --text-muted: #333a3d;
+      --text-comment: #2d3538;
+
+      --accent-active: #38bdf8;
+      --accent-red: #d85040;
+      --accent-yellow: #d99c2b;
+      --accent-green: #3ca34d;
+
+      /* Tiles */
+      --tile-blue: #3b82f6;
+      --tile-yellow: #eab308;
+      --tile-red: #ef4444;
+      --tile-black: #1e252b;
+      --tile-white: #e2e8f0;
+      --tile-starter: #d99c2b;
+
+      /* Dynamic tile sizing */
+      --tile-size: clamp(24px, 3.8vw, 44px);
+      --tile-size-factory: clamp(22px, 3.2vw, 36px);
+      --gap-board: clamp(3px, 0.6vw, 6px);
+      --radius-tile: 5px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-pri);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      font-size: clamp(11px, 1.2vw, 13px);
+      line-height: 1.2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top minimalist header */
+    header {
+      background-color: var(--bg-header);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 42px;
+      flex-shrink: 0;
+    }
+
+    .header-ctrls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-toggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-pri);
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .btn-toggle:hover {
+      color: #fff;
+      border-color: var(--border-focus);
+      background: #1c2022;
+    }
+
+    .btn-toggle.active {
+      color: #fff;
+      border-color: var(--accent-active);
+      background: #1c2022;
+    }
+
+    .btn-online {
+      background: #151819;
+      border: 1px solid var(--border-focus);
+      color: #fff;
+    }
+
+    .btn-online:hover {
+      background: #1c2022;
+      border-color: var(--accent-active);
+      color: #fff;
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      gap: 8px;
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Central Drafting Area */
+    #draftingArea {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .factories-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .factory-disc {
+      border-radius: 50%;
+      background: #101315;
+      border: 1px solid var(--border-subtle);
+      display: grid;
+      grid-template-columns: repeat(2, var(--tile-size-factory));
+      grid-template-rows: repeat(2, var(--tile-size-factory));
+      grid-gap: 3px;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      width: calc(2 * var(--tile-size-factory) + 3px + 8px);
+      height: calc(2 * var(--tile-size-factory) + 3px + 8px);
+      min-width: calc(2 * var(--tile-size-factory) + 3px + 8px);
+      min-height: calc(2 * var(--tile-size-factory) + 3px + 8px);
+      box-sizing: border-box;
+      flex-shrink: 0;
+      transition: opacity 0.2s ease, border-color 0.2s ease;
+    }
+
+    .factory-disc.empty {
+      border: 1px dashed rgba(255, 255, 255, 0.08);
+      background: rgba(16, 19, 21, 0.4);
+      opacity: 0.35;
+    }
+
+    .center-table-disc {
+      min-width: calc(var(--tile-size-factory) * 3);
+      max-width: 480px;
+      min-height: calc(var(--tile-size-factory) * 2 + 10px);
+      background: #101315;
+      border: 1px dashed var(--border-subtle);
+      border-radius: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+    }
+
+    /* Tiles */
+    .tile {
+      width: var(--tile-size);
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(8px, 1vw, 11px);
+      font-weight: 700;
+      transition: transform 0.1s ease, box-shadow 0.15s ease, outline 0.15s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      flex-shrink: 0;
+    }
+
+    .tile:active {
+      transform: scale(0.92);
+    }
+
+    .tile-factory {
+      width: var(--tile-size-factory);
+      height: var(--tile-size-factory);
+    }
+
+    .tile.blue {
+      background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%);
+      border: 1px solid #60a5fa;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 4px rgba(0, 0, 0, 0.45);
+    }
+
+    .tile.yellow {
+      background: linear-gradient(145deg, #facc15 0%, #ca8a04 100%);
+      border: 1px solid #fde047;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 4px rgba(0, 0, 0, 0.45);
+      color: #713f12;
+    }
+
+    .tile.red {
+      background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%);
+      border: 1px solid #f87171;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 4px rgba(0, 0, 0, 0.45);
+    }
+
+    .tile.black {
+      background: linear-gradient(145deg, #2a343d 0%, #151a1e 100%);
+      border: 1px solid #5a6975;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    .tile.white {
+      background: linear-gradient(145deg, #f8fafc 0%, #cbd5e1 100%);
+      border: 1px solid #ffffff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 4px rgba(0, 0, 0, 0.45);
+      color: #0f172a;
+    }
+
+    .tile.starter {
+      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #d8e2ec 60%, #b8c7d6 100%);
+      color: #1e3a5f;
+      font-weight: 900;
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+      position: relative;
+    }
+
+    .tile.selected {
+      outline: 2px solid #fff;
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+      z-index: 10;
+    }
+
+    /* BGA Preview Styles */
+    .tile.preview-ghost {
+      opacity: 0.65;
+      outline: 1.5px dashed rgba(255, 255, 255, 0.7);
+      animation: previewPulse 1.6s infinite ease-in-out;
+      pointer-events: none;
+    }
+
+    .floor-slot.preview-ghost {
+      opacity: 0.75;
+      outline: 1.5px dashed #d85040;
+      animation: previewPulse 1.6s infinite ease-in-out;
+    }
+
+    @keyframes previewPulse {
+
+      0%,
+      100% {
+        opacity: 0.55;
+        transform: scale(0.97);
+      }
+
+      50% {
+        opacity: 0.85;
+        transform: scale(1.03);
+      }
+    }
+
+    /* Modal Flutuante de Ação: Topo no Web / Base no Mobile */
+    .floating-action-modal {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 54px; /* Logo abaixo do header fixo no desktop/web */
+      background: #181d20;
+      border: 1.5px solid var(--accent-active);
+      border-radius: 10px;
+      padding: 6px 14px;
+      display: none;
+      z-index: 90;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.25);
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(10px);
+      animation: modalSlideDown 0.2s ease-out;
+      white-space: nowrap;
+    }
+
+    @keyframes modalSlideDown {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -10px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+
+    @keyframes modalSlideUp {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 15px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+
+    .modal-player-tag {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.3px;
+    }
+
+    .modal-tiles-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .modal-mini-tile {
+      width: 28px;
+      height: 24px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 900;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+      user-select: none;
+    }
+
+    .modal-mini-tile.white {
+      color: #0f1216 !important;
+      text-shadow: none;
+    }
+
+    .modal-action-btns {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-btn-confirm,
+    .modal-btn-cancel {
+      padding: 6px 16px;
+      font-size: 12.5px;
+      font-weight: 800;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: 0.3px;
+      box-sizing: border-box;
+      transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+    }
+
+    .modal-btn-confirm {
+      background: #3ca34d;
+      color: #fff;
+      border: 1px solid #4ade80;
+      box-shadow: 0 2px 8px rgba(60, 163, 77, 0.4);
+    }
+
+    .modal-btn-confirm:hover {
+      background: #46b859;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(60, 163, 77, 0.6);
+    }
+
+    .modal-btn-cancel {
+      background: #222729;
+      color: #f87171;
+      border: 1px solid #d85040;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #341e21;
+      color: #fca5a5;
+      transform: translateY(-1px);
+    }
+
+    /* No Mobile/Android: modal flutua no Bottom (base da tela) */
+    @media (max-width: 600px) {
+      .floating-action-modal {
+        top: auto;
+        bottom: 16px;
+        width: calc(100% - 32px);
+        max-width: 360px;
+        justify-content: space-between;
+        padding: 8px 14px;
+        animation: modalSlideUp 0.2s ease-out;
+      }
+    }
+
+    /* Player Boards Grid */
+    #boardsGrid {
+      flex: 1;
+      display: grid;
+      gap: 8px;
+      width: 100%;
+      align-content: stretch;
+    }
+
+    /* Responsive grid variants adaptáveis */
+    .grid-2p {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      --tile-size: clamp(24px, 3.8vw, 46px);
+      --tile-size-factory: clamp(22px, 3.2vw, 36px);
+    }
+
+    .grid-3p {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      --tile-size: clamp(16px, 2.2vw, 32px);
+      --tile-size-factory: clamp(18px, 2.4vw, 30px);
+      --gap-board: 3px;
+    }
+
+    .grid-4p {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      --tile-size: clamp(14px, 1.7vw, 26px);
+      --tile-size-factory: clamp(16px, 1.9vw, 26px);
+      --gap-board: 2px;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-4p {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        --tile-size: clamp(18px, 3vw, 36px);
+        --tile-size-factory: clamp(18px, 2.8vw, 32px);
+      }
+    }
+
+    @media (max-width: 850px) {
+      .grid-3p {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        --tile-size: clamp(18px, 3.2vw, 36px);
+      }
+    }
+
+    @media (max-width: 600px) {
+
+      .grid-2p,
+      .grid-3p,
+      .grid-4p {
+        grid-template-columns: 1fr;
+        --tile-size: clamp(22px, 6vw, 40px);
+      }
+    }
+
+    /* Player Card */
+    .player-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: clamp(4px, 0.8vw, 10px);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .player-card.active-turn {
+      border-color: var(--accent-active);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 3px;
+      min-height: 34px;
+      /* Altura fixa confortável e reservada para que botões de ação nunca empurrem ou mexam a tela */
+      box-sizing: border-box;
+    }
+
+    .player-label {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: clamp(10px, 1.1vw, 12px);
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .turn-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: transparent;
+      flex-shrink: 0;
+    }
+
+    .player-card.active-turn .turn-indicator {
+      background: var(--accent-active);
+      box-shadow: 0 0 6px var(--accent-active);
+    }
+
+    .player-pts {
+      font-weight: 700;
+      color: var(--text-pri);
+      font-size: clamp(10px, 1.1vw, 13px);
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
+
+    .board-body {
+      display: flex;
+      justify-content: space-between;
+      gap: clamp(4px, 1vw, 12px);
+      flex: 1;
+      align-items: center;
+    }
+
+    /* Pattern Lines (Left) */
+    .pattern-lines {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-board);
+      align-items: flex-end;
+      flex: 1;
+    }
+
+    .pattern-row {
+      display: flex;
+      gap: var(--gap-board);
+      justify-content: flex-end;
+      align-items: center;
+      padding: 1px;
+      border-radius: 4px;
+      transition: background 0.15s ease;
+    }
+
+    .pattern-row.targetable {
+      background: rgba(56, 189, 248, 0.12);
+      outline: 1px dashed var(--accent-active);
+      cursor: pointer;
+    }
+
+    .pattern-row.targetable:hover {
+      background: rgba(56, 189, 248, 0.25);
+    }
+
+    .pattern-row.staged-row {
+      background: rgba(56, 189, 248, 0.22);
+      outline: 2px solid var(--accent-active);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+    }
+
+    .slot-empty {
+      width: var(--tile-size);
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      border: 1px dashed var(--border-subtle);
+      background: rgba(255, 255, 255, 0.015);
+      flex-shrink: 0;
+    }
+
+    /* Mosaic Wall (Right) */
+    .wall-grid {
+      display: grid;
+      grid-template-columns: repeat(5, var(--tile-size));
+      grid-template-rows: repeat(5, var(--tile-size));
+      gap: var(--gap-board);
+      background: #101315;
+      padding: 3px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .wall-cell {
+      border-radius: var(--radius-tile);
+      opacity: 0.28;
+      filter: grayscale(40%);
+      transition: opacity 0.2s, filter 0.2s;
+    }
+
+    .wall-cell:not(.filled) {
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .wall-cell.filled {
+      opacity: 1;
+      filter: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    .wall-cell.scoring-highlight {
+      opacity: 1;
+      filter: none;
+      transform: scale(1.22);
+      box-shadow: 0 0 14px var(--accent-active);
+      z-index: 20;
+      color: #fff !important;
+      font-weight: 900;
+      font-size: clamp(12px, 1.5vw, 18px);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .player-pts.pts-bump {
+      transform: scale(1.35);
+      color: var(--accent-active);
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+      transition: transform 0.25s ease, color 0.25s ease;
+    }
+
+    .scoring-floating-badge {
+      position: absolute;
+      font-weight: 900;
+      font-size: 15px;
+      color: var(--accent-active);
+      pointer-events: none;
+      z-index: 50;
+      animation: floatUpFade 1.2s ease-out forwards;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+    }
+
+    @keyframes floatUpFade {
+      0% {
+        opacity: 0;
+        transform: translateY(2px) scale(0.9);
+      }
+
+      25% {
+        opacity: 1;
+        transform: translateY(-8px) scale(1.2);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(-30px) scale(1);
+      }
+    }
+
+    /* Floor Line */
+    .floor-line {
+      display: flex;
+      gap: var(--gap-board);
+      align-items: center;
+      background: #101315;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .floor-line.targetable {
+      border-color: rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.1);
+      cursor: pointer;
+    }
+
+    .floor-line.targetable:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .floor-line.staged-floor {
+      border-color: #d85040;
+      background: rgba(216, 80, 64, 0.25);
+      box-shadow: 0 0 8px rgba(216, 80, 64, 0.35);
+    }
+
+    .floor-slot {
+      flex: 1;
+      height: var(--tile-size);
+      border-radius: var(--radius-tile);
+      border: 1px dashed var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(9px, 1vw, 11px);
+      color: var(--text-muted);
+      position: relative;
+    }
+
+    .floor-slot.occupied {
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    /* Modais */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 22px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-box h2 {
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .modal-box p {
+      font-size: 12px;
+      color: var(--text-pri);
+      margin-bottom: 16px;
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0f1216;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 18px;
+      text-transform: uppercase;
+      font-family: "Consolas", "Courier New", "Lucida Console", monospace;
+      font-variant-numeric: slashed-zero;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 6px;
+      margin-bottom: 12px;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--accent-active);
+    }
+
+    .invite-code-display {
+      font-family: "Consolas", "Courier New", "Lucida Console", monospace;
+      font-variant-numeric: slashed-zero;
+      font-weight: 900;
+      font-size: 26px;
+      letter-spacing: 8px;
+      color: var(--accent-active);
+      background: #0b0e11;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border-focus);
+      display: inline-block;
+      margin: 6px 0;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      background: #1c2225;
+      color: var(--text-pri);
+      margin-left: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .status-dot.online {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    .status-dot.waiting {
+      background: #eab308;
+      box-shadow: 0 0 6px #eab308;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-weight: 800; color: #fff; font-size: 13px; letter-spacing: 1px;">AZUL</span>
+      <div id="p2pStatus" class="status-badge" style="display:none;">
+        <span id="p2pDot" class="status-dot"></span>
+        <span id="p2pLabel">Offline</span>
+      </div>
+    </div>
+
+    <div class="header-ctrls">
+      <button class="btn-toggle" onclick="exitToMainMenu()" style="color: var(--text-pri);">Sair da Partida</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Factories & Center -->
+    <section id="draftingArea">
+      <div class="factories-wrap" id="factoriesWrap"></div>
+      <div class="center-table-disc" id="centerDisc"></div>
+    </section>
+
+    <!-- Simultaneous Player Boards -->
+    <section id="boardsGrid" class="grid-2p"></section>
+  </main>
+
+  <!-- Modal Flutuante de Ação (Top no Desktop / Bottom no Mobile) -->
+  <div id="floatingActionModal" class="floating-action-modal"></div>
+
+  <!-- Modal Fim de Jogo -->
+  <div id="endModal" class="modal-overlay">
+    <div class="modal-box">
+      <h2>Fim de Jogo</h2>
+      <p id="winnerDesc"></p>
+      <button class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar
+        Novamente</button>
+    </div>
+  </div>
+
+  <!-- Modal Menu Inicial (Aparece ao abrir o jogo) -->
+  <div id="mainMenuModal" class="modal-overlay" style="display: flex;">
+    <div class="modal-box" style="max-width: 400px; padding: 32px 24px;">
+      <div style="font-size: 28px; font-weight: 900; letter-spacing: 5px; color: #fff; margin-bottom: 4px;">AZUL</div>
+      <div
+        style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-active); margin-bottom: 24px;">
+        Jogo de Tabuleiro</div>
+
+      <button class="btn-toggle btn-online"
+        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 16px; border-color: var(--border-focus); letter-spacing: 0.5px;"
+        onclick="chooseOnlineMode()">
+        Jogar Online (Multiplayer P2P)
+      </button>
+
+      <button class="btn-toggle btn-online"
+        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 16px; border-color: var(--border-focus); letter-spacing: 0.5px;"
+        onclick="chooseBotMode()">
+        Jogar vs Bot (2 Jogadores)
+      </button>
+
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px; margin-bottom: 8px;">
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 10px;">Jogar Local (Pass & Play):</div>
+        <div style="display: flex; gap: 8px; justify-content: center;">
+          <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;" onclick="chooseLocalMode(2)">2
+            Jogadores</button>
+          <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;" onclick="chooseLocalMode(3)">3
+            Jogadores</button>
+          <button class="btn-toggle" style="flex: 1; padding: 10px; font-weight: 600;" onclick="chooseLocalMode(4)">4
+            Jogadores</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Multiplayer P2P (Salas Online) -->
+  <div id="multiplayerModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 380px;">
+      <h2>Multiplayer Online (P2P)</h2>
+      <p style="color: var(--text-pri); font-size: 11px;">Jogue com 2, 3 ou 4 amigos no mesmo link, sem servidor
+        próprio!</p>
+
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">1. Escolha a quantidade de jogadores:
+        </div>
+        <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 10px;">
+          <button class="btn-toggle active" id="host2pBtn" onclick="selectHostPCount(2)">2 Jogadores</button>
+          <button class="btn-toggle" id="host3pBtn" onclick="selectHostPCount(3)">3 Jogadores</button>
+          <button class="btn-toggle" id="host4pBtn" onclick="selectHostPCount(4)">4 Jogadores</button>
+        </div>
+
+        <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 8px;"
+          onclick="p2pCreateRoom()">
+          + Criar Nova Sala (Ser o Host)
+        </button>
+        <div id="hostRoomInfo"
+          style="display: none; background: #0f1216; padding: 12px; border-radius: 6px; border: 1px dashed var(--border-focus); margin-top: 6px;">
+          <div style="font-size: 11px; color: var(--text-mid);">Seu Código de Convite (4 dígitos):</div>
+          <div>
+            <span id="myRoomCode" class="invite-code-display">----</span>
+          </div>
+          <button class="btn-toggle" style="width: 100%; margin-top: 6px;" onclick="copyInviteLink()">Copiar Link de
+            Convite</button>
+          <div id="waitGuestText" style="font-size: 11px; color: var(--accent-yellow); margin-top: 8px;">Aguardando
+            jogadores: 1 / 2 conectados</div>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-bottom: 14px;">
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">Ou entrar com código de 4 dígitos:
+        </div>
+        <input type="text" id="roomCodeInput" class="modal-input" placeholder="CÓDIGO (EX: A7K9)" maxlength="4">
+        <button class="btn-toggle" style="width: 100%; padding: 8px;" onclick="p2pJoinRoom()">
+          Entrar na Sala
+        </button>
+      </div>
+
+      <button class="btn-toggle" style="width: 100%; color: var(--text-muted);" onclick="closeMultiplayerModal()">
+        Voltar ao Menu Principal
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       CONFIGURAÇÃO E CONSTANTES DO JOGO AZUL
+       ===================================================================== */
+    const COLORS = ['blue', 'yellow', 'red', 'black', 'white'];
+
+    const WALL_LAYOUT = [
+      ['blue', 'yellow', 'red', 'black', 'white'],
+      ['white', 'blue', 'yellow', 'red', 'black'],
+      ['black', 'white', 'blue', 'yellow', 'red'],
+      ['red', 'black', 'white', 'blue', 'yellow'],
+      ['yellow', 'red', 'black', 'white', 'blue']
+    ];
+
+    const FLOOR_PENALTIES = [-1, -1, -2, -2, -2, -3, -3];
+
+    let playerCount = 2;
+    let players = [];
+    let factories = [];
+    let center = [];
+    let bag = [];
+    let discard = [];
+    let turn = 0;
+    let round = 1;
+    let nextStartPlayer = 0;
+    let starterTileInCenter = true;
+
+    // Selection state
+    let selected = null; // { source: 'f'|'c', fIdx: number, color: string, count: number }
+    let stagedMove = null; // { target: 'row'|'floor', rIdx?: number } - BGA style preview
+
+    // Bot Mode State (vs Bot apenas 2 jogadores)
+    let isBotMode = false;
+    let botTurnTimer = null;
+
+    /* =====================================================================
+       MULTIPLAYER P2P (WEBRTC VIA PEERJS) - SUPORTE A 2, 3 E 4 JOGADORES
+       ===================================================================== */
+    let peer = null;
+    let isP2P = false;
+    let isHost = false;
+    let myP2PIndex = null; // 0 = Host (P1), 1 = P2, 2 = P3, 3 = P4
+    let currentRoomCode = null;
+    let targetOnlinePlayers = 2;
+
+    // Para o Host: conexões com convidados [connP2, connP3, connP4]
+    let hostGuestConnections = [];
+    // Para o Convidado: conexão direta com o Host
+    let clientHostConn = null;
+
+    // Conjunto de caracteres legíveis (3 letras e números)
+    // Omitimos letras facilmente confusas, mas garantimos suporte a 'O' e '0' com visual cortado (slashed-zero)
+    const CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+    function generate4DigitCode() {
+      let code = '';
+      for (let i = 0; i < 4; i++) {
+        code += CODE_CHARS.charAt(Math.floor(Math.random() * CODE_CHARS.length));
+      }
+      return code;
+    }
+
+    function chooseOnlineMode() {
+      document.getElementById('mainMenuModal').style.display = 'none';
+      isBotMode = false;
+      openMultiplayerModal();
+    }
+
+    function chooseBotMode() {
+      document.getElementById('mainMenuModal').style.display = 'none';
+      isP2P = false;
+      isBotMode = true;
+      myP2PIndex = null;
+      playerCount = 2;
+      updateP2PBadge('offline', 'vs Bot (2P)');
+      initGame();
+    }
+
+    function chooseLocalMode(count = 2) {
+      document.getElementById('mainMenuModal').style.display = 'none';
+      isP2P = false;
+      isBotMode = false;
+      myP2PIndex = null;
+      playerCount = count;
+      updateP2PBadge('offline', `Local (${count}P)`);
+      initGame();
+    }
+
+    function selectHostPCount(count) {
+      targetOnlinePlayers = count;
+      [2, 3, 4].forEach(n => {
+        const btn = document.getElementById(`host${n}pBtn`);
+        if (btn) {
+          if (n === count) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+      });
+    }
+
+    function initPeerJS(preferredId, onOpenCallback) {
+      if (peer && !peer.destroyed) {
+        if (onOpenCallback) onOpenCallback(peer.id);
+        return;
+      }
+
+      // Cria peer com ID específico da sala (ex: azul-A7K9) ou aleatório se omitido
+      peer = preferredId ? new Peer(preferredId) : new Peer();
+
+      peer.on('open', (id) => {
+        console.log('PeerJS online ID:', id);
+        if (onOpenCallback) onOpenCallback(id);
+      });
+
+      peer.on('connection', (conn) => {
+        if (isHost) {
+          handleGuestIncoming(conn);
+        }
+      });
+
+      peer.on('error', (err) => {
+        console.error('PeerJS error:', err);
+        if (err.type === 'unavailable-id') {
+          // Se o código de 4 dígitos já estiver em uso no momento, tenta outro
+          if (isHost) {
+            p2pCreateRoom();
+            return;
+          }
+        }
+        alert('Erro P2P: ' + err.type);
+      });
+    }
+
+    function p2pCreateRoom() {
+      const roomInfo = document.getElementById('hostRoomInfo');
+      const roomCodeEl = document.getElementById('myRoomCode');
+      roomCodeEl.textContent = '----';
+      roomInfo.style.display = 'block';
+
+      const shortCode = generate4DigitCode();
+      const peerCustomId = 'azul-' + shortCode.toLowerCase();
+
+      initPeerJS(peerCustomId, (peerId) => {
+        currentRoomCode = shortCode;
+        roomCodeEl.textContent = shortCode;
+        isHost = true;
+        isP2P = true;
+        myP2PIndex = 0;
+        hostGuestConnections = [];
+
+        playerCount = targetOnlinePlayers;
+        updateHeaderPlayerButtons(playerCount);
+        updateHostWaitingUI();
+        updateP2PBadge('waiting', `P1 (Aguardando...)`);
+      });
+    }
+
+    function updateHostWaitingUI() {
+      const waitTxt = document.getElementById('waitGuestText');
+      const connectedCount = 1 + hostGuestConnections.length;
+      if (waitTxt) {
+        waitTxt.textContent = `Aguardando jogadores: ${connectedCount} / ${targetOnlinePlayers} conectados`;
+      }
+    }
+
+    function handleGuestIncoming(conn) {
+      if (hostGuestConnections.length >= targetOnlinePlayers - 1) {
+        conn.on('open', () => {
+          conn.send({ type: 'ROOM_FULL' });
+          setTimeout(() => conn.close(), 1000);
+        });
+        return;
+      }
+
+      conn.on('open', () => {
+        const assignedIndex = hostGuestConnections.length + 1; // 1, 2 ou 3
+        conn.assignedIndex = assignedIndex;
+        hostGuestConnections.push(conn);
+
+        conn.send({
+          type: 'WELCOME',
+          playerIndex: assignedIndex,
+          totalPlayers: targetOnlinePlayers
+        });
+
+        updateHostWaitingUI();
+
+        // Se completou a sala, inicia a partida sincronizada
+        if (1 + hostGuestConnections.length === targetOnlinePlayers) {
+          closeMultiplayerModal();
+          updateP2PBadge('online', `P1 (Host - ${targetOnlinePlayers}P)`);
+          initGame();
+          broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+        } else {
+          updateP2PBadge('waiting', `P1 (${1 + hostGuestConnections.length}/${targetOnlinePlayers})`);
+        }
+      });
+
+      conn.on('data', (data) => {
+        handleHostReceivedMessage(conn, data);
+      });
+
+      conn.on('close', () => {
+        hostGuestConnections = hostGuestConnections.filter(c => c !== conn);
+        updateHostWaitingUI();
+        updateP2PBadge('waiting', `P1 (${1 + hostGuestConnections.length}/${targetOnlinePlayers})`);
+      });
+    }
+
+    function p2pJoinRoom() {
+      let code = document.getElementById('roomCodeInput').value.trim();
+      if (!code) {
+        alert('Digite o código de 4 dígitos da sala.');
+        return;
+      }
+
+      // Normaliza código para o ID do PeerJS: 'azul-' + code em minúsculas
+      let targetPeerId = code.startsWith('azul-') ? code.toLowerCase() : ('azul-' + code.toLowerCase());
+
+      initPeerJS(null, (myId) => {
+        updateP2PBadge('waiting', 'Conectando...');
+        clientHostConn = peer.connect(targetPeerId);
+        isHost = false;
+        setupClientConnection();
+      });
+    }
+
+    function setupClientConnection() {
+      clientHostConn.on('open', () => {
+        isP2P = true;
+        console.log('Conectado ao Host com sucesso!');
+      });
+
+      clientHostConn.on('data', (data) => {
+        handleClientReceivedMessage(data);
+      });
+
+      clientHostConn.on('close', () => {
+        alert('A sala foi encerrada pelo Host.');
+        updateP2PBadge('offline', 'Desconectado');
+        isP2P = false;
+        myP2PIndex = null;
+      });
+    }
+
+    // Host recebe ação de um convidado, executa localmente e replica para os outros convidados
+    function handleHostReceivedMessage(senderConn, msg) {
+      if (msg.type === 'ACTION') {
+        executeGameAction(msg.action, false);
+        // Repassa para os outros convidados
+        hostGuestConnections.forEach(c => {
+          if (c !== senderConn && c.open) {
+            c.send(msg);
+          }
+        });
+      }
+    }
+
+    // Convidado recebe mensagens do Host
+    function handleClientReceivedMessage(msg) {
+      if (msg.type === 'WELCOME') {
+        myP2PIndex = msg.playerIndex;
+        playerCount = msg.totalPlayers;
+        updateHeaderPlayerButtons(playerCount);
+        updateP2PBadge('online', `P${myP2PIndex + 1} (${playerCount}P)`);
+        closeMultiplayerModal();
+      } else if (msg.type === 'ROOM_FULL') {
+        alert('Esta sala já atingiu o número máximo de jogadores.');
+      } else if (msg.type === 'SYNC_STATE') {
+        applyFullGameState(msg.state);
+      } else if (msg.type === 'ACTION') {
+        executeGameAction(msg.action, false);
+      }
+    }
+
+    function broadcastP2P(data) {
+      if (isHost) {
+        hostGuestConnections.forEach(c => {
+          if (c && c.open) c.send(data);
+        });
+      } else if (clientHostConn && clientHostConn.open) {
+        clientHostConn.send(data);
+      }
+    }
+
+    function executeGameAction(action, broadcast = true) {
+      if (action.type === 'PICK_FACTORY') {
+        pickFromFactory(action.fIdx, action.color, false);
+      } else if (action.type === 'PICK_CENTER') {
+        pickFromCenter(action.color, false);
+      } else if (action.type === 'STAGE_ROW') {
+        stagePlacement('row', action.rIdx, false);
+      } else if (action.type === 'STAGE_FLOOR') {
+        stagePlacement('floor', null, false);
+      } else if (action.type === 'CONFIRM_MOVE') {
+        confirmMove(false);
+      } else if (action.type === 'CANCEL_MOVE') {
+        cancelMove(false);
+      }
+
+      if (broadcast && isP2P) {
+        broadcastP2P({ type: 'ACTION', action });
+      }
+    }
+
+    function updateHeaderPlayerButtons(count) {
+      [2, 3, 4].forEach(n => {
+        const btn = document.getElementById(`btn${n}p`);
+        if (btn) {
+          if (n === count) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+      });
+    }
+
+    function getFullGameState() {
+      return {
+        playerCount,
+        players,
+        factories,
+        center,
+        bag,
+        discard,
+        turn,
+        round,
+        nextStartPlayer,
+        starterTileInCenter,
+        selected,
+        stagedMove
+      };
+    }
+
+    function applyFullGameState(state) {
+      playerCount = state.playerCount;
+      players = state.players;
+      factories = state.factories;
+      center = state.center;
+      bag = state.bag;
+      discard = state.discard;
+      turn = state.turn;
+      round = state.round;
+      nextStartPlayer = state.nextStartPlayer;
+      starterTileInCenter = state.starterTileInCenter;
+      selected = state.selected;
+      stagedMove = state.stagedMove || null;
+      updateHeaderPlayerButtons(playerCount);
+      renderAll();
+    }
+
+    function updateP2PBadge(status, text) {
+      const badge = document.getElementById('p2pStatus');
+      const dot = document.getElementById('p2pDot');
+      const lbl = document.getElementById('p2pLabel');
+      badge.style.display = 'inline-flex';
+      dot.className = `status-dot ${status}`;
+      lbl.textContent = text;
+    }
+
+    function copyInviteLink() {
+      if (!currentRoomCode) return;
+      const url = `${window.location.origin}${window.location.pathname}?sala=${currentRoomCode}`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Link copiado para a área de transferência! Envie para seus amigos entrarem.');
+      }).catch(() => {
+        prompt('Copie o link abaixo:', url);
+      });
+    }
+
+    function openMultiplayerModal() {
+      document.getElementById('multiplayerModal').style.display = 'flex';
+    }
+
+    function closeMultiplayerModal() {
+      document.getElementById('multiplayerModal').style.display = 'none';
+    }
+
+    function exitToMainMenu() {
+      if (isP2P) {
+        if (!confirm('Deseja realmente sair da partida online?')) return;
+        // Fecha conexões com outros peers
+        if (isHost) {
+          hostGuestConnections.forEach(c => { try { c.close(); } catch (e) { } });
+          hostGuestConnections = [];
+        } else if (clientHostConn) {
+          try { clientHostConn.close(); } catch (e) { }
+          clientHostConn = null;
+        }
+        if (peer && !peer.destroyed) {
+          try { peer.destroy(); } catch (e) { }
+          peer = null;
+        }
+        isP2P = false;
+        isHost = false;
+        myP2PIndex = null;
+        currentRoomCode = null;
+      }
+
+      if (botTurnTimer) {
+        clearTimeout(botTurnTimer);
+        botTurnTimer = null;
+      }
+      isBotMode = false;
+
+      const badge = document.getElementById('p2pStatus');
+      if (badge) badge.style.display = 'none';
+
+      // Limpa qualquer parâmetro de URL (?sala=...)
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      document.getElementById('multiplayerModal').style.display = 'none';
+      document.getElementById('endModal').style.display = 'none';
+      document.getElementById('mainMenuModal').style.display = 'flex';
+    }
+
+    function restartLocalGame() {
+      if (isP2P) {
+        if (!isHost) {
+          alert('Apenas o Host (P1) pode reiniciar a partida online.');
+          return;
+        }
+        if (!confirm('Deseja reiniciar a partida para todos os jogadores?')) return;
+        initGame();
+        broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+      } else {
+        initGame();
+      }
+    }
+
+    /* =====================================================================
+       LÓGICA PRINCIPAL DO JOGO AZUL
+       ===================================================================== */
+    function createBag() {
+      const b = [];
+      COLORS.forEach(c => {
+        for (let i = 0; i < 20; i++) b.push(c);
+      });
+      return shuffle(b);
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function drawTiles(n) {
+      const drawn = [];
+      for (let i = 0; i < n; i++) {
+        if (bag.length === 0) {
+          if (discard.length === 0) break;
+          bag = shuffle([...discard]);
+          discard = [];
+        }
+        drawn.push(bag.pop());
+      }
+      return drawn;
+    }
+
+    function changePlayerCount(n) {
+      if (isP2P) {
+        alert('Em partidas online P2P, a quantidade de jogadores é definida pelo Host ao criar a sala.');
+        return;
+      }
+      isBotMode = false;
+      playerCount = n;
+      updateHeaderPlayerButtons(n);
+      initGame();
+    }
+
+    function initGame() {
+      bag = createBag();
+      discard = [];
+      round = 1;
+      turn = 0;
+      nextStartPlayer = 0;
+      selected = null;
+      stagedMove = null;
+
+      players = [];
+      for (let i = 0; i < playerCount; i++) {
+        players.push({
+          id: i,
+          score: 0,
+          pattern: [
+            { size: 1, count: 0, color: null },
+            { size: 2, count: 0, color: null },
+            { size: 3, count: 0, color: null },
+            { size: 4, count: 0, color: null },
+            { size: 5, count: 0, color: null }
+          ],
+          wall: Array(5).fill(null).map(() => Array(5).fill(false)),
+          floor: []
+        });
+      }
+
+      startRound();
+      renderAll();
+      triggerBotIfNeeded();
+    }
+
+    function getFactoryCount() {
+      return playerCount === 2 ? 5 : (playerCount === 3 ? 7 : 9);
+    }
+
+    function startRound() {
+      const fCount = getFactoryCount();
+      factories = [];
+      for (let f = 0; f < fCount; f++) {
+        factories.push(drawTiles(4));
+      }
+      center = [];
+      starterTileInCenter = true;
+      turn = nextStartPlayer;
+      selected = null;
+      stagedMove = null;
+    }
+
+    function canPlayerAct() {
+      if (isBotMode) return turn === 0;
+      if (isP2P) return turn === myP2PIndex;
+      return true;
+    }
+
+    function triggerBotIfNeeded() {
+      if (!isBotMode || turn !== 1 || isScoringAnimationActive) return;
+      if (botTurnTimer) clearTimeout(botTurnTimer);
+      botTurnTimer = setTimeout(() => {
+        botTurnTimer = null;
+        botPlayTurn();
+      }, 700);
+    }
+
+    function botPlayTurn() {
+      if (!isBotMode || turn !== 1 || isScoringAnimationActive) return;
+      const bot = players[1];
+
+      // 1. Gera todas as opções de coleta disponíveis nas fábricas e no centro
+      const options = [];
+
+      factories.forEach((factory, fIdx) => {
+        if (!factory || factory.length === 0) return;
+        const uniqueColors = [...new Set(factory)];
+        uniqueColors.forEach(color => {
+          const count = factory.filter(c => c === color).length;
+          options.push({ source: 'f', fIdx, color, count });
+        });
+      });
+
+      if (center.length > 0) {
+        const uniqueCenter = [...new Set(center)];
+        uniqueCenter.forEach(color => {
+          const count = center.filter(c => c === color).length;
+          options.push({ source: 'c', color, count });
+        });
+      }
+
+      if (options.length === 0) return;
+
+      // 2. Avalia cada movimento possível (escolha + destino no tabuleiro)
+      let bestMove = null;
+      let bestScore = -9999;
+
+      options.forEach(opt => {
+        const starterCost = (opt.source === 'c' && starterTileInCenter) ? -1 : 0;
+
+        // Testa cada linha padrão 0..4
+        for (let r = 0; r < 5; r++) {
+          const row = bot.pattern[r];
+          const colorMatch = (row.count === 0 || row.color === opt.color);
+          const wallCol = WALL_LAYOUT[r].indexOf(opt.color);
+          const wallOccupied = bot.wall[r][wallCol];
+          const hasSpace = row.count < row.size;
+
+          if (!wallOccupied && colorMatch && hasSpace) {
+            const space = row.size - row.count;
+            const placed = Math.min(space, opt.count);
+            const overflow = opt.count - placed;
+            const willComplete = (row.count + placed === row.size);
+
+            let score = 0;
+            if (willComplete) {
+              // Estima pontuação ao completar a linha
+              score += 15 + calculateTileScore(bot.wall, r, wallCol) * 3;
+            } else {
+              // Progresso parcial em linha compatível
+              score += 6 + placed * 2 - (row.size - (row.count + placed));
+            }
+
+            // Penalidade de transbordamento no chão
+            score -= overflow * 4;
+            score += starterCost;
+
+            if (score > bestScore) {
+              bestScore = score;
+              bestMove = { opt, target: 'row', rIdx: r };
+            }
+          }
+        }
+
+        // Testa colocar diretamente no chão
+        const floorScore = -12 - (opt.count * 3) + starterCost;
+        if (floorScore > bestScore) {
+          bestScore = floorScore;
+          bestMove = { opt, target: 'floor' };
+        }
+      });
+
+      // Se nenhuma opção superou o threshold (ex: tabuleiro muito restrito), joga no chão da primeira opção
+      if (!bestMove) {
+        bestMove = { opt: options[0], target: 'floor' };
+      }
+
+      // 3. Executa a escolha e confirmação
+      selected = { ...bestMove.opt };
+      stagedMove = bestMove.target === 'row' ? { target: 'row', rIdx: bestMove.rIdx } : { target: 'floor' };
+      renderAll();
+
+      // Confirma após 400ms para uma transição suave e visualmente clara
+      setTimeout(() => {
+        if (!isBotMode || turn !== 1) return;
+        confirmMove(false);
+      }, 400);
+    }
+
+    // Tile Selection Logic (BGA Flow)
+    function pickFromFactory(fIdx, color, broadcast = true) {
+      if (broadcast && !canPlayerAct()) return;
+      if (!factories[fIdx] || !factories[fIdx].includes(color)) return;
+      const count = factories[fIdx].filter(c => c === color).length;
+      selected = { source: 'f', fIdx, color, count };
+      stagedMove = null; // Reinicia destino prévio ao mudar seleção
+      renderAll();
+
+      if (broadcast && isP2P) {
+        broadcastP2P({ type: 'ACTION', action: { type: 'PICK_FACTORY', fIdx, color } });
+      }
+    }
+
+    function pickFromCenter(color, broadcast = true) {
+      if (broadcast && !canPlayerAct()) return;
+      const count = center.filter(c => c === color).length;
+      if (count === 0) return;
+      selected = { source: 'c', color, count };
+      stagedMove = null;
+      renderAll();
+
+      if (broadcast && isP2P) {
+        broadcastP2P({ type: 'ACTION', action: { type: 'PICK_CENTER', color } });
+      }
+    }
+
+    // BGA Stage: escolhe onde colocar temporariamente para ver preview
+    function stagePlacement(target, rIdx = null, broadcast = true) {
+      if (broadcast && !canPlayerAct()) return;
+      if (!selected) return;
+
+      if (target === 'row') {
+        const p = players[turn];
+        const row = p.pattern[rIdx];
+        if (row.count > 0 && row.color !== selected.color) return;
+        const wallCol = WALL_LAYOUT[rIdx].indexOf(selected.color);
+        if (p.wall[rIdx][wallCol]) return;
+        stagedMove = { target: 'row', rIdx };
+      } else if (target === 'floor') {
+        stagedMove = { target: 'floor' };
+      }
+
+      renderAll();
+
+      if (broadcast && isP2P) {
+        if (target === 'row') {
+          broadcastP2P({ type: 'ACTION', action: { type: 'STAGE_ROW', rIdx } });
+        } else {
+          broadcastP2P({ type: 'ACTION', action: { type: 'STAGE_FLOOR' } });
+        }
+      }
+    }
+
+    // BGA Cancel: descarta seleção e preview
+    function cancelMove(broadcast = true) {
+      if (broadcast && !canPlayerAct()) return;
+      selected = null;
+      stagedMove = null;
+      renderAll();
+
+      if (broadcast && isP2P) {
+        broadcastP2P({ type: 'ACTION', action: { type: 'CANCEL_MOVE' } });
+      }
+    }
+
+    // BGA Confirm: efetiva o movimento escolhido e encerra o turno
+    function confirmMove(broadcast = true) {
+      if (broadcast && !canPlayerAct()) return;
+      if (!selected || !stagedMove) return;
+
+      const p = players[turn];
+      commitDraft();
+
+      if (stagedMove.target === 'row') {
+        const rIdx = stagedMove.rIdx;
+        const row = p.pattern[rIdx];
+        row.color = selected.color;
+        const space = row.size - row.count;
+        const toRow = Math.min(space, selected.count);
+        const overflow = selected.count - toRow;
+
+        row.count += toRow;
+        for (let i = 0; i < overflow; i++) {
+          dropToFloor(p, selected.color);
+        }
+      } else if (stagedMove.target === 'floor') {
+        for (let i = 0; i < selected.count; i++) {
+          dropToFloor(p, selected.color);
+        }
+      }
+
+      if (broadcast && isP2P) {
+        broadcastP2P({ type: 'ACTION', action: { type: 'CONFIRM_MOVE' } });
+      }
+
+      finishTurn();
+    }
+
+    function dropToFloor(p, color) {
+      if (p.floor.length < 7) {
+        p.floor.push(color);
+      } else {
+        discard.push(color);
+      }
+    }
+
+    function commitDraft() {
+      const p = players[turn];
+      if (selected.source === 'f') {
+        const remaining = factories[selected.fIdx].filter(c => c !== selected.color);
+        center.push(...remaining);
+        factories[selected.fIdx] = [];
+      } else if (selected.source === 'c') {
+        if (starterTileInCenter) {
+          starterTileInCenter = false;
+          nextStartPlayer = turn;
+          dropToFloor(p, 'starter');
+        }
+        center = center.filter(c => c !== selected.color);
+      }
+    }
+
+    function finishTurn() {
+      selected = null;
+      stagedMove = null;
+      const emptyFactories = factories.every(f => f.length === 0);
+      const emptyCenter = center.length === 0;
+
+      if (emptyFactories && emptyCenter) {
+        scoreRound();
+      } else {
+        turn = (turn + 1) % playerCount;
+        triggerBotIfNeeded();
+      }
+      renderAll();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // VELOCIDADE DA ANIMAÇÃO DE PONTUAÇÃO (em milissegundos)
+    // Altere este valor para tornar mais rápido ou mais lento:
+    // ─────────────────────────────────────────────────────────────
+    const SCORING_STEP_DELAY_MS = 900; // Tempo de exibição de cada peça pontuada
+
+    // Pontuação e Parede com Animação Passo a Passo
+    let isScoringAnimationActive = false;
+
+    async function scoreRound() {
+      if (isScoringAnimationActive) return;
+      isScoringAnimationActive = true;
+      let gameEnds = false;
+
+      // Desativa interação temporária
+      selected = null;
+      renderAll();
+
+      for (let pIdx = 0; pIdx < players.length; pIdx++) {
+        const p = players[pIdx];
+
+        // 1. Pontuação linha a linha das completas
+        for (let r = 0; r < 5; r++) {
+          const row = p.pattern[r];
+          if (row.count === row.size) {
+            const color = row.color;
+            const c = WALL_LAYOUT[r].indexOf(color);
+
+            p.wall[r][c] = true;
+            const ptsGained = calculateTileScore(p.wall, r, c);
+            p.score += ptsGained;
+
+            // Move peças excedentes para o descarte
+            for (let i = 0; i < row.size - 1; i++) discard.push(color);
+            row.count = 0;
+            row.color = null;
+
+            if (p.wall[r].every(v => v === true)) {
+              gameEnds = true;
+            }
+
+            // Atualiza renderização para mostrar azulejo na parede e linha limpa
+            renderBoards();
+
+            // Efeito visual com o número bem grande dentro da peça
+            animateScoreStep(p.id, r, c, `+${ptsGained}`);
+            await waitMs(SCORING_STEP_DELAY_MS);
+          }
+        }
+
+        // 2. Penalidades da linha de chão
+        let pen = 0;
+        p.floor.forEach((item, idx) => {
+          if (idx < FLOOR_PENALTIES.length) pen += FLOOR_PENALTIES[idx];
+          if (item !== 'starter') discard.push(item);
+        });
+
+        if (pen < 0) {
+          p.score = Math.max(0, p.score + pen);
+          p.floor = [];
+          renderBoards();
+          animateFloorPenalty(p.id, `${pen}`);
+          await waitMs(Math.round(SCORING_STEP_DELAY_MS * 0.8));
+        } else {
+          p.floor = [];
+        }
+      }
+
+      await waitMs(500);
+      isScoringAnimationActive = false;
+
+      if (gameEnds) {
+        endGame();
+      } else {
+        round++;
+        startRound();
+        renderAll();
+        triggerBotIfNeeded();
+      }
+    }
+
+    function waitMs(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function animateScoreStep(pId, r, c, label) {
+      const cell = document.getElementById(`wallCell_${pId}_${r}_${c}`);
+      const ptsEl = document.getElementById(`playerPts_${pId}`);
+
+      if (cell) {
+        cell.classList.add('scoring-highlight');
+        // Insere o texto grande dentro da própria peça
+        const prevText = cell.textContent;
+        cell.textContent = label;
+
+        setTimeout(() => {
+          cell.classList.remove('scoring-highlight');
+          cell.textContent = prevText;
+        }, Math.max(700, SCORING_STEP_DELAY_MS - 150));
+      }
+
+      if (ptsEl) {
+        ptsEl.classList.add('pts-bump');
+        setTimeout(() => ptsEl.classList.remove('pts-bump'), 500);
+      }
+    }
+
+    function animateFloorPenalty(pId, label) {
+      const ptsEl = document.getElementById(`playerPts_${pId}`);
+      if (ptsEl) {
+        ptsEl.classList.add('pts-bump');
+        ptsEl.style.color = 'var(--accent-red)';
+        setTimeout(() => {
+          ptsEl.classList.remove('pts-bump');
+          ptsEl.style.color = '';
+        }, 700);
+
+        const rect = ptsEl.getBoundingClientRect();
+        const badge = document.createElement('div');
+        badge.className = 'scoring-floating-badge';
+        badge.textContent = label;
+        badge.style.color = 'var(--accent-red)';
+        badge.style.left = `${rect.left + rect.width / 2}px`;
+        badge.style.top = `${rect.top}px`;
+        document.body.appendChild(badge);
+        setTimeout(() => badge.remove(), 1100);
+      }
+    }
+
+    function calculateTileScore(wall, r, c) {
+      let hCount = 0;
+      for (let i = c - 1; i >= 0 && wall[r][i]; i--) hCount++;
+      for (let i = c + 1; i < 5 && wall[r][i]; i++) hCount++;
+
+      let vCount = 0;
+      for (let i = r - 1; i >= 0 && wall[i][c]; i--) vCount++;
+      for (let i = r + 1; i < 5 && wall[i][c]; i++) vCount++;
+
+      if (hCount > 0 && vCount > 0) return (hCount + 1) + (vCount + 1);
+      if (hCount > 0) return hCount + 1;
+      if (vCount > 0) return vCount + 1;
+      return 1;
+    }
+
+    function endGame() {
+      players.forEach(p => {
+        let bRow = 0, bCol = 0, bSet = 0;
+
+        for (let r = 0; r < 5; r++) {
+          if (p.wall[r].every(v => v)) bRow += 2;
+        }
+
+        for (let c = 0; c < 5; c++) {
+          let full = true;
+          for (let r = 0; r < 5; r++) {
+            if (!p.wall[r][c]) { full = false; break; }
+          }
+          if (full) bCol += 7;
+        }
+
+        COLORS.forEach(clr => {
+          let full = true;
+          for (let r = 0; r < 5; r++) {
+            const c = WALL_LAYOUT[r].indexOf(clr);
+            if (!p.wall[r][c]) { full = false; break; }
+          }
+          if (full) bSet += 10;
+        });
+
+        p.finalBonus = bRow + bCol + bSet;
+        p.score += p.finalBonus;
+      });
+
+      const sorted = [...players].sort((a, b) => b.score - a.score);
+      const modal = document.getElementById('endModal');
+      const desc = document.getElementById('winnerDesc');
+      desc.textContent = sorted.map((p, idx) => {
+        const name = (isBotMode && p.id === 1) ? 'Jogador 2 (Bot)' : `Jogador ${p.id + 1}`;
+        return `${idx === 0 ? '[1º]' : '    '} ${name}: ${p.score} pts (+${p.finalBonus} bônus)`;
+      }).join('\n');
+      modal.style.display = 'flex';
+    }
+
+    function closeModalAndRestart() {
+      document.getElementById('endModal').style.display = 'none';
+      restartLocalGame();
+    }
+
+    // UI RENDER
+    function renderAll() {
+      const boardsGrid = document.getElementById('boardsGrid');
+      boardsGrid.className = `grid-${playerCount}p`;
+
+      renderDraftingArea();
+      renderBoards();
+      renderFloatingActionModal();
+    }
+
+    function renderFloatingActionModal() {
+      const modal = document.getElementById('floatingActionModal');
+      if (!modal) return;
+
+      if (!selected) {
+        modal.style.display = 'none';
+        modal.innerHTML = '';
+        return;
+      }
+
+      let pLabel = `Jogador ${turn + 1}`;
+      if (isP2P && turn === myP2PIndex) {
+        pLabel = 'Você';
+      } else if (isBotMode && turn === 1) {
+        pLabel = 'Jogador 2 (Bot)';
+      }
+      const canAct = canPlayerAct();
+
+      let miniTile = `<div class="modal-mini-tile tile ${selected.color}">${selected.count}x</div>`;
+
+      let confirmBtn = '';
+      if (canAct && stagedMove) {
+        confirmBtn = `<button class="modal-btn-confirm" onclick="confirmMove()">Confirmar</button>`;
+      }
+
+      let cancelBtn = '';
+      if (canAct) {
+        cancelBtn = `<button class="modal-btn-cancel" onclick="cancelMove()">Cancelar</button>`;
+      }
+
+      modal.innerHTML = `
+        <span class="modal-player-tag">${pLabel}:</span>
+        <div class="modal-tiles-preview">${miniTile}</div>
+        <div class="modal-action-btns">
+          ${confirmBtn}
+          ${cancelBtn}
+        </div>
+      `;
+
+      modal.style.display = 'flex';
+    }
+
+    function renderDraftingArea() {
+      const fWrap = document.getElementById('factoriesWrap');
+      fWrap.innerHTML = '';
+
+      factories.forEach((factory, fIdx) => {
+        const disc = document.createElement('div');
+        // Se a fábrica foi a selecionada, ela fica visualmente vazia (preview de retirada)
+        const isPickedFactory = selected && selected.source === 'f' && selected.fIdx === fIdx;
+        const isEmpty = factory.length === 0 || isPickedFactory;
+        disc.className = `factory-disc ${isEmpty ? 'empty' : ''}`;
+
+        if (isEmpty) {
+          // Cria 4 slots sutis para manter o círculo estruturado
+          for (let s = 0; s < 4; s++) {
+            const emptySlot = document.createElement('div');
+            emptySlot.className = 'slot-empty tile-factory';
+            emptySlot.style.borderRadius = 'var(--radius-tile)';
+            emptySlot.style.opacity = '0.15';
+            disc.appendChild(emptySlot);
+          }
+        } else {
+          factory.forEach(color => {
+            const t = document.createElement('div');
+            t.className = `tile tile-factory ${color}`;
+            t.onclick = (e) => {
+              e.stopPropagation();
+              pickFromFactory(fIdx, color);
+            };
+            disc.appendChild(t);
+          });
+        }
+
+        fWrap.appendChild(disc);
+      });
+
+      const cDisc = document.getElementById('centerDisc');
+      cDisc.innerHTML = '';
+
+      // Mostra a peça de 1º jogador se ainda estiver no centro
+      if (starterTileInCenter) {
+        const st = document.createElement('div');
+        // Se pegou do centro, a peça de 1º jogador vai para a linha de chão no preview
+        const isCenterPicked = selected && selected.source === 'c';
+        st.className = `tile tile-factory starter ${isCenterPicked ? 'preview-ghost' : ''}`;
+        st.textContent = '1º';
+        cDisc.appendChild(st);
+      }
+
+      // Peças normais da mesa central
+      center.forEach(color => {
+        const isPickedColor = selected && selected.source === 'c' && selected.color === color;
+        // As peças que o jogador pegou saem da mesa na visualização
+        if (isPickedColor) return;
+
+        const t = document.createElement('div');
+        t.className = `tile tile-factory ${color}`;
+        t.onclick = (e) => {
+          e.stopPropagation();
+          pickFromCenter(color);
+        };
+        cDisc.appendChild(t);
+      });
+
+      // BGA PREVIEW: Se pegou de uma fábrica, mostra as peças que sobram caindo no centro
+      if (selected && selected.source === 'f') {
+        const factory = factories[selected.fIdx] || [];
+        const leftovers = factory.filter(c => c !== selected.color);
+        leftovers.forEach(color => {
+          const t = document.createElement('div');
+          t.className = `tile tile-factory ${color} preview-ghost`;
+          t.title = 'Sobra da fábrica que irá para o centro';
+          cDisc.appendChild(t);
+        });
+      }
+    }
+
+    function renderBoards() {
+      const container = document.getElementById('boardsGrid');
+      container.innerHTML = '';
+
+      players.forEach(p => {
+        const isCurrentTurn = (p.id === turn);
+        const card = document.createElement('div');
+        card.className = `player-card ${isCurrentTurn ? 'active-turn' : ''}`;
+
+        const isMe = (isP2P && p.id === myP2PIndex);
+        let playerTitle = isMe ? `Jogador ${p.id + 1} (Você)` : `Jogador ${p.id + 1}`;
+        if (isBotMode && p.id === 1) {
+          playerTitle = `Jogador 2 (Bot)`;
+        }
+
+        const top = document.createElement('div');
+        top.className = 'card-top';
+
+        top.innerHTML = `
+            <span class="player-label">
+              <span class="turn-indicator"></span>
+              <span>${playerTitle}</span>
+            </span>
+            <span class="player-pts" id="playerPts_${p.id}">${p.score} pts</span>
+          `;
+        card.appendChild(top);
+
+        const body = document.createElement('div');
+        body.className = 'board-body';
+
+        // Pattern rows
+        const patWrap = document.createElement('div');
+        patWrap.className = 'pattern-lines';
+
+        for (let r = 0; r < 5; r++) {
+          const row = p.pattern[r];
+          const rowDiv = document.createElement('div');
+
+          let canTarget = false;
+          if (selected && isCurrentTurn && canPlayerAct()) {
+            const wallCol = WALL_LAYOUT[r].indexOf(selected.color);
+            const wallOccupied = p.wall[r][wallCol];
+            const colorMatch = (row.count === 0 || row.color === selected.color);
+            const hasSpace = row.count < row.size;
+            canTarget = !wallOccupied && colorMatch && hasSpace;
+          }
+
+          const isStagedRow = isCurrentTurn && stagedMove && stagedMove.target === 'row' && stagedMove.rIdx === r;
+          rowDiv.className = `pattern-row ${canTarget ? 'targetable' : ''} ${isStagedRow ? 'staged-row' : ''}`;
+          if (canTarget) {
+            rowDiv.onclick = () => stagePlacement('row', r);
+          }
+
+          // Calcula preview se esta linha for a selecionada para staging
+          let previewAdded = 0;
+          let previewColor = row.color;
+          if (isStagedRow && selected) {
+            previewColor = selected.color;
+            const space = row.size - row.count;
+            previewAdded = Math.min(space, selected.count);
+          }
+
+          for (let s = 0; s < row.size; s++) {
+            const actualFilled = s >= (row.size - row.count);
+            const previewFilled = isStagedRow && (s >= (row.size - (row.count + previewAdded)) && s < (row.size - row.count));
+
+            if (actualFilled && row.color) {
+              const t = document.createElement('div');
+              t.className = `tile ${row.color}`;
+              rowDiv.appendChild(t);
+            } else if (previewFilled && previewColor) {
+              const t = document.createElement('div');
+              t.className = `tile ${previewColor} preview-ghost`;
+              t.title = 'Pré-visualização do posicionamento';
+              rowDiv.appendChild(t);
+            } else {
+              const empty = document.createElement('div');
+              empty.className = 'slot-empty';
+              rowDiv.appendChild(empty);
+            }
+          }
+          patWrap.appendChild(rowDiv);
+        }
+        body.appendChild(patWrap);
+
+        // Mosaic Wall
+        const wallGrid = document.createElement('div');
+        wallGrid.className = 'wall-grid';
+        wallGrid.id = `wallGrid_${p.id}`;
+        for (let r = 0; r < 5; r++) {
+          for (let c = 0; c < 5; c++) {
+            const color = WALL_LAYOUT[r][c];
+            const filled = p.wall[r][c];
+            const cell = document.createElement('div');
+            cell.id = `wallCell_${p.id}_${r}_${c}`;
+            cell.className = `wall-cell tile ${color} ${filled ? 'filled' : ''}`;
+            wallGrid.appendChild(cell);
+          }
+        }
+        body.appendChild(wallGrid);
+
+        card.appendChild(body);
+
+        // Floor line
+        const floor = document.createElement('div');
+        const canFloor = selected && isCurrentTurn && canPlayerAct();
+        const isStagedFloor = isCurrentTurn && stagedMove && stagedMove.target === 'floor';
+        floor.className = `floor-line ${canFloor ? 'targetable' : ''} ${isStagedFloor ? 'staged-floor' : ''}`;
+        if (canFloor) {
+          floor.onclick = () => stagePlacement('floor');
+        }
+
+        // Calcula itens de pré-visualização no chão (starter tile + overflow ou direto no chão)
+        const previewFloorItems = [];
+        if (isCurrentTurn && selected && stagedMove) {
+          if (selected.source === 'c' && starterTileInCenter) {
+            previewFloorItems.push('starter');
+          }
+          if (stagedMove.target === 'floor') {
+            for (let i = 0; i < selected.count; i++) {
+              previewFloorItems.push(selected.color);
+            }
+          } else if (stagedMove.target === 'row') {
+            const stagedRow = p.pattern[stagedMove.rIdx];
+            const space = stagedRow.size - stagedRow.count;
+            const overflow = selected.count - Math.min(space, selected.count);
+            for (let i = 0; i < overflow; i++) {
+              previewFloorItems.push(selected.color);
+            }
+          }
+        }
+
+        for (let i = 0; i < 7; i++) {
+          const slot = document.createElement('div');
+          const actualItem = p.floor[i];
+          const previewIdx = i - p.floor.length;
+          const isPreviewSlot = previewIdx >= 0 && previewIdx < previewFloorItems.length;
+
+          if (actualItem) {
+            slot.className = `floor-slot occupied tile ${actualItem === 'starter' ? 'starter' : actualItem}`;
+            slot.textContent = actualItem === 'starter' ? '1º' : '';
+          } else if (isPreviewSlot) {
+            const previewItem = previewFloorItems[previewIdx];
+            slot.className = `floor-slot occupied tile preview-ghost ${previewItem === 'starter' ? 'starter' : previewItem}`;
+            slot.textContent = previewItem === 'starter' ? '1º' : '';
+            slot.title = 'Penalidade prévia no chão';
+          } else {
+            slot.className = 'floor-slot';
+            slot.textContent = FLOOR_PENALTIES[i];
+          }
+          floor.appendChild(slot);
+        }
+        card.appendChild(floor);
+
+        container.appendChild(card);
+      });
+    }
+
+    // Inicialização e checagem de parâmetros de URL (?sala=...)
+    window.onload = () => {
+      initGame();
+
+      // Se a URL tiver ?sala=XYZ, fecha menu inicial e entra direto na sala
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('sala') || urlParams.get('room');
+      if (roomParam) {
+        document.getElementById('mainMenuModal').style.display = 'none';
+        document.getElementById('roomCodeInput').value = roomParam;
+        openMultiplayerModal();
+        p2pJoinRoom();
+      }
+    };
+  </script>
+</body>
+
+</html>
