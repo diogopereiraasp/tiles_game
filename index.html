@@ -1441,57 +1441,19 @@
 
   <!-- Modal Configuração Jogo vs Bot -->
   <div id="botModal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 420px; text-align: left;">
-      <h2 style="text-align: center; margin-bottom: 6px;">Jogar vs Bot (2 Jogadores)</h2>
-      <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 14px; text-align: center;">
-        Desafie a inteligência artificial com 3 níveis de maestria tática:
+    <div class="modal-box" style="max-width: 380px;">
+      <h2>Jogar vs Bot</h2>
+      <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 16px;">
+        Escolha o nível de dificuldade do Bot:
       </p>
 
-      <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 8px;">Escolha a dificuldade do adversário:
-      </div>
-      <div class="bot-diff-cards" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-        <!-- Fácil -->
-        <div class="bot-diff-card" id="botDiffCard_easy" onclick="selectBotDifficulty('easy')">
-          <div class="bot-diff-header">
-            <span class="bot-diff-title">Fácil</span>
-            <span class="bot-diff-tag tag-easy">Iniciante</span>
-          </div>
-          <div class="bot-diff-desc">
-            Jogo casual e descontraído. O bot joga apenas para si, comete erros de cálculo e nunca bloqueia suas
-            jogadas.
-          </div>
-        </div>
-
-        <!-- Médio -->
-        <div class="bot-diff-card" id="botDiffCard_medium" onclick="selectBotDifficulty('medium')">
-          <div class="bot-diff-header">
-            <span class="bot-diff-title">Médio</span>
-            <span class="bot-diff-tag tag-medium">Estratégico</span>
-          </div>
-          <div class="bot-diff-desc">
-            Adversário sólido. Completa linhas com precisão, busca conexões na parede para maximizar pontos e evita
-            penalidades no chão.
-          </div>
-        </div>
-
-        <!-- Difícil -->
-        <div class="bot-diff-card active" id="botDiffCard_hard" onclick="selectBotDifficulty('hard')">
-          <div class="bot-diff-header">
-            <span class="bot-diff-title">Difícil</span>
-            <span class="bot-diff-tag tag-hard">Mestre WSBG</span>
-          </div>
-          <div class="bot-diff-desc">
-            Baseado no campeão mundial Luca Allaria: joga pelo Delta Líquido (seus pontos + pontos negados), monta o
-            cluster central 3x3, manipula a paridade para te despejar penalidades de chão e busca a iniciativa da
-            próxima rodada.
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-bottom: 16px;">
-        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 4px;">Seu Nome de Jogador:</div>
-        <input type="text" id="botPlayerNameInput" class="modal-name-input" placeholder="Seu nome no jogo"
-          maxlength="15" value="Jogador 1">
+      <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;">
+        <button class="btn-toggle" id="botDiffCard_easy" style="flex: 1; padding: 12px 6px; font-weight: 600;"
+          onclick="selectBotDifficulty('easy')">Fácil</button>
+        <button class="btn-toggle" id="botDiffCard_medium" style="flex: 1; padding: 12px 6px; font-weight: 600;"
+          onclick="selectBotDifficulty('medium')">Médio</button>
+        <button class="btn-toggle active" id="botDiffCard_hard" style="flex: 1; padding: 12px 6px; font-weight: 600;"
+          onclick="selectBotDifficulty('hard')">Difícil</button>
       </div>
 
       <button class="btn-toggle btn-online"
@@ -1842,25 +1804,18 @@
         const p2 = localStorage.getItem('azul_name_local_2');
         const p3 = localStorage.getItem('azul_name_local_3');
         const p4 = localStorage.getItem('azul_name_local_4');
-        const botP = localStorage.getItem('azul_name_bot');
         const onlineP = localStorage.getItem('azul_name_online');
 
         const elP1 = document.getElementById('localNameP1');
         const elP2 = document.getElementById('localNameP2');
         const elP3 = document.getElementById('localNameP3');
         const elP4 = document.getElementById('localNameP4');
-        const elBot = document.getElementById('botPlayerNameInput');
         const elOnline = document.getElementById('onlineMyNameInput');
 
         if (elP1 && p1) elP1.value = p1;
         if (elP2 && p2) elP2.value = p2;
         if (elP3 && p3) elP3.value = p3;
         if (elP4 && p4) elP4.value = p4;
-
-        if (elBot) {
-          if (botP) elBot.value = botP;
-          else if (p1) elBot.value = p1;
-        }
 
         if (elOnline) {
           if (onlineP) elOnline.value = onlineP;
@@ -1877,14 +1832,12 @@
         const elP2 = document.getElementById('localNameP2');
         const elP3 = document.getElementById('localNameP3');
         const elP4 = document.getElementById('localNameP4');
-        const elBot = document.getElementById('botPlayerNameInput');
         const elOnline = document.getElementById('onlineMyNameInput');
 
         if (elP1 && elP1.value.trim()) localStorage.setItem('azul_name_local_1', elP1.value.trim());
         if (elP2 && elP2.value.trim()) localStorage.setItem('azul_name_local_2', elP2.value.trim());
         if (elP3 && elP3.value.trim()) localStorage.setItem('azul_name_local_3', elP3.value.trim());
         if (elP4 && elP4.value.trim()) localStorage.setItem('azul_name_local_4', elP4.value.trim());
-        if (elBot && elBot.value.trim()) localStorage.setItem('azul_name_bot', elBot.value.trim());
         if (elOnline && elOnline.value.trim()) localStorage.setItem('azul_name_online', elOnline.value.trim());
       } catch (e) {
         console.warn('Erro ao salvar nomes no storage:', e);
@@ -1892,7 +1845,7 @@
     }
 
     function setupPlayerNameStorageListeners() {
-      const ids = ['localNameP1', 'localNameP2', 'localNameP3', 'localNameP4', 'botPlayerNameInput', 'onlineMyNameInput'];
+      const ids = ['localNameP1', 'localNameP2', 'localNameP3', 'localNameP4', 'onlineMyNameInput'];
       ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -1983,15 +1936,12 @@
     }
 
     function startConfiguredBotGame() {
-      savePlayerNamesToStorage();
-      const input = document.getElementById('botPlayerNameInput');
-      const p1Name = (input && input.value.trim()) ? input.value.trim() : 'Jogador 1';
       const modal = document.getElementById('botModal');
       if (modal) modal.style.display = 'none';
-      chooseBotMode(botDifficulty, p1Name);
+      chooseBotMode(botDifficulty);
     }
 
-    function chooseBotMode(diff = 'hard', p1Name = 'Jogador 1') {
+    function chooseBotMode(diff = 'hard') {
       document.getElementById('mainMenuModal').style.display = 'none';
       const botModal = document.getElementById('botModal');
       if (botModal) botModal.style.display = 'none';
@@ -2004,7 +1954,7 @@
       updateChatVisibility();
       const diffLabel = getBotDifficultyLabel(botDifficulty);
       updateP2PBadge('offline', `vs Bot (${diffLabel})`);
-      initGame([p1Name, 'Bot']);
+      initGame(['Você', 'Bot']);
       saveSessionToStorage();
     }
 
@@ -2712,8 +2662,7 @@
         initGame();
         broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
       } else if (isBotMode) {
-        const p1Name = (players && players[0] && players[0].name) ? players[0].name : 'Jogador 1';
-        initGame([p1Name, 'Bot']);
+        initGame(['Você', 'Bot']);
       } else {
         const names = players ? players.map(p => p.name) : null;
         initGame(names);
@@ -2779,7 +2728,10 @@
       players = [];
       for (let i = 0; i < playerCount; i++) {
         let pName = (names && names[i]) ? names[i] : (localStorage.getItem(`azul_name_local_${i + 1}`) || `Jogador ${i + 1}`);
-        if (isBotMode && i === 1) pName = 'Bot';
+        if (isBotMode) {
+          if (i === 0) pName = (names && names[0]) ? names[0] : 'Você';
+          else if (i === 1) pName = 'Bot';
+        }
         players.push({
           id: i,
           name: pName,
@@ -3719,7 +3671,7 @@
           ${sorted.map((p, idx) => {
         const isWinner = idx === 0;
         const rankLabel = isWinner ? '1º' : `${idx + 1}º`;
-        const name = p.name || ((isBotMode && p.id === 1) ? 'Bot' : `Jogador ${p.id + 1}`);
+        const name = p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`);
         const boardPts = (p.boardScore !== undefined) ? p.boardScore : (p.score - (p.finalBonus || 0));
         const lBonus = p.lineBonus || 0;
         const cBonus = p.colBonus || 0;
@@ -3877,7 +3829,7 @@
         card.className = `player-card ${isCurrentTurn ? 'active-turn' : ''}`;
 
         const isMe = (isP2P && myP2PIndex !== null && p.id === myP2PIndex);
-        const baseName = p.name || ((isBotMode && p.id === 1) ? 'Bot' : `Jogador ${p.id + 1}`);
+        const baseName = p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`);
         let playerTitle = isMe ? `${baseName} (Você)` : baseName;
         if (isBotMode && p.id === 1) {
           playerTitle = `<span class="player-name">${baseName}</span><span class="bot-level-badge bot-level-${botDifficulty}">${getBotDifficultyLabel(botDifficulty)}</span>`;
