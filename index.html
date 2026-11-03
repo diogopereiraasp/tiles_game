@@ -1630,7 +1630,7 @@
     function getBotDifficultyTag(diff) {
       if (diff === 'easy') return 'Iniciante';
       if (diff === 'medium') return 'Estratégico';
-      return 'Mestre WSBG';
+      return 'Mestre';
     }
 
     /* =====================================================================
@@ -2885,6 +2885,11 @@
           const wallPts = calculateTileScore(bot.wall, rIdx, wallCol);
           score += 14 + (wallPts * 3.0);
 
+          // Prioridade das 3 colunas centrais (efeito âncora e ramificação)
+          if (wallCol === 2) score += 3.0;
+          else if (wallCol === 1 || wallCol === 3) score += 1.8;
+          else if (round <= 2) score -= 1.5;
+
           // Bônus se ajuda a fechar coluna (+7 no fim do jogo)
           let colFilled = 0;
           for (let r = 0; r < 5; r++) {
@@ -2895,6 +2900,7 @@
           // Progresso parcial: prefere linhas superiores (0, 1, 2)
           const upperBonus = (4 - rIdx) * 1.0;
           score += 4.0 + (placed * 2.2) + upperBonus - (space - placed) * 1.0;
+          if (wallCol === 2) score += 1.5;
         }
 
         const floorPen = calcExactFloorPenalty(bot.floor.length, overflow + starterCount);
@@ -2945,24 +2951,41 @@
           const immediatePts = calculateTileScore(bot.wall, rIdx, wallCol);
           score += 16 + (immediatePts * 3.8);
 
-          // Colunas Centrais (Cols 1, 2, 3 - 0-indexed): ramificação bidirecional
-          if (wallCol >= 1 && wallCol <= 3) {
-            score += 3.5;
+          // EFEITO ÂNCORA E FLEXIBILIDADE BIDIRECIONAL (Colunas 2, 3 e 4 - índices 1, 2, 3):
+          // Iniciar pela coluna central (índice 2) é a âncora de ouro: qualquer nova peça vizinha colocada
+          // depois ativa pontuações na horizontal e vertical simultaneamente.
+          if (wallCol === 2) {
+            score += (round <= 2) ? 6.5 : 4.5;
+          } else if (wallCol === 1 || wallCol === 3) {
+            // Colunas adjacentes ao centro permitem ramificação livre para esquerda e direita
+            score += (round <= 2) ? 4.0 : 3.0;
+          } else {
+            // Extremidades (colunas 0 e 4): encurrala o tabuleiro no início, limitando opções apenas para dentro
+            if (round <= 2) score -= 3.5;
           }
 
-          // Bloco Compacto 3x3 (Linhas 1-3, Colunas 1-3)
+          // Bloco Compacto 3x3 Centrado (Linhas 1-3, Colunas 1-3)
           if (rIdx >= 1 && rIdx <= 3 && wallCol >= 1 && wallCol <= 3) {
-            score += 2.5;
+            score += 3.0;
           }
 
-          // Foco em Colunas (+7 pontos finais vs +2 linha horizontal)
+          // Ativação Simultânea em Cruz (Adjacência Horizontal + Vertical simultânea no bloco)
+          const hasHNeighbor = (wallCol > 0 && bot.wall[rIdx][wallCol - 1]) || (wallCol < 4 && bot.wall[rIdx][wallCol + 1]);
+          const hasVNeighbor = (rIdx > 0 && bot.wall[rIdx - 1][wallCol]) || (rIdx < 4 && bot.wall[rIdx + 1][wallCol]);
+          if (hasHNeighbor && hasVNeighbor) {
+            score += 4.5; // Multiplicador de conexões em bloco compacto
+          } else if (hasHNeighbor || hasVNeighbor) {
+            score += 2.0; // Conecta a azulejo âncora existente
+          }
+
+          // Foco em Colunas (+7 pontos finais vs +2 linha horizontal e espalhar 5 cores)
           let filledColCount = 0;
           for (let r = 0; r < 5; r++) {
             if (r === rIdx || bot.wall[r][wallCol]) filledColCount++;
           }
-          if (filledColCount === 5) score += 11.0; // Fecha a coluna inteira!
-          else if (filledColCount === 4) score += 5.5;
-          else if (filledColCount === 3) score += 2.5;
+          if (filledColCount === 5) score += 12.0; // Fecha a coluna inteira!
+          else if (filledColCount === 4) score += 6.0;
+          else if (filledColCount === 3) score += 3.0;
 
           // Gestão de fim de jogo ao completar 5 azulejos na linha
           let willEndGame = true;
@@ -3000,7 +3023,10 @@
           }
           score += 3.0 + (placed * 2.0) - ((space - placed) * 1.0);
 
-          if (wallCol >= 1 && wallCol <= 3) score += 1.5;
+          // Efeito âncora e flexibilidade mesmo no progresso parcial
+          if (wallCol === 2) score += (round <= 2) ? 3.0 : 2.0;
+          else if (wallCol === 1 || wallCol === 3) score += 1.5;
+          else if (round <= 2) score -= 1.5; // evita iniciar extremidades no early game
         }
 
         // Penalidade exata de estouro no chão
