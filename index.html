@@ -105,6 +105,14 @@
       background: #252b2e;
     }
 
+    .btn-toggle:disabled,
+    .btn-toggle[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+      filter: grayscale(0.5);
+    }
+
     .btn-online {
       background: #151819;
       border: 1px solid var(--border-focus);
@@ -1320,7 +1328,8 @@
     </div>
 
     <div class="header-ctrls">
-      <button id="chatHeaderBtn" class="btn-toggle" onclick="toggleChatWindow()" style="display: none; align-items: center; gap: 6px; position: relative;" title="Abrir Chat da Partida">
+      <button id="chatHeaderBtn" class="btn-toggle" onclick="toggleChatWindow()"
+        style="display: none; align-items: center; gap: 6px; position: relative;" title="Abrir Chat da Partida">
         <span>💬 Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
       </button>
@@ -1385,11 +1394,21 @@
         Jogar vs Bot (2 Jogadores)
       </button>
 
+      <button class="btn-toggle" disabled
+        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 16px; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>Ranked</span>
+        <span
+          style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: var(--accent-active); border: 1px solid rgba(56, 189, 248, 0.25);">Em
+          Breve</span>
+      </button>
+
       <button class="btn-toggle btn-online"
         style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; border-color: var(--border-focus); letter-spacing: 0.5px;"
         onclick="openLocalModal()">
         Jogar Local (Pass & Play)
       </button>
+
+
     </div>
   </div>
 
@@ -1447,9 +1466,12 @@
       </p>
 
       <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;">
-        <button class="btn-toggle" id="botDiffCard_easy" style="flex: 1; padding: 12px 6px; font-weight: 600;" onclick="selectBotDifficulty('easy')">Fácil</button>
-        <button class="btn-toggle" id="botDiffCard_medium" style="flex: 1; padding: 12px 6px; font-weight: 600;" onclick="selectBotDifficulty('medium')">Médio</button>
-        <button class="btn-toggle active" id="botDiffCard_hard" style="flex: 1; padding: 12px 6px; font-weight: 600;" onclick="selectBotDifficulty('hard')">Difícil</button>
+        <button class="btn-toggle" id="botDiffCard_easy" style="flex: 1; padding: 12px 6px; font-weight: 600;"
+          onclick="selectBotDifficulty('easy')">Fácil</button>
+        <button class="btn-toggle" id="botDiffCard_medium" style="flex: 1; padding: 12px 6px; font-weight: 600;"
+          onclick="selectBotDifficulty('medium')">Médio</button>
+        <button class="btn-toggle active" id="botDiffCard_hard" style="flex: 1; padding: 12px 6px; font-weight: 600;"
+          onclick="selectBotDifficulty('hard')">Difícil</button>
       </div>
 
       <button class="btn-toggle btn-online"
@@ -1467,8 +1489,7 @@
   <div id="multiplayerModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 380px;">
       <h2>Multiplayer Online (P2P)</h2>
-      <p style="color: var(--text-pri); font-size: 11px;">Jogue com 2, 3 ou 4 amigos no mesmo link, sem servidor
-        próprio!</p>
+      <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 14px;">Jogue com 2, 3 ou 4 amigos no mesmo link, sem servidor próprio!</p>
 
       <div style="margin-bottom: 14px; text-align: left;">
         <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 4px;">Seu Nome de Jogador:</div>
@@ -1476,42 +1497,55 @@
           value="Jogador 1">
       </div>
 
-      <div style="margin-bottom: 16px;">
-        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">1. Escolha a quantidade de jogadores:
-        </div>
-        <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 10px;">
-          <button class="btn-toggle active" id="host2pBtn" onclick="selectHostPCount(2)">2 Jogadores</button>
-          <button class="btn-toggle" id="host3pBtn" onclick="selectHostPCount(3)">3 Jogadores</button>
-          <button class="btn-toggle" id="host4pBtn" onclick="selectHostPCount(4)">4 Jogadores</button>
-        </div>
-
-        <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 8px;"
-          onclick="p2pCreateRoom()">
-          + Criar Nova Sala (Ser o Host)
+      <!-- Duas opções no topo para alternar o conteúdo -->
+      <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
+        <button class="btn-toggle active" id="tabCreateBtn" style="flex: 1; padding: 10px 8px; font-weight: 700; font-size: 12px;" onclick="switchOnlineTab('create')">
+          Criar Sala
         </button>
-        <div id="hostRoomInfo"
-          style="display: none; background: #0f1216; padding: 12px; border-radius: 6px; border: 1px dashed var(--border-focus); margin-top: 6px;">
-          <div style="font-size: 11px; color: var(--text-mid);">Seu Código de Convite (4 dígitos):</div>
-          <div>
-            <span id="myRoomCode" class="invite-code-display">----</span>
+        <button class="btn-toggle" id="tabJoinBtn" style="flex: 1; padding: 10px 8px; font-weight: 700; font-size: 12px;" onclick="switchOnlineTab('join')">
+          Entrar em uma Sala
+        </button>
+      </div>
+
+      <!-- Conteúdo 1: Criar Sala -->
+      <div id="onlineTabCreate">
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Escolha a quantidade de jogadores:</div>
+          <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
+            <button class="btn-toggle active" id="host2pBtn" style="flex: 1;" onclick="selectHostPCount(2)">2 Jogadores</button>
+            <button class="btn-toggle" id="host3pBtn" style="flex: 1;" onclick="selectHostPCount(3)">3 Jogadores</button>
+            <button class="btn-toggle" id="host4pBtn" style="flex: 1;" onclick="selectHostPCount(4)">4 Jogadores</button>
           </div>
-          <button class="btn-toggle" style="width: 100%; margin-top: 6px;" onclick="copyInviteLink()">Copiar Link de
-            Convite</button>
-          <div id="waitGuestText" style="font-size: 11px; color: var(--accent-yellow); margin-top: 8px;">Aguardando
-            jogadores: 1 / 2 conectados</div>
+
+          <button class="btn-toggle btn-online" style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-bottom: 8px;"
+            onclick="p2pCreateRoom()">
+            + Criar Nova Sala (Ser o Host)
+          </button>
+          <div id="hostRoomInfo"
+            style="display: none; background: #0f1216; padding: 12px; border-radius: 6px; border: 1px dashed var(--border-focus); margin-top: 6px;">
+            <div style="font-size: 11px; color: var(--text-mid);">Seu Código de Convite (4 dígitos):</div>
+            <div>
+              <span id="myRoomCode" class="invite-code-display">----</span>
+            </div>
+            <button class="btn-toggle" style="width: 100%; margin-top: 6px;" onclick="copyInviteLink()">Copiar Link de Convite</button>
+            <div id="waitGuestText" style="font-size: 11px; color: var(--accent-yellow); margin-top: 8px;">Aguardando jogadores: 1 / 2 conectados</div>
+          </div>
         </div>
       </div>
 
-      <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-bottom: 14px;">
-        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">Ou entrar com código de 4 dígitos:
+      <!-- Conteúdo 2: Entrar em uma Sala -->
+      <div id="onlineTabJoin" style="display: none;">
+        <div style="margin-bottom: 16px; text-align: left;">
+          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">Digite o código de 4 dígitos da sala:</div>
+          <input type="text" id="roomCodeInput" class="modal-input" placeholder="EX: A7K9" maxlength="4"
+            style="text-align: center; font-size: 18px; letter-spacing: 4px; font-weight: 800; text-transform: uppercase;">
+          <button class="btn-toggle btn-online" style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-top: 4px;" onclick="p2pJoinRoom()">
+            Entrar na Sala
+          </button>
         </div>
-        <input type="text" id="roomCodeInput" class="modal-input" placeholder="EX: A7K9" maxlength="4">
-        <button class="btn-toggle" style="width: 100%; padding: 8px;" onclick="p2pJoinRoom()">
-          Entrar na Sala
-        </button>
       </div>
 
-      <button class="btn-toggle" style="width: 100%; color: var(--text-muted);"
+      <button class="btn-toggle" style="width: 100%; color: var(--text-muted); margin-top: 4px;"
         onclick="backFromMultiplayerToMainMenu()">
         Voltar ao Menu Principal
       </button>
@@ -1519,7 +1553,8 @@
   </div>
 
   <!-- Botão Flutuante e Janela do Chat Online (Exclusivo para partidas online) -->
-  <button id="chatFloatingBtn" class="chat-floating-btn" onclick="toggleChatWindow()" title="Abrir Chat da Partida" style="display: none;">
+  <button id="chatFloatingBtn" class="chat-floating-btn" onclick="toggleChatWindow()" title="Abrir Chat da Partida"
+    style="display: none;">
     💬
     <span id="chatFloatingBadge" class="chat-badge" style="display: none;">0</span>
   </button>
@@ -1538,9 +1573,11 @@
       <div class="chat-system-msg">Chat online conectado. Converse com os jogadores durante a partida!</div>
     </div>
     <form id="chatForm" class="chat-input-row" onsubmit="event.preventDefault(); sendChatMessage();">
-      <input type="text" id="chatInput" class="chat-input" placeholder="Digite uma mensagem..." maxlength="140" autocomplete="off">
+      <input type="text" id="chatInput" class="chat-input" placeholder="Digite uma mensagem..." maxlength="140"
+        autocomplete="off">
       <button type="submit" class="chat-send-btn" title="Enviar mensagem">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
         </svg>
@@ -2444,10 +2481,33 @@
       });
     }
 
-    function openMultiplayerModal() {
+    let currentOnlineTab = 'create';
+
+    function switchOnlineTab(tab) {
+      currentOnlineTab = tab;
+      const tabCreateBtn = document.getElementById('tabCreateBtn');
+      const tabJoinBtn = document.getElementById('tabJoinBtn');
+      const tabCreateContent = document.getElementById('onlineTabCreate');
+      const tabJoinContent = document.getElementById('onlineTabJoin');
+
+      if (tab === 'create') {
+        if (tabCreateBtn) tabCreateBtn.classList.add('active');
+        if (tabJoinBtn) tabJoinBtn.classList.remove('active');
+        if (tabCreateContent) tabCreateContent.style.display = 'block';
+        if (tabJoinContent) tabJoinContent.style.display = 'none';
+      } else {
+        if (tabJoinBtn) tabJoinBtn.classList.add('active');
+        if (tabCreateBtn) tabCreateBtn.classList.remove('active');
+        if (tabJoinContent) tabJoinContent.style.display = 'block';
+        if (tabCreateContent) tabCreateContent.style.display = 'none';
+      }
+    }
+
+    function openMultiplayerModal(initialTab = 'create') {
       loadSavedPlayerNames();
       document.getElementById('mainMenuModal').style.display = 'none';
       document.getElementById('multiplayerModal').style.display = 'flex';
+      switchOnlineTab(initialTab);
     }
 
     function closeMultiplayerModal() {
@@ -4112,7 +4172,7 @@
           nameInput.value = 'Jogador 2';
           nameInput.select();
         }
-        openMultiplayerModal();
+        openMultiplayerModal('join');
         return;
       }
 
