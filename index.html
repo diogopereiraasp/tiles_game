@@ -2358,6 +2358,7 @@
           currentRoomCode,
           targetOnlinePlayers,
           isBotMode,
+          botDifficulty,
           playerCount,
           gameState: getFullGameState()
         };
@@ -2605,6 +2606,8 @@
       document.getElementById('multiplayerModal').style.display = 'none';
       const localModal = document.getElementById('localModal');
       if (localModal) localModal.style.display = 'none';
+      const botModal = document.getElementById('botModal');
+      if (botModal) botModal.style.display = 'none';
       document.getElementById('endModal').style.display = 'none';
       document.getElementById('mainMenuModal').style.display = 'flex';
     }
@@ -2618,8 +2621,12 @@
         if (!confirm('Deseja reiniciar a partida para todos os jogadores?')) return;
         initGame();
         broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+      } else if (isBotMode) {
+        const p1Name = (players && players[0] && players[0].name) ? players[0].name : 'Jogador 1';
+        initGame([p1Name, `Jogador 2 (Bot - ${getBotDifficultyLabel(botDifficulty)})`]);
       } else {
-        initGame();
+        const names = players ? players.map(p => p.name) : null;
+        initGame(names);
       }
     }
 
@@ -2682,7 +2689,7 @@
       players = [];
       for (let i = 0; i < playerCount; i++) {
         let pName = (names && names[i]) ? names[i] : `Jogador ${i + 1}`;
-        if (isBotMode && i === 1) pName = 'Jogador 2 (Bot)';
+        if (isBotMode && i === 1) pName = (names && names[1]) ? names[1] : `Jogador 2 (Bot - ${getBotDifficultyLabel(botDifficulty)})`;
         players.push({
           id: i,
           name: pName,
@@ -2730,15 +2737,381 @@
     function triggerBotIfNeeded() {
       if (!isBotMode || turn !== 1 || isScoringAnimationActive) return;
       if (botTurnTimer) clearTimeout(botTurnTimer);
+      const thinkDelay = botDifficulty === 'easy' ? 700 : (botDifficulty === 'medium' ? 600 : 500);
       botTurnTimer = setTimeout(() => {
         botTurnTimer = null;
         botPlayTurn();
-      }, 700);
+      }, thinkDelay);
+    }
+
+    /* =====================================================================
+       INTELIGÊNCIA ARTIFICIAL DO BOT (3 NÍVEIS: FÁCIL, MÉDIO, DIFÍCIL)
+       ===================================================================== */
+
+    // Calcula penalidade exata da linha de chão considerando espaços restantes
+    function calcExactFloorPenalty(currentFloorCount, newItemsCount) {
+      let penalty = 0;
+      for (let i = 0; i < newItemsCount; i++) {
+        const slot = currentFloorCount + i;
+        if (slot < FLOOR_PENALTIES.length) {
+          penalty += FLOOR_PENALTIES[slot]; // valores negativos: -1, -1, -2, -2, -2, -3, -3
+        } else {
+          penalty += -3;
+        }
+      }
+      return penalty;
+    }
+
+    // Verifica se um jogador pode legalmente alocar uma cor em uma linha padrão
+    function canPlayerPlaceInRow(p, color, r) {
+      const wallCol = WALL_LAYOUT[r].indexOf(color);
+      if (p.wall[r][wallCol]) return false;
+      const row = p.pattern[r];
+      if (row.count > 0 && row.color !== color) return false;
+      if (row.count >= row.size) return false;
+      return true;
+    }
+
+    // Calcula o espaço máximo que um jogador possui em linhas padrão para uma cor
+    function getPlayerMaxSpaceForColor(p, color) {
+      let maxSpace = 0;
+      for (let r = 0; r < 5; r++) {
+        if (canPlayerPlaceInRow(p, color, r)) {
+          const sp = p.pattern[r].size - p.pattern[r].count;
+          if (sp > maxSpace) maxSpace = sp;
+        }
+      }
+      return maxSpace;
+    }
+
+    // Contagem de azulejos visíveis atualmente na mesa (fábricas + centro)
+    function getVisibleTileCounts() {
+      const counts = { blue: 0, yellow: 0, red: 0, black: 0, white: 0 };
+      factories.forEach(factory => {
+        if (factory) factory.forEach(c => { if (counts[c] !== undefined) counts[c]++; });
+      });
+      center.forEach(c => {
+        if (counts[c] !== undefined) counts[c]++;
+      });
+      return counts;
+    }
+
+    // Pontuação projetada total (pontos atuais + bônus de fim de jogo atuais)
+    function calculateProjectedTotalScore(p) {
+      let total = p.score;
+      // Linhas (+2)
+      for (let r = 0; r < 5; r++) {
+        if (p.wall[r].every(v => v)) total += 2;
+      }
+      // Colunas (+7)
+      for (let c = 0; c < 5; c++) {
+        let full = true;
+        for (let r = 0; r < 5; r++) {
+          if (!p.wall[r][c]) { full = false; break; }
+        }
+        if (full) total += 7;
+      }
+      // Cores (+10)
+      COLORS.forEach(color => {
+        let full = true;
+        for (let r = 0; r < 5; r++) {
+          const c = WALL_LAYOUT[r].indexOf(color);
+          if (!p.wall[r][c]) { full = false; break; }
+        }
+        if (full) total += 10;
+      });
+      return total;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // NÍVEL 1: FÁCIL (Iniciante / Casual)
+    // Jogo amigável e descontraído. Foca apenas nas próprias linhas,
+    // não avalia adjacências na parede, não calcula colunas, comete
+    // pequenos erros e nunca tenta bloquear o adversário.
+    // ─────────────────────────────────────────────────────────────
+    function evaluateMoveEasy(bot, opt, target, rIdx) {
+      let score = 0;
+      const isStarter = (opt.source === 'c' && starterTileInCenter);
+      const starterCount = isStarter ? 1 : 0;
+
+      if (target === 'row') {
+        const row = bot.pattern[rIdx];
+        const space = row.size - row.count;
+        const placed = Math.min(space, opt.count);
+        const overflow = opt.count - placed;
+        const willComplete = (row.count + placed === row.size);
+
+        if (willComplete) {
+          score += 8; // Bônus fixo simples ao fechar
+        } else {
+          score += placed * 1.5;
+        }
+
+        // Penalidade casual de chão
+        const floorPen = calcExactFloorPenalty(bot.floor.length, overflow + starterCount);
+        score += floorPen * 1.2;
+      } else {
+        // Chão direto
+        const floorPen = calcExactFloorPenalty(bot.floor.length, opt.count + starterCount);
+        score += floorPen * 1.5 - 6;
+      }
+
+      // Adiciona ruído aleatório para simular jogador humano casual
+      score += (Math.random() * 6 - 3);
+      return score;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // NÍVEL 2: MÉDIO (Estratégico / Equilibrado)
+    // Joga com boa técnica para o próprio tabuleiro:
+    // Avalia adjacências imediatas na parede, prioriza linhas rápidas,
+    // busca colunas e evita fortemente penalidades de chão.
+    // Não lê o tabuleiro do oponente nem faz hate draft.
+    // ─────────────────────────────────────────────────────────────
+    function evaluateMoveMedium(bot, opt, target, rIdx) {
+      let score = 0;
+      const isStarter = (opt.source === 'c' && starterTileInCenter);
+      const starterCount = isStarter ? 1 : 0;
+
+      if (target === 'row') {
+        const row = bot.pattern[rIdx];
+        const space = row.size - row.count;
+        const placed = Math.min(space, opt.count);
+        const overflow = opt.count - placed;
+        const willComplete = (row.count + placed === row.size);
+        const wallCol = WALL_LAYOUT[rIdx].indexOf(opt.color);
+
+        if (willComplete) {
+          const wallPts = calculateTileScore(bot.wall, rIdx, wallCol);
+          score += 14 + (wallPts * 3.0);
+
+          // Bônus se ajuda a fechar coluna (+7 no fim do jogo)
+          let colFilled = 0;
+          for (let r = 0; r < 5; r++) {
+            if (r === rIdx || bot.wall[r][wallCol]) colFilled++;
+          }
+          score += colFilled * 1.8;
+        } else {
+          // Progresso parcial: prefere linhas superiores (0, 1, 2)
+          const upperBonus = (4 - rIdx) * 1.0;
+          score += 4.0 + (placed * 2.2) + upperBonus - (space - placed) * 1.0;
+        }
+
+        const floorPen = calcExactFloorPenalty(bot.floor.length, overflow + starterCount);
+        score += floorPen * 3.8; // Evita fortemente estouro de chão
+
+        if (isStarter) {
+          score -= 0.5; // Custo leve do token
+        }
+      } else {
+        const floorPen = calcExactFloorPenalty(bot.floor.length, opt.count + starterCount);
+        score += floorPen * 4.2 - 16;
+      }
+
+      // Pequeno desempate
+      score += Math.random() * 0.4;
+      return score;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // NÍVEL 3: DIFÍCIL (Mestre WSBG - Luca Allaria Championship Engine)
+    // 1. Joga pelo Delta Líquido: Seus Pontos + Pontos Negados ao Adversário.
+    // 2. Cluster Central 3x3 e Colunas Centrais (1, 2, 3) para ramificação bidirecional.
+    // 3. Foco em fechar colunas (+7) em vez de espalhar 5 cores (+10).
+    // 4. Prioridade de linhas superiores (1 e 2) e buffer defensivo nas linhas 4 e 5.
+    // 5. Token de 1º jogador como iniciativa tática valiosa (+3 a +5 líquido).
+    // 6. Hate Drafting ativo: detecta e bloqueia linhas críticas do adversário.
+    // 7. Ataque por despejo de chão e controle de paridade de turnos.
+    // 8. Avaliação dinâmica de escassez vs abundância.
+    // 9. Aceleração de fim de jogo quando na liderança vs prorrogação se atrás.
+    // ─────────────────────────────────────────────────────────────
+    function evaluateMoveHard(bot, opp, opt, target, rIdx) {
+      let score = 0;
+      const isStarter = (opt.source === 'c' && starterTileInCenter);
+      const starterFloorCount = isStarter ? 1 : 0;
+      const visibleCounts = getVisibleTileCounts();
+
+      // ─── 1. VALOR PRÓPRIO NO TABULEIRO DO BOT ───
+      if (target === 'row') {
+        const row = bot.pattern[rIdx];
+        const space = row.size - row.count;
+        const placed = Math.min(space, opt.count);
+        const overflow = opt.count - placed;
+        const willComplete = (row.count + placed === row.size);
+        const wallCol = WALL_LAYOUT[rIdx].indexOf(opt.color);
+
+        if (willComplete) {
+          // Pontuação imediata de parede (conexões adjacentes são o motor do jogo)
+          const immediatePts = calculateTileScore(bot.wall, rIdx, wallCol);
+          score += 16 + (immediatePts * 3.8);
+
+          // Colunas Centrais (Cols 1, 2, 3 - 0-indexed): ramificação bidirecional
+          if (wallCol >= 1 && wallCol <= 3) {
+            score += 3.5;
+          }
+
+          // Bloco Compacto 3x3 (Linhas 1-3, Colunas 1-3)
+          if (rIdx >= 1 && rIdx <= 3 && wallCol >= 1 && wallCol <= 3) {
+            score += 2.5;
+          }
+
+          // Foco em Colunas (+7 pontos finais vs +2 linha horizontal)
+          let filledColCount = 0;
+          for (let r = 0; r < 5; r++) {
+            if (r === rIdx || bot.wall[r][wallCol]) filledColCount++;
+          }
+          if (filledColCount === 5) score += 11.0; // Fecha a coluna inteira!
+          else if (filledColCount === 4) score += 5.5;
+          else if (filledColCount === 3) score += 2.5;
+
+          // Gestão de fim de jogo ao completar 5 azulejos na linha
+          let willEndGame = true;
+          for (let c = 0; c < 5; c++) {
+            if (c !== wallCol && !bot.wall[rIdx][c]) {
+              willEndGame = false;
+              break;
+            }
+          }
+          if (willEndGame) {
+            const botProj = calculateProjectedTotalScore(bot) + immediatePts + 2;
+            const oppProj = opp ? calculateProjectedTotalScore(opp) : 0;
+            if (botProj > oppProj) {
+              score += 15.0; // Ganhando: acelera a vitória imediatamente!
+            } else {
+              score -= 15.0; // Perdendo: NÃO encerra a partida, continua lutando!
+            }
+          }
+        } else {
+          // Progresso parcial: Prioridade de linhas superiores (1 e 2)
+          if (rIdx === 0) score += 4.0;
+          else if (rIdx === 1) score += 3.0;
+          else if (rIdx === 2) score += 2.0;
+          else {
+            // Linhas 4 e 5: Não pingar 1 peça em linha vazia para não travar
+            if (row.count === 0) {
+              if (placed < 3) {
+                score -= 4.0; // Evita travar linha 4/5 com poucas peças
+              } else {
+                score += 4.5; // Excelente lote para preencher linha 4/5
+              }
+            } else {
+              score += placed * 2.2;
+            }
+          }
+          score += 3.0 + (placed * 2.0) - ((space - placed) * 1.0);
+
+          if (wallCol >= 1 && wallCol <= 3) score += 1.5;
+        }
+
+        // Penalidade exata de estouro no chão
+        const floorPen = calcExactFloorPenalty(bot.floor.length, overflow + starterFloorCount);
+        score += floorPen * 4.5;
+
+        // Token de 1º Jogador como Recurso Tático (Iniciativa da próxima rodada)
+        if (isStarter) {
+          const isLateGame = round >= 5;
+          score += isLateGame ? 2.0 : 4.5;
+        }
+      } else {
+        // Chão direto
+        const floorPen = calcExactFloorPenalty(bot.floor.length, opt.count + starterFloorCount);
+        score += floorPen * 5.0 - 20;
+        if (isStarter) score += 2.0;
+      }
+
+      // ─── 2. HATE DRAFTING E LEITURA DO ADVERSÁRIO (DENY) ───
+      if (opp) {
+        let oppDenialValue = 0;
+        for (let r = 0; r < 5; r++) {
+          if (canPlayerPlaceInRow(opp, opt.color, r)) {
+            const oppRow = opp.pattern[r];
+            const oppWallCol = WALL_LAYOUT[r].indexOf(opt.color);
+            const oppNeeded = oppRow.size - oppRow.count;
+
+            if (oppRow.count > 0 && opt.count >= oppNeeded) {
+              // Adversário está aguardando exatamente esta cor para fechar!
+              const oppPts = calculateTileScore(opp.wall, r, oppWallCol);
+              let oppVal = 14 + (oppPts * 3.0);
+              let oppFilledCols = 0;
+              for (let ro = 0; ro < 5; ro++) {
+                if (ro === r || opp.wall[ro][oppWallCol]) oppFilledCols++;
+              }
+              if (oppFilledCols === 5) oppVal += 9.0;
+              else if (oppFilledCols === 4) oppVal += 4.5;
+
+              if (r >= 3) oppVal += 5.0; // Linhas 4 e 5 são vitais
+
+              if (oppVal > oppDenialValue) oppDenialValue = oppVal;
+            }
+          }
+        }
+        // Delta líquido: somar o que impedimos o oponente de pontuar
+        score += oppDenialValue * 0.75;
+
+        // ─── 3. CONTROLE DE PARIDADE E ATAQUE POR DESPEJO DE CHÃO ───
+        const activeFactories = factories.filter(f => f && f.length > 0).length;
+        const centerColors = [...new Set(center)];
+        const remainingPicks = activeFactories + centerColors.length;
+
+        centerColors.forEach(cColor => {
+          const cCount = center.filter(c => c === cColor).length;
+          const oppSpace = getPlayerMaxSpaceForColor(opp, cColor);
+          if (cCount > oppSpace && cCount >= 3) {
+            // Há um lote tóxico no centro para o adversário!
+            const oppDump = cCount - oppSpace;
+            const oppPenalty = calcExactFloorPenalty(opp.floor.length, oppDump);
+
+            // Se faltam turnos ímpares, após o bot jogar restam turnos pares -> oponente pega o lote!
+            const parityFavorsBot = (remainingPicks % 2 === 1);
+
+            if (opt.source === 'f') {
+              const factoryColorDump = factories[opt.fIdx]?.filter(c => c === cColor).length || 0;
+              if (factoryColorDump > 0 && parityFavorsBot) {
+                score += Math.abs(oppPenalty) * 1.5;
+              }
+            }
+
+            if (parityFavorsBot && opt.color !== cColor) {
+              score += Math.abs(oppPenalty) * 1.2;
+            }
+          }
+        });
+
+        // Autodefesa: Evita que o Bot seja a vítima da armadilha de paridade
+        centerColors.forEach(cColor => {
+          const cCount = center.filter(c => c === cColor).length;
+          const botSpace = getPlayerMaxSpaceForColor(bot, cColor);
+          if (cCount > botSpace && cCount >= 3) {
+            const parityTrapsBot = (remainingPicks % 2 === 0);
+            if (parityTrapsBot && opt.color !== cColor) {
+              score -= 8.0;
+            }
+          }
+        });
+      }
+
+      // ─── 4. AVALIAÇÃO DINÂMICA DE ESCASSEZ DE AZULEJOS ───
+      const totalOfThisColor = visibleCounts[opt.color] || 0;
+      const oppCanUseColor = opp ? (getPlayerMaxSpaceForColor(opp, opt.color) > 0) : true;
+
+      if (totalOfThisColor >= 4 && !oppCanUseColor && target === 'row') {
+        // Cor abundante na mesa que o oponente não consegue pegar; não precisa correr
+        score -= 2.0;
+      } else if (totalOfThisColor <= 2 && oppCanUseColor) {
+        // Cor escassa disputada por ambos: alta prioridade de coleta
+        score += 3.0;
+      }
+
+      // Pequena variação para quebrar empates
+      score += Math.random() * 0.2;
+
+      return score;
     }
 
     function botPlayTurn() {
       if (!isBotMode || turn !== 1 || isScoringAnimationActive) return;
       const bot = players[1];
+      const opp = (players && players[0]) ? players[0] : null;
 
       // 1. Gera todas as opções de coleta disponíveis nas fábricas e no centro
       const options = [];
@@ -2762,14 +3135,10 @@
 
       if (options.length === 0) return;
 
-      // 2. Avalia cada movimento possível (escolha + destino no tabuleiro)
-      let bestMove = null;
-      let bestScore = -9999;
+      // 2. Monta todos os movimentos candidatos válidos (opção + destino)
+      const candidates = [];
 
       options.forEach(opt => {
-        const starterCost = (opt.source === 'c' && starterTileInCenter) ? -1 : 0;
-
-        // Testa cada linha padrão 0..4
         for (let r = 0; r < 5; r++) {
           const row = bot.pattern[r];
           const colorMatch = (row.count === 0 || row.color === opt.color);
@@ -2778,54 +3147,59 @@
           const hasSpace = row.count < row.size;
 
           if (!wallOccupied && colorMatch && hasSpace) {
-            const space = row.size - row.count;
-            const placed = Math.min(space, opt.count);
-            const overflow = opt.count - placed;
-            const willComplete = (row.count + placed === row.size);
-
-            let score = 0;
-            if (willComplete) {
-              // Estima pontuação ao completar a linha
-              score += 15 + calculateTileScore(bot.wall, r, wallCol) * 3;
-            } else {
-              // Progresso parcial em linha compatível
-              score += 6 + placed * 2 - (row.size - (row.count + placed));
-            }
-
-            // Penalidade de transbordamento no chão
-            score -= overflow * 4;
-            score += starterCost;
-
-            if (score > bestScore) {
-              bestScore = score;
-              bestMove = { opt, target: 'row', rIdx: r };
-            }
+            candidates.push({ opt, target: 'row', rIdx: r });
           }
         }
-
-        // Testa colocar diretamente no chão
-        const floorScore = -12 - (opt.count * 3) + starterCost;
-        if (floorScore > bestScore) {
-          bestScore = floorScore;
-          bestMove = { opt, target: 'floor' };
-        }
+        // Destino linha de chão sempre é válido
+        candidates.push({ opt, target: 'floor' });
       });
 
-      // Se nenhuma opção superou o threshold (ex: tabuleiro muito restrito), joga no chão da primeira opção
-      if (!bestMove) {
-        bestMove = { opt: options[0], target: 'floor' };
+      if (candidates.length === 0) return;
+
+      // 3. Avalia os candidatos de acordo com o nível de dificuldade selecionado
+      let bestMove = null;
+      let bestScore = -99999;
+
+      // No modo Fácil, pequena chance de jogada casual subótima para iniciantes
+      if (botDifficulty === 'easy' && Math.random() < 0.25) {
+        const rowCandidates = candidates.filter(c => c.target === 'row');
+        if (rowCandidates.length > 0) {
+          bestMove = rowCandidates[Math.floor(Math.random() * rowCandidates.length)];
+        }
       }
 
-      // 3. Executa a escolha e confirmação
+      if (!bestMove) {
+        candidates.forEach(cand => {
+          let score = 0;
+          if (botDifficulty === 'easy') {
+            score = evaluateMoveEasy(bot, cand.opt, cand.target, cand.rIdx);
+          } else if (botDifficulty === 'medium') {
+            score = evaluateMoveMedium(bot, cand.opt, cand.target, cand.rIdx);
+          } else {
+            score = evaluateMoveHard(bot, opp, cand.opt, cand.target, cand.rIdx);
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = cand;
+          }
+        });
+      }
+
+      if (!bestMove) {
+        bestMove = candidates[0];
+      }
+
+      // 4. Executa a escolha e confirmação com transição visual suave
       selected = { ...bestMove.opt };
       stagedMove = bestMove.target === 'row' ? { target: 'row', rIdx: bestMove.rIdx } : { target: 'floor' };
       renderAll();
 
-      // Confirma após 400ms para uma transição suave e visualmente clara
+      const confirmDelay = botDifficulty === 'easy' ? 650 : (botDifficulty === 'medium' ? 500 : 400);
       setTimeout(() => {
         if (!isBotMode || turn !== 1) return;
         confirmMove(false);
-      }, 400);
+      }, confirmDelay);
     }
 
     // Tile Selection Logic (BGA Flow)
@@ -3229,7 +3603,7 @@
           ${sorted.map((p, idx) => {
         const isWinner = idx === 0;
         const rankLabel = isWinner ? '1º' : `${idx + 1}º`;
-        const name = p.name || ((isBotMode && p.id === 1) ? 'Jogador 2 (Bot)' : `Jogador ${p.id + 1}`);
+        const name = p.name || ((isBotMode && p.id === 1) ? `Jogador 2 (Bot - ${getBotDifficultyLabel(botDifficulty)})` : `Jogador ${p.id + 1}`);
         const boardPts = (p.boardScore !== undefined) ? p.boardScore : (p.score - (p.finalBonus || 0));
         const lBonus = p.lineBonus || 0;
         const cBonus = p.colBonus || 0;
@@ -3386,11 +3760,11 @@
         const card = document.createElement('div');
         card.className = `player-card ${isCurrentTurn ? 'active-turn' : ''}`;
 
-        const isMe = (isP2P && p.id === myP2PIndex);
-        const baseName = p.name || `Jogador ${p.id + 1}`;
+        const isMe = (isP2P && myP2PIndex !== null && p.id === myP2PIndex);
+        const baseName = p.name || ((isBotMode && p.id === 1) ? `Jogador 2 (Bot - ${getBotDifficultyLabel(botDifficulty)})` : `Jogador ${p.id + 1}`);
         let playerTitle = isMe ? `${baseName} (Você)` : baseName;
-        if (isBotMode && p.id === 1 && !p.name) {
-          playerTitle = `Jogador 2 (Bot)`;
+        if (isBotMode && p.id === 1) {
+          playerTitle = `<span class="player-name">${baseName}</span><span class="bot-level-badge bot-level-${botDifficulty}">${getBotDifficultyLabel(botDifficulty)}</span>`;
         }
 
         const top = document.createElement('div');
@@ -3631,8 +4005,10 @@
           isHost = false;
           myP2PIndex = null;
           isBotMode = true;
+          botDifficulty = session.botDifficulty || 'hard';
           playerCount = 2;
-          updateP2PBadge('offline', 'vs Bot (2P)');
+          const diffLabel = getBotDifficultyLabel(botDifficulty);
+          updateP2PBadge('offline', `vs Bot (${diffLabel})`);
           applyFullGameState(session.gameState);
           triggerBotIfNeeded();
           return true;
