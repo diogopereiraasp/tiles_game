@@ -66,18 +66,32 @@
     header {
       background-color: var(--bg-header);
       border-bottom: 1px solid var(--border-subtle);
-      padding: 6px 14px;
+      padding: 6px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 42px;
+      min-height: 42px;
+      height: auto;
       flex-shrink: 0;
+      gap: 8px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-shrink: 1;
+      flex-wrap: wrap;
     }
 
     .header-ctrls {
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-shrink: 0;
     }
 
     .btn-toggle {
@@ -1072,13 +1086,14 @@
     .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 2px 8px;
+      gap: 5px;
+      padding: 2px 7px;
       border-radius: 12px;
       font-size: 10px;
       background: #1c2225;
       color: var(--text-pri);
-      margin-left: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .status-dot {
@@ -1096,6 +1111,98 @@
     .status-dot.waiting {
       background: #eab308;
       box-shadow: 0 0 6px #eab308;
+    }
+
+    /* Rastreador discreto de peças restantes (20 de cada cor) */
+    .tile-counts-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      user-select: none;
+      opacity: 0.75;
+      flex-shrink: 0;
+      white-space: nowrap;
+      transition: opacity 0.2s ease, background 0.2s ease;
+    }
+
+    .tile-counts-bar:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .tile-count-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 2.5px;
+      cursor: default;
+    }
+
+    .tile-count-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 2px;
+      display: inline-block;
+      flex-shrink: 0;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .tile-count-dot.blue { background: #3b82f6; }
+    .tile-count-dot.yellow { background: #eab308; }
+    .tile-count-dot.red { background: #ef4444; }
+    .tile-count-dot.black { background: #334155; border: 1px solid #475569; box-sizing: border-box; }
+    .tile-count-dot.white { background: #e2e8f0; }
+
+    .tile-count-num {
+      font-size: 10px;
+      font-weight: 600;
+      color: #94a3b8;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        padding: 5px 8px;
+        gap: 6px;
+      }
+
+      .status-badge {
+        font-size: 9px;
+        padding: 1px 5px;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .status-badge span#p2pLabel {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tile-counts-bar {
+        gap: 3px;
+        padding: 2px 4px;
+      }
+
+      .tile-count-num {
+        font-size: 9.5px;
+      }
+
+      .btn-toggle {
+        padding: 4px 8px;
+        font-size: 10.5px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .header-title-text {
+        display: none;
+      }
     }
 
     /* =====================================================================
@@ -1319,12 +1426,13 @@
 <body>
 
   <header>
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-weight: 800; color: #fff; font-size: 13px; letter-spacing: 1px;">AZUL</span>
+    <div class="header-left">
+      <span class="header-title-text" style="font-weight: 800; color: #fff; font-size: 13px; letter-spacing: 1px;">AZUL</span>
       <div id="p2pStatus" class="status-badge" style="display:none;">
         <span id="p2pDot" class="status-dot"></span>
         <span id="p2pLabel">Offline</span>
       </div>
+      <div id="tileCountsBar" class="tile-counts-bar" title="Peças restantes na sacola"></div>
     </div>
 
     <div class="header-ctrls">
@@ -3505,6 +3613,7 @@
 
             // Atualiza renderização para mostrar azulejo na parede e linha limpa
             renderBoards();
+            renderTileCounts();
 
             // Efeito visual com o número bem grande dentro da peça
             animateScoreStep(p.id, r, c, `+${ptsGained}`);
@@ -3523,6 +3632,7 @@
           p.score = Math.max(0, p.score + pen);
           p.floor = [];
           renderBoards();
+          renderTileCounts();
           animateFloorPenalty(p.id, `${pen}`);
           await waitMs(Math.round(SCORING_STEP_DELAY_MS * 0.8));
         } else {
@@ -3777,12 +3887,40 @@
     }
 
     // UI RENDER
+    function renderTileCounts() {
+      const bar = document.getElementById('tileCountsBar');
+      if (!bar) return;
+
+      const inBag = { blue: 0, yellow: 0, red: 0, black: 0, white: 0 };
+      if (Array.isArray(bag)) {
+        bag.forEach(c => {
+          if (inBag[c] !== undefined) inBag[c]++;
+        });
+      }
+
+      const colorLabels = {
+        blue: 'Azul',
+        yellow: 'Amarelo',
+        red: 'Vermelho',
+        black: 'Preto',
+        white: 'Branco'
+      };
+
+      bar.innerHTML = COLORS.map(c => `
+        <span class="tile-count-item" title="${colorLabels[c]}: ${inBag[c]} restantes na sacola">
+          <span class="tile-count-dot ${c}"></span>
+          <span class="tile-count-num">${inBag[c]}</span>
+        </span>
+      `).join('');
+    }
+
     function renderAll() {
       const boardsGrid = document.getElementById('boardsGrid');
       boardsGrid.className = `grid-${playerCount}p`;
 
       renderDraftingArea();
       renderBoards();
+      renderTileCounts();
     }
 
     function renderDraftingArea() {
