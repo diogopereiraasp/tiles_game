@@ -5,8 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Azul - Minimalist Multiplayer P2P</title>
-  <!-- PeerJS via CDN para WebRTC P2P gratuito sem servidor próprio -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- Supabase (Auth + Histórico + Ranking) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <style>
     :root {
       /* Theme: code-editor-dark */
@@ -1420,6 +1420,47 @@
       background: #333b40;
       color: #fff;
     }
+    .menu-box { max-width: 380px; padding: 28px 22px 22px; }
+    .menu-logo { font-size: 28px; font-weight: 900; letter-spacing: 5px; color: #fff; margin-bottom: 4px; }
+    .menu-tagline { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-active); margin-bottom: 22px; }
+    .profile-card { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 18px; background: #101315; border: 1px solid var(--border-focus); border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; transition: border-color .15s; }
+    .profile-card:hover { border-color: #4b5860; }
+    .pc-avatar { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #0f1216; background: var(--accent-active); }
+    .pc-info { flex: 1; min-width: 0; }
+    .pc-name { color: #fff; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pc-sub { color: #94a3b8; font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pc-sub.warn { color: #fbbf24; }
+    .pc-elo { text-align: right; flex-shrink: 0; }
+    .pc-elo-val { color: #fff; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+    .pc-tier { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; margin-top: 4px; }
+    .tier-bronze { color: #d08b4f; } .tier-prata { color: #cbd5e1; } .tier-ouro { color: #facc15; }
+    .tier-platina { color: #5eead4; } .tier-diamante { color: #93c5fd; }
+    .menu-primary { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 15px; margin-bottom: 10px; background: var(--accent-active); color: #0f1216; border: none; border-radius: 10px; cursor: pointer; font-family: inherit; transition: filter .15s; }
+    .menu-primary:hover { filter: brightness(1.1); }
+    .mp-title { font-size: 16px; font-weight: 800; letter-spacing: .3px; }
+    .mp-sub { font-size: 11px; font-weight: 600; opacity: .75; }
+    .menu-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .menu-secondary { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; background: var(--bg-card); color: #fff; border: 1px solid var(--border-focus); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; transition: background .15s; }
+    .menu-secondary:hover, .menu-ranking:hover { background: #1c2022; }
+    .ms-icon { font-size: 20px; }
+    .menu-ranking { width: 100%; padding: 12px; background: transparent; color: #fff; border: 1px solid var(--border-focus); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; }
+    .acc-summary { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .acc-warn { font-size: 12px; line-height: 1.5; color: #cbd5e1; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+    .acc-ok { font-size: 12px; color: #4ade80; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; word-break: break-all; }
+    .acc-label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
+    .acc-msg { font-size: 12px; color: #fff; margin-top: 4px; line-height: 1.4; min-height: 1em; }
+    .acc-hint { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+    .lb-content { max-height: 55vh; overflow-y: auto; text-align: left; font-size: 12px; }
+    .lb-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 8px 6px; border-bottom: 1px solid rgba(148,163,184,0.12); }
+    .lb-row.me { background: rgba(56,189,248,0.08); border-radius: 6px; }
+    .lb-pos { font-weight: 800; color: var(--accent-active); }
+    .lb-name { color: #fff; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-sub { color: #94a3b8; font-size: 10px; }
+    .lb-stat { text-align: right; color: #fff; font-weight: 700; }
+    .lb-empty { color: #94a3b8; text-align: center; padding: 24px 0; }
+    .lb-win { color: #4ade80; } .lb-loss { color: #f87171; }
+    .player-clock { font-variant-numeric: tabular-nums; font-size: 12px; color: #94a3b8; margin-right: 8px; font-weight: 600; }
+    .player-clock.clock-low { color: #f87171; }
   </style>
 </head>
 
@@ -1484,39 +1525,88 @@
 
   <!-- Modal Menu Inicial (Aparece ao abrir o jogo) -->
   <div id="mainMenuModal" class="modal-overlay" style="display: flex;">
-    <div class="modal-box" style="max-width: 400px; padding: 32px 24px;">
-      <div style="font-size: 28px; font-weight: 900; letter-spacing: 5px; color: #fff; margin-bottom: 4px;">AZUL</div>
-      <div
-        style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-active); margin-bottom: 24px;">
-        Jogo de Tabuleiro</div>
+    <div class="modal-box menu-box">
+      <div class="menu-logo">AZUL</div>
+      <div class="menu-tagline">Jogo de Tabuleiro</div>
 
-      <button class="btn-toggle btn-online"
-        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 16px; border-color: var(--border-focus); letter-spacing: 0.5px;"
-        onclick="chooseOnlineMode()">
-        Jogar Online (Multiplayer P2P)
+      <button class="profile-card" onclick="openAccountModal()" title="Minha conta">
+        <div class="pc-avatar" id="pcAvatar">?</div>
+        <div class="pc-info">
+          <div class="pc-name" id="pcName">Carregando...</div>
+          <div class="pc-sub" id="pcSub">&nbsp;</div>
+        </div>
+        <div class="pc-elo">
+          <div class="pc-elo-val" id="pcElo">—</div>
+          <div class="pc-tier" id="pcTier">Elo</div>
+        </div>
       </button>
 
-      <button class="btn-toggle btn-online"
-        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 16px; border-color: var(--border-focus); letter-spacing: 0.5px;"
-        onclick="openBotModal()">
-        Jogar vs Bot (2 Jogadores)
+      <button class="menu-primary" onclick="chooseOnlineMode()">
+        <span class="mp-title">Jogar Online</span>
+        <span class="mp-sub">Partida contra amigos · vale Elo</span>
       </button>
 
-      <button class="btn-toggle" disabled
-        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 16px; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-        <span>Ranked</span>
-        <span
-          style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: var(--accent-active); border: 1px solid rgba(56, 189, 248, 0.25);">Em
-          Breve</span>
-      </button>
+      <div class="menu-row">
+        <button class="menu-secondary" onclick="openBotModal()">
+          <span class="ms-icon">🤖</span>
+          <span>Treinar vs Bot</span>
+        </button>
+        <button class="menu-secondary" onclick="openLocalModal()">
+          <span class="ms-icon">👥</span>
+          <span>Mesmo aparelho</span>
+        </button>
+      </div>
 
-      <button class="btn-toggle btn-online"
-        style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; border-color: var(--border-focus); letter-spacing: 0.5px;"
-        onclick="openLocalModal()">
-        Jogar Local (Pass & Play)
-      </button>
+      <button class="menu-ranking" onclick="openLeaderboardModal()">🏆 Ranking</button>
+    </div>
+  </div>
 
+  <!-- Modal Minha Conta -->
+  <div id="accountModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 360px; text-align: left;">
+      <h2 style="text-align: center;">Minha Conta</h2>
+      <div class="acc-summary">
+        <div class="pc-avatar" id="accAvatar">?</div>
+        <div style="min-width: 0;">
+          <div class="pc-name" id="accName">—</div>
+          <div class="pc-sub" id="accElo">—</div>
+        </div>
+      </div>
 
+      <div id="accGuestBox">
+        <div class="acc-warn">
+          Você está jogando como <strong>convidado</strong>. Seu Elo fica salvo só neste navegador.
+          Salve com seu e-mail para não perder o progresso e jogar em qualquer aparelho.
+        </div>
+        <label class="acc-label" for="authEmailInput">Seu e-mail</label>
+        <input type="email" id="authEmailInput" class="modal-name-input" placeholder="seu@email.com" style="width: 100%; margin: 0 0 8px;">
+        <button class="menu-primary" style="padding: 11px;" onclick="submitEmailLogin()">
+          <span class="mp-title" style="font-size: 13px;">Enviar link de acesso</span>
+        </button>
+        <div id="authEmailMsg" class="acc-msg"></div>
+        <div class="acc-hint">Já salvou em outro aparelho? Use o mesmo e-mail para entrar.</div>
+      </div>
+
+      <div id="accSavedBox" style="display: none;">
+        <div class="acc-ok">✓ Progresso salvo em <strong id="accEmail"></strong></div>
+        <button class="btn-toggle" style="width: 100%; padding: 10px; font-weight: 600;" onclick="signOutAccount()">Sair da conta</button>
+      </div>
+
+      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 10px; font-weight: 600;" onclick="closeAccountModal()">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal Ranking & Histórico -->
+  <div id="leaderboardModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 440px;">
+      <h2>🏆 Ranking</h2>
+      <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+        <button class="btn-toggle active" id="lbTabOnline" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('online')">Ranking Elo</button>
+        <button class="btn-toggle" id="lbTabHistory" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('history')">Minhas Partidas</button>
+      </div>
+      <div id="leaderboardContent" class="lb-content">Carregando...</div>
+      <div class="acc-hint" style="text-align:center;">Todos começam com 1000 Elo. Vencer online sobe, perder desce. Treino vs Bot não altera o Elo.</div>
+      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 14px; font-weight: 600;" onclick="closeLeaderboardModal()">Fechar</button>
     </div>
   </div>
 
@@ -1905,9 +1995,9 @@
     }
 
     /* =====================================================================
-       MULTIPLAYER P2P (WEBRTC VIA PEERJS) - SUPORTE A 2, 3 E 4 JOGADORES
+       MULTIPLAYER ONLINE (SUPABASE REALTIME) - SUPORTE A 2, 3 E 4 JOGADORES
        ===================================================================== */
-    let peer = null;
+    let rtRoom = null; // Sala online via Supabase Realtime
     let isP2P = false;
     let isHost = false;
     let myP2PIndex = null; // 0 = Host (P1), 1 = P2, 2 = P3, 3 = P4
@@ -1920,7 +2010,345 @@
     let clientHostConn = null;
     let guestDisconnectTimers = {};
     let hostDisconnectTimer = null;
-    const DISCONNECT_GRACE_PERIOD_MS = 25000; // 25s de tolerância para tela bloqueada / oscilação de sinal
+    const DISCONNECT_GRACE_PERIOD_MS = 300000; // 5min de tolerância para tela bloqueada / oscilação de sinal
+
+    // ── Supabase: Auth + Histórico + Ranking ──
+    // Apenas a URL e a chave PUBLICÁVEL podem ficar aqui (o código é público no GitHub Pages).
+    // A segurança dos dados é garantida pelas políticas RLS em supabase/schema.sql.
+    const SUPABASE_URL = 'https://cbhjtbjrbtkelpsmqsly.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_dyLQNUxYMHBW_xy-DTzOhw_CQWd-hV3';
+    const sb = (window.supabase && window.supabase.createClient)
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          realtime: { params: { eventsPerSecond: 30 } }
+        })
+      : null;
+    let authUser = null;
+    let authProfile = null;
+    let matchRecorded = false;
+    let leaderboardTab = 'online';
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    async function loadProfile() {
+      if (!sb || !authUser) { authProfile = null; return; }
+      const { data } = await sb.from('profiles').select('id, display_name, elo').eq('id', authUser.id).maybeSingle();
+      authProfile = data || null;
+    }
+
+    function getEloTier(elo) {
+      if (elo >= 1500) return { name: 'Diamante', cls: 'tier-diamante' };
+      if (elo >= 1300) return { name: 'Platina', cls: 'tier-platina' };
+      if (elo >= 1100) return { name: 'Ouro', cls: 'tier-ouro' };
+      if (elo >= 900) return { name: 'Prata', cls: 'tier-prata' };
+      return { name: 'Bronze', cls: 'tier-bronze' };
+    }
+
+    function renderAuthBar() {
+      const $ = id => document.getElementById(id);
+      if (!$('pcName')) return;
+      const name = (authProfile && authProfile.display_name) || 'Jogador';
+      const elo = (authProfile && typeof authProfile.elo === 'number') ? authProfile.elo : null;
+      const tier = elo !== null ? getEloTier(elo) : null;
+      const initial = name.trim().charAt(0).toUpperCase() || '?';
+      const isGuest = !authUser || authUser.is_anonymous;
+
+      $('pcAvatar').textContent = initial;
+      $('accAvatar').textContent = initial;
+      $('pcName').textContent = sb ? name : 'Offline';
+      $('accName').textContent = name;
+      $('pcElo').textContent = elo !== null ? elo : '—';
+      $('pcTier').textContent = tier ? tier.name : 'Elo';
+      $('pcTier').className = 'pc-tier ' + (tier ? tier.cls : '');
+      $('accElo').textContent = elo !== null ? `${elo} Elo · ${tier.name}` : 'Sem conexão com o ranking';
+
+      const sub = $('pcSub');
+      if (!sb) { sub.textContent = 'Ranking indisponível'; sub.className = 'pc-sub'; }
+      else if (isGuest) { sub.textContent = '⚠ Convidado · toque para salvar'; sub.className = 'pc-sub warn'; }
+      else { sub.textContent = '✓ Progresso salvo'; sub.className = 'pc-sub'; }
+
+      $('accGuestBox').style.display = isGuest ? '' : 'none';
+      $('accSavedBox').style.display = isGuest ? 'none' : '';
+      $('accEmail').textContent = (authUser && authUser.email) || '';
+    }
+
+    function openAccountModal() {
+      document.getElementById('authEmailMsg').textContent = '';
+      document.getElementById('accountModal').style.display = 'flex';
+      renderAuthBar();
+    }
+
+    function closeAccountModal() {
+      document.getElementById('accountModal').style.display = 'none';
+    }
+
+    async function ensureSignedIn() {
+      if (!sb) return null;
+      if (authUser) return authUser;
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        authUser = session.user;
+      } else {
+        const { data, error } = await sb.auth.signInAnonymously();
+        if (error) { console.warn('Login anônimo falhou:', error.message); return null; }
+        authUser = data.user;
+      }
+      await loadProfile();
+      renderAuthBar();
+      return authUser;
+    }
+
+    async function submitEmailLogin() {
+      if (!sb) return;
+      const input = document.getElementById('authEmailInput');
+      const msg = document.getElementById('authEmailMsg');
+      const email = (input.value || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = 'E-mail inválido.'; return; }
+      msg.textContent = 'Enviando...';
+      const emailRedirectTo = window.location.origin + window.location.pathname;
+
+      // Convidado: vincula o e-mail à conta atual (mantém o histórico)
+      if (authUser && authUser.is_anonymous) {
+        const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo });
+        if (!error) {
+          msg.textContent = `Link enviado para ${email}. Abra o e-mail e clique no link para salvar sua conta.`;
+          return;
+        }
+        // E-mail já tem conta (ex.: outro aparelho): faz login nela
+        if (!/already|registered|exists/i.test(error.message)) {
+          msg.textContent = 'Erro: ' + error.message;
+          return;
+        }
+      }
+
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo } });
+      msg.textContent = error
+        ? 'Erro: ' + error.message
+        : `Link enviado para ${email}. Abra o e-mail neste aparelho e clique no link para entrar.`;
+    }
+
+    async function signOutAccount() {
+      if (!sb) return;
+      await sb.auth.signOut();
+      authUser = null;
+      authProfile = null;
+      renderAuthBar();
+      ensureSignedIn();
+    }
+
+    if (sb) {
+      sb.auth.onAuthStateChange((_event, session) => {
+        authUser = session ? session.user : null;
+        // fora do callback para não travar o cliente
+        setTimeout(async () => { await loadProfile(); renderAuthBar(); shareMyUid(); }, 0);
+      });
+      ensureSignedIn();
+    } else {
+      document.addEventListener('DOMContentLoaded', renderAuthBar);
+    }
+
+    // Grava o resultado do jogador deste dispositivo
+    async function recordMatchResult(endReason, abandonedIndex = null) {
+      if (matchRecorded || !sb || !players || !players.length) return;
+
+      let myIdx;
+      let mode;
+      if (isP2P) { mode = 'online'; myIdx = myP2PIndex; }
+      else if (isBotMode) { mode = 'bot'; myIdx = 0; }
+      else return; // Pass & Play: não dá para saber qual jogador é o dono da conta
+      if (myIdx === null || myIdx === undefined || !players[myIdx]) return;
+      matchRecorded = true;
+
+      const me = players[myIdx];
+      // Ordem final: quem abandonou/perdeu por tempo fica em último; o resto por pontos
+      const order = [...players].sort((x, y) => {
+        if (endReason !== 'normal') {
+          if (x.id === abandonedIndex) return 1;
+          if (y.id === abandonedIndex) return -1;
+        }
+        return y.score - x.score;
+      });
+      const placeOf = id => order.findIndex(p => p.id === id) + 1;
+      const placement = placeOf(me.id);
+      const won = placement === 1;
+
+      try {
+        const user = await ensureSignedIn();
+        if (!user) { matchRecorded = false; return; }
+
+        // Mantém o nome do perfil igual ao nome usado no jogo
+        const gameName = (me.name || '').trim().slice(0, 15);
+        if (gameName && (!authProfile || authProfile.display_name !== gameName) && !/^(Você|Jogador \d|P\d)$/.test(gameName)) {
+          const { error: nameErr } = await sb.from('profiles').update({ display_name: gameName }).eq('id', user.id);
+          if (!nameErr) authProfile = { ...(authProfile || {}), id: user.id, display_name: gameName };
+        }
+
+        const { data, error } = await sb.rpc('record_match', {
+          p_mode: mode,
+          p_player_count: players.length,
+          p_score: Math.max(0, Math.min(300, me.score | 0)),
+          p_placement: Math.max(1, Math.min(4, placement || players.length)),
+          p_won: won,
+          p_end_reason: endReason,
+          p_bot_difficulty: mode === 'bot' ? String(botDifficulty) : null,
+          p_opponents: players.filter(p => p.id !== me.id).map(p => ({
+            uid: (mode === 'online' && p.uid) ? p.uid : null,
+            name: p.name,
+            score: p.score,
+            placement: placeOf(p.id)
+          }))
+        });
+        if (error) { console.warn('Erro ao salvar partida:', error.message); matchRecorded = false; return; }
+
+        const res = Array.isArray(data) ? data[0] : data;
+        if (res && typeof res.elo_after === 'number') {
+          const diff = res.elo_after - res.elo_before;
+          authProfile = { ...(authProfile || {}), elo: res.elo_after };
+          if (diff !== 0) showEloChange(diff, res.elo_after);
+        }
+        renderAuthBar();
+      } catch (e) {
+        console.warn('Erro ao salvar partida:', e);
+        matchRecorded = false;
+      }
+    }
+
+    function showEloChange(diff, newElo) {
+      const desc = document.getElementById('winnerDesc');
+      if (!desc) return;
+      const old = document.getElementById('eloChangeBanner');
+      if (old) old.remove();
+      const tier = getEloTier(newElo);
+      const el = document.createElement('div');
+      el.id = 'eloChangeBanner';
+      el.style.cssText = `margin-top:14px;padding:10px;border-radius:8px;font-weight:700;font-size:14px;text-align:center;background:${diff > 0 ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)'};color:${diff > 0 ? '#4ade80' : '#f87171'};`;
+      el.innerHTML = `${diff > 0 ? '▲ +' : '▼ '}${diff} Elo <span style="color:#94a3b8;font-weight:600;">→ ${newElo} · <span class="${tier.cls}">${tier.name}</span></span>`;
+      desc.appendChild(el);
+    }
+
+    // Envia o id da conta deste jogador para o host (necessário para o Elo do oponente)
+    function shareMyUid() {
+      if (!isP2P || !authUser || !players || myP2PIndex === null || !players[myP2PIndex]) return;
+      if (players[myP2PIndex].uid === authUser.id) return;
+      players[myP2PIndex].uid = authUser.id;
+      if (isHost) {
+        broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+      } else if (clientHostConn && clientHostConn.open) {
+        try { clientHostConn.send({ type: 'SET_PLAYER_UID', playerIndex: myP2PIndex, uid: authUser.id }); } catch (e) { }
+      }
+    }
+
+    function openLeaderboardModal() {
+      document.getElementById('leaderboardModal').style.display = 'flex';
+      switchLeaderboardTab(leaderboardTab);
+    }
+
+    function closeLeaderboardModal() {
+      document.getElementById('leaderboardModal').style.display = 'none';
+    }
+
+    async function switchLeaderboardTab(tab) {
+      leaderboardTab = tab;
+      ['online', 'history'].forEach(t => {
+        const id = t === 'online' ? 'lbTabOnline' : 'lbTabHistory';
+        document.getElementById(id).classList.toggle('active', t === tab);
+      });
+      const box = document.getElementById('leaderboardContent');
+      if (!sb) { box.innerHTML = '<div class="lb-empty">Não foi possível conectar ao servidor.</div>'; return; }
+      box.innerHTML = '<div class="lb-empty">Carregando...</div>';
+      await ensureSignedIn();
+      if (leaderboardTab !== tab) return;
+
+      if (tab === 'history') {
+        if (!authUser) { box.innerHTML = '<div class="lb-empty">Faça login para ver suas partidas.</div>'; return; }
+        const { data, error } = await sb.from('matches')
+          .select('mode, player_count, score, placement, won, end_reason, opponents, elo_before, elo_after, created_at')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .limit(30);
+        if (leaderboardTab !== tab) return;
+        if (error) { box.innerHTML = `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`; return; }
+        if (!data.length) { box.innerHTML = '<div class="lb-empty">Nenhuma partida registrada ainda.</div>'; return; }
+        const reasonLabel = { normal: '', timeout: ' · por tempo', abandon: ' · por abandono' };
+        box.innerHTML = data.map(m => {
+          const opp = (m.opponents || []).map(o => `${escapeHtml(o.name)} (${Number(o.score) || 0})`).join(', ');
+          const date = new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="lb-row">
+              <span class="lb-pos ${m.won ? 'lb-win' : 'lb-loss'}">${m.won ? 'V' : 'D'}</span>
+              <div style="min-width:0;">
+                <div class="lb-name">vs ${opp || '—'}</div>
+                <div class="lb-sub">${m.mode === 'online' ? 'Online' : 'Treino vs Bot'} · ${m.placement}º de ${m.player_count}${reasonLabel[m.end_reason] || ''} · ${date}</div>
+              </div>
+              <span class="lb-stat">${m.score} pts${typeof m.elo_after === 'number' && typeof m.elo_before === 'number'
+                ? `<div class="lb-sub ${m.elo_after >= m.elo_before ? 'lb-win' : 'lb-loss'}">${m.elo_after >= m.elo_before ? '+' : ''}${m.elo_after - m.elo_before} Elo</div>` : ''}</span>
+            </div>`;
+        }).join('');
+        return;
+      }
+
+      const { data, error } = await sb.rpc('get_leaderboard', { p_mode: tab, p_limit: 50 });
+      if (leaderboardTab !== tab) return;
+      if (error) { box.innerHTML = `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`; return; }
+      if (!data || !data.length) { box.innerHTML = '<div class="lb-empty">Ninguém no ranking ainda.<br>Jogue uma partida online para entrar!</div>'; return; }
+      const medals = ['🥇', '🥈', '🥉'];
+      box.innerHTML = data.map((r, i) => {
+        const tier = getEloTier(r.elo);
+        return `
+        <div class="lb-row ${authUser && r.user_id === authUser.id ? 'me' : ''}">
+          <span class="lb-pos">${medals[i] || `${i + 1}º`}</span>
+          <div style="min-width:0;">
+            <div class="lb-name">${escapeHtml(r.display_name)}</div>
+            <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
+          </div>
+          <div class="lb-stat">${r.elo}<div class="lb-sub ${tier.cls}" style="font-weight:800;">${tier.name}</div></div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Relógio de ação (online): 5min inicial, +30s por jogada, teto de 5min ──
+    const CLOCK_INITIAL_MS = 300000;
+    const CLOCK_INCREMENT_MS = 30000;
+    const CLOCK_MAX_MS = 300000;
+    let clockLastTick = Date.now();
+    let clockSyncCounter = 0;
+
+    function formatClock(ms) {
+      const total = Math.max(0, Math.ceil(ms / 1000));
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    function updateClockDisplays() {
+      (players || []).forEach(p => {
+        const el = document.getElementById(`playerClock_${p.id}`);
+        if (!el) return;
+        el.textContent = `⏱ ${formatClock(p.clock)}`;
+        el.classList.toggle('clock-low', p.clock <= 30000);
+      });
+    }
+
+    setInterval(() => {
+      const now = Date.now();
+      const dt = Math.min(now - clockLastTick, 2000); // evita salto quando a aba é congelada
+      clockLastTick = now;
+      if (!isP2P || !isGameActive || hasMatchEndedByAbandon || isScoringAnimationActive) return;
+      const p = players && players[turn];
+      if (!p || typeof p.clock !== 'number') return;
+      p.clock = Math.max(0, p.clock - dt);
+      updateClockDisplays();
+
+      if (isHost) {
+        if (p.clock <= 0) {
+          const msg = { type: 'PLAYER_ABANDONED', playerIndex: p.id, playerName: p.name, reason: 'timeout' };
+          broadcastP2P(msg);
+          handlePlayerAbandoned(p.id, p.name, 'timeout');
+        } else if (++clockSyncCounter >= 20) { // ~5s
+          clockSyncCounter = 0;
+          broadcastP2P({ type: 'CLOCK_SYNC', clocks: players.map(x => x.clock), turn });
+        }
+      }
+    }, 250);
 
     // Conjunto de caracteres legíveis (3 letras e números)
     // Omitimos letras facilmente confusas, mas garantimos suporte a 'O' e '0' com visual cortado (slashed-zero)
@@ -2121,54 +2549,229 @@
       });
     }
 
-    function initPeerJS(preferredId, onOpenCallback) {
-      if (peer && !peer.destroyed) {
-        if (onOpenCallback) onOpenCallback(peer.id);
+    // ─────────────────────────────────────────────────────────────
+    // SALA ONLINE VIA SUPABASE REALTIME
+    // Cada jogador fica conectado ao servidor do Supabase (não um ao outro).
+    // Se a tela bloquear, o cliente do Supabase reconecta sozinho ao voltar
+    // e o "Presence" avisa quem saiu/voltou. RtConn imita a interface de
+    // conexão antiga (send / on('open'|'data'|'close') / close / open / peer).
+    // ─────────────────────────────────────────────────────────────
+    function getRtClientId() {
+      const gen = () => (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'c-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      try {
+        let id = sessionStorage.getItem('azul_rt_id');
+        if (!id) { id = gen(); sessionStorage.setItem('azul_rt_id', id); }
+        return id;
+      } catch (e) { return gen(); }
+    }
+
+    class RtConn {
+      constructor(remoteId) {
+        this.peer = remoteId;
+        this.open = false;
+        this.assignedIndex = undefined;
+        this._handlers = { open: [], data: [], close: [] };
+      }
+      on(evt, fn) { (this._handlers[evt] = this._handlers[evt] || []).push(fn); }
+      _emit(evt, arg) {
+        (this._handlers[evt] || []).forEach(fn => { try { fn(arg); } catch (e) { console.error(e); } });
+      }
+      send(data) {
+        if (!rtRoom || !this.peer) return;
+        // O Realtime não garante ordem: numeramos por destinatário para reordenar na chegada
+        const seq = (rtRoom.seqTo.get(this.peer) || 0) + 1;
+        rtRoom.seqTo.set(this.peer, seq);
+        rtRoom.channel.send({ type: 'broadcast', event: 'msg', payload: { from: rtRoom.myId, to: this.peer, sid: rtRoom.sid, seq, data } });
+      }
+      close() {
+        if (this.open && rtRoom && this.peer) {
+          try { rtRoom.channel.send({ type: 'broadcast', event: 'ctl', payload: { from: rtRoom.myId, to: this.peer, ctl: 'close' } }); } catch (e) { }
+        }
+        this.open = false;
+      }
+    }
+
+    function destroyRealtimeRoom() {
+      if (!rtRoom) return;
+      rtRoom.destroyed = true;
+      clearTimeout(rtRoom.notFoundTimer);
+      rtRoom.missing.forEach(t => clearTimeout(t));
+      rtRoom.inbox.forEach(st => clearTimeout(st.timer));
+      try { sb.removeChannel(rtRoom.channel); } catch (e) { }
+      rtRoom = null;
+    }
+
+    // role: 'host' | 'guest'. opts.fresh = sala nova (host verifica colisão de código / guest avisa se não achar o host)
+    function initRealtimeRoom(roomCode, role, onReady, opts = {}) {
+      if (!sb) {
+        alert('Não foi possível conectar ao servidor do jogo. Verifique sua internet e tente novamente.');
+        updateP2PBadge('offline', 'Sem conexão');
         return;
       }
+      destroyRealtimeRoom();
 
-      const peerConfig = {
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:stun.cloudflare.com:3478' }
-          ]
+      const myId = getRtClientId();
+      const channel = sb.channel(`azul-room-${roomCode.toUpperCase()}`, {
+        config: { broadcast: { self: false }, presence: { key: myId } }
+      });
+      const room = { channel, myId, role, roomCode, conns: new Map(), missing: new Map(), seqTo: new Map(), inbox: new Map(),
+        sid: Math.random().toString(36).slice(2, 10), hostId: null, destroyed: false, readyFired: false, firstSync: true, notFoundTimer: null };
+      rtRoom = room;
+
+      const readPresence = () => {
+        const present = new Map(); // id -> role
+        Object.values(channel.presenceState()).forEach(metas => metas.forEach(m => { if (m && m.id) present.set(m.id, m.role); }));
+        return present;
+      };
+      const clearMissing = (key) => {
+        if (room.missing.has(key)) { clearTimeout(room.missing.get(key)); room.missing.delete(key); }
+      };
+      // O Presence oscila (principalmente ao entrar). Só fecha a conexão após 4s de ausência contínua.
+      const markMissing = (key) => {
+        if (room.missing.has(key)) return;
+        room.missing.set(key, setTimeout(() => {
+          room.missing.delete(key);
+          if (room.destroyed) return;
+          const present = readPresence();
+          if (role === 'host') {
+            const conn = room.conns.get(key);
+            if (conn && conn.open && !present.has(key)) { conn.open = false; conn._emit('close'); }
+          } else {
+            const hostThere = [...present.values()].includes('host');
+            if (!hostThere && clientHostConn && clientHostConn.open) { clientHostConn.open = false; clientHostConn._emit('close'); }
+          }
+        }, 4000));
+      };
+
+      channel.on('presence', { event: 'sync' }, () => {
+        if (room.destroyed) return;
+        const present = readPresence();
+
+        if (role === 'host') {
+          // Código em uso por outro host: gera outro (só em sala nova)
+          if (room.firstSync && opts.fresh) {
+            const otherHost = [...present.entries()].some(([id, r]) => r === 'host' && id !== myId);
+            if (otherHost) {
+              destroyRealtimeRoom();
+              p2pCreateRoom();
+              return;
+            }
+          }
+          // Convidados que sumiram do Presence => conexão fechada
+          room.conns.forEach((conn, id) => {
+            if (conn.open && !present.has(id)) markMissing(id);
+            else clearMissing(id);
+          });
+        } else {
+          const hostEntry = [...present.entries()].find(([, r]) => r === 'host');
+          const conn = clientHostConn;
+          if (hostEntry) clearMissing('host');
+          if (hostEntry && conn) {
+            room.hostId = hostEntry[0];
+            clearTimeout(room.notFoundTimer);
+            if (!conn.open || conn.peer !== hostEntry[0]) {
+              conn.peer = hostEntry[0];
+              conn.open = true;
+              conn._emit('open');
+            }
+          } else if (!hostEntry && conn && conn.open) {
+            markMissing('host');
+          }
+        }
+        room.firstSync = false;
+      });
+
+      // Entrega em ordem por remetente; se faltar uma mensagem por 1,5s, pula a lacuna
+      const deliverInOrder = (payload, handle) => {
+        let st = room.inbox.get(payload.from);
+        if (!st || st.sid !== payload.sid) {
+          if (st) clearTimeout(st.timer);
+          st = { sid: payload.sid, next: 1, buf: new Map(), timer: null };
+          room.inbox.set(payload.from, st);
+        }
+        if (typeof payload.seq !== 'number') { handle(payload); return; }
+        if (payload.seq < st.next) return; // duplicada
+        st.buf.set(payload.seq, payload);
+        const flush = () => {
+          while (st.buf.has(st.next)) {
+            const p = st.buf.get(st.next);
+            st.buf.delete(st.next);
+            st.next++;
+            handle(p);
+          }
+          clearTimeout(st.timer);
+          st.timer = null;
+          if (st.buf.size) {
+            st.timer = setTimeout(() => {
+              if (room.destroyed || !st.buf.size) return;
+              st.next = Math.min(...st.buf.keys());
+              flush();
+            }, 1500);
+          }
+        };
+        flush();
+      };
+
+      channel.on('broadcast', { event: 'msg' }, ({ payload }) => {
+        if (room.destroyed || !payload || payload.to !== myId) return;
+        deliverInOrder(payload, handleRtMessage);
+      });
+
+      const handleRtMessage = (payload) => {
+        if (room.destroyed) return;
+        clearMissing(role === 'host' ? payload.from : 'host');
+        if (role === 'host') {
+          let conn = room.conns.get(payload.from);
+          if (!conn || !conn.open) {
+            conn = new RtConn(payload.from);
+            conn.open = true;
+            room.conns.set(payload.from, conn);
+            handleGuestIncoming(conn);
+          }
+          conn._emit('data', payload.data);
+        } else if (clientHostConn) {
+          if (!clientHostConn.open) { clientHostConn.peer = payload.from; clientHostConn.open = true; }
+          clientHostConn._emit('data', payload.data);
         }
       };
 
-      // Cria peer com ID específico da sala (ex: azul-A7K9) ou aleatório se omitido
-      peer = preferredId ? new Peer(preferredId, peerConfig) : new Peer(peerConfig);
-
-      peer.on('open', (id) => {
-        console.log('PeerJS online ID:', id);
-        if (onOpenCallback) onOpenCallback(id);
+      channel.on('broadcast', { event: 'ctl' }, ({ payload }) => {
+        if (room.destroyed || !payload || payload.to !== myId || payload.ctl !== 'close') return;
+        const conn = role === 'host' ? room.conns.get(payload.from) : clientHostConn;
+        if (conn && conn.open) { conn.open = false; conn._emit('close'); }
       });
 
-      peer.on('connection', (conn) => {
-        if (isHost) {
-          handleGuestIncoming(conn);
-        }
-      });
-
-      peer.on('error', (err) => {
-        console.error('PeerJS error:', err);
-        if (err.type === 'unavailable-id') {
-          // Se o código de 4 dígitos já estiver em uso no momento, tenta outro
-          if (isHost) {
-            p2pCreateRoom();
-            return;
+      channel.subscribe(async (status) => {
+        if (room.destroyed) return;
+        if (status === 'SUBSCRIBED') {
+          // Também roda em toda reconexão automática: reanuncia presença
+          try { await channel.track({ id: myId, role }); } catch (e) { console.warn('track falhou', e); }
+          if (room.readyFired || opts.rejoin) {
+            // Reconexão: mensagens podem ter se perdido enquanto estávamos fora -> ressincroniza
+            if (role === 'guest' && clientHostConn) {
+              clientHostConn.open = false; // o próximo 'sync' do Presence reemite 'open' => REQUEST_SYNC
+            } else if (role === 'host' && isGameActive && !hasMatchEndedByAbandon) {
+              setTimeout(() => { if (!room.destroyed) broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() }); }, 800);
+            }
           }
+          if (!room.readyFired) {
+            room.readyFired = true;
+            if (role === 'guest' && opts.fresh) {
+              room.notFoundTimer = setTimeout(() => {
+                if (room.destroyed || (clientHostConn && clientHostConn.open)) return;
+                alert('Sala não encontrada. Confira o código e se o criador da sala ainda está com ela aberta.');
+                updateP2PBadge('offline', 'Sala não encontrada');
+                destroyRealtimeRoom();
+              }, 8000);
+            }
+            if (onReady) onReady(myId);
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('Realtime:', status, '— o cliente vai tentar reconectar sozinho');
+          if (isGameActive) updateP2PBadge('waiting', 'Reconectando...');
         }
-        if (err.type === 'peer-unavailable') {
-          alert('Sala não encontrada ou Host desconectado. Verifique se o código de 4 dígitos está correto e se o Host ainda está com a sala aberta.');
-          updateP2PBadge('offline', 'Sala não encontrada');
-          return;
-        }
-        alert('Erro P2P: ' + err.type);
       });
     }
 
@@ -2180,9 +2783,8 @@
       roomInfo.style.display = 'block';
 
       const shortCode = generate4DigitCode();
-      const peerCustomId = 'azul-' + shortCode.toLowerCase();
 
-      initPeerJS(peerCustomId, (peerId) => {
+      initRealtimeRoom(shortCode, 'host', () => {
         currentRoomCode = shortCode;
         roomCodeEl.textContent = shortCode;
         isHost = true;
@@ -2203,7 +2805,7 @@
         updateHostWaitingUI();
         updateP2PBadge('waiting', hostName);
         saveSessionToStorage();
-      });
+      }, { fresh: true });
     }
 
     function updateHostWaitingUI() {
@@ -2307,16 +2909,12 @@
         return;
       }
 
-      currentRoomCode = code.toUpperCase();
-      // Normaliza código para o ID do PeerJS: 'azul-' + code em minúsculas
-      let targetPeerId = code.startsWith('azul-') ? code.toLowerCase() : ('azul-' + code.toLowerCase());
-
-      initPeerJS(null, (myId) => {
-        updateP2PBadge('waiting', 'Conectando...');
-        clientHostConn = peer.connect(targetPeerId, { reliable: true });
-        isHost = false;
-        setupClientConnection();
-      });
+      currentRoomCode = code.toUpperCase().replace(/^AZUL-/, '');
+      isHost = false;
+      updateP2PBadge('waiting', 'Conectando...');
+      clientHostConn = new RtConn(null);
+      setupClientConnection();
+      initRealtimeRoom(currentRoomCode, 'guest', null, { fresh: true });
     }
 
     function setupClientConnection() {
@@ -2364,23 +2962,51 @@
     }
 
     function attemptGuestReconnect() {
-      if (isHost || !isGameActive || hasMatchEndedByAbandon || !currentRoomCode) return;
-      if (clientHostConn && clientHostConn.open) return;
+      // O cliente Realtime reconecta sozinho; aqui só garantimos que o socket esteja ativo
+      if (isHost || !currentRoomCode) return;
+      if (!rtRoom) {
+        if (!clientHostConn) { clientHostConn = new RtConn(null); setupClientConnection(); }
+        initRealtimeRoom(currentRoomCode, 'guest');
+        return;
+      }
+      ensureRealtimeConnected();
+    }
 
-      const targetPeerId = currentRoomCode.startsWith('azul-')
-        ? currentRoomCode.toLowerCase()
-        : ('azul-' + currentRoomCode.toLowerCase());
+    function ensureRealtimeConnected() {
+      try {
+        if (sb && sb.realtime && !sb.realtime.isConnected()) sb.realtime.connect();
+      } catch (e) { }
+      checkRealtimeHealth();
+    }
 
-      if (!peer || peer.destroyed) {
-        initPeerJS(null, () => {
-          clientHostConn = peer.connect(targetPeerId, { reliable: true });
-          setupClientConnection();
-        });
-      } else {
-        clientHostConn = peer.connect(targetPeerId, { reliable: true });
-        setupClientConnection();
+    // O canal pode parecer "joined" localmente mas estar morto no servidor (ex: após suspensão).
+    // Testamos reenviando a presença; se o servidor recusar, recriamos o canal da sala.
+    let rtHealthBusy = false;
+    async function checkRealtimeHealth() {
+      if (!rtRoom || rtHealthBusy || !isP2P) return;
+      rtHealthBusy = true;
+      const room = rtRoom;
+      try {
+        let ok = false;
+        if (room.channel.state === 'joined') {
+          const res = await Promise.race([
+            room.channel.track({ id: room.myId, role: room.role }),
+            new Promise(r => setTimeout(() => r('timeout'), 5000))
+          ]);
+          ok = res === 'ok';
+        }
+        if (!ok && rtRoom === room && !room.destroyed && room.readyFired) {
+          console.warn('Canal Realtime inativo, recriando sala...');
+          if (room.role === 'guest' && clientHostConn) clientHostConn.open = false;
+          initRealtimeRoom(room.roomCode, room.role, null, { rejoin: true });
+        }
+      } catch (e) {
+        console.warn('Health check falhou', e);
+      } finally {
+        rtHealthBusy = false;
       }
     }
+    setInterval(() => { if (isP2P && rtRoom && document.visibilityState === 'visible') checkRealtimeHealth(); }, 15000);
 
     // Host recebe ação de um convidado, executa localmente e replica para os outros convidados
     function handleHostReceivedMessage(senderConn, msg) {
@@ -2437,6 +3063,12 @@
           document.getElementById('mainMenuModal').style.display = 'none';
           updateChatVisibility();
         }
+      } else if (msg.type === 'SET_PLAYER_UID') {
+        if (typeof msg.playerIndex === 'number' && players && players[msg.playerIndex] && typeof msg.uid === 'string') {
+          players[msg.playerIndex].uid = msg.uid;
+          broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+          saveSessionToStorage();
+        }
       } else if (msg.type === 'SET_PLAYER_NAME') {
         if (typeof msg.playerIndex === 'number' && players && players[msg.playerIndex]) {
           players[msg.playerIndex].name = msg.name;
@@ -2453,7 +3085,7 @@
           }
         });
       } else if (msg.type === 'PLAYER_ABANDONED') {
-        handlePlayerAbandoned(msg.playerIndex, msg.playerName);
+        handlePlayerAbandoned(msg.playerIndex, msg.playerName, msg.reason);
         hostGuestConnections.forEach(c => {
           if (c !== senderConn && c.open) {
             c.send(msg);
@@ -2486,13 +3118,19 @@
         updateP2PBadge('online', `${myName} (${playerCount}P)`);
         updateChatVisibility();
         saveSessionToStorage();
+        shareMyUid();
       } else if (msg.type === 'ACTION') {
         executeGameAction(msg.action, false);
       } else if (msg.type === 'CHAT') {
         const isFromMe = (typeof msg.senderIndex === 'number' && myP2PIndex !== null && msg.senderIndex === myP2PIndex);
         appendChatMessage(msg.senderIndex, msg.senderName, msg.text, msg.time, isFromMe);
       } else if (msg.type === 'PLAYER_ABANDONED') {
-        handlePlayerAbandoned(msg.playerIndex, msg.playerName);
+        handlePlayerAbandoned(msg.playerIndex, msg.playerName, msg.reason);
+      } else if (msg.type === 'CLOCK_SYNC') {
+        if (players && Array.isArray(msg.clocks)) {
+          msg.clocks.forEach((c, i) => { if (players[i] && typeof c === 'number') players[i].clock = c; });
+          updateClockDisplays();
+        }
       }
     }
 
@@ -2538,6 +3176,10 @@
     }
 
     function getFullGameState() {
+      // Inclui o id da conta deste jogador no estado (usado no cálculo de Elo)
+      if (isP2P && authUser && myP2PIndex !== null && players && players[myP2PIndex]) {
+        players[myP2PIndex].uid = authUser.id;
+      }
       return {
         playerCount,
         players,
@@ -2594,6 +3236,7 @@
     function applyFullGameState(state) {
       playerCount = state.playerCount;
       players = state.players;
+      players.forEach(p => { if (typeof p.clock !== 'number') p.clock = CLOCK_INITIAL_MS; });
       factories = state.factories;
       center = state.center;
       bag = state.bag;
@@ -2665,10 +3308,7 @@
       closeMultiplayerModal();
       // Se não estiver em jogo ativo, fecha conexões pendentes e volta ao menu principal
       if (!isP2P || myP2PIndex === null) {
-        if (peer && !peer.destroyed) {
-          try { peer.destroy(); } catch (e) { }
-          peer = null;
-        }
+        destroyRealtimeRoom();
         isP2P = false;
         isHost = false;
         myP2PIndex = null;
@@ -2695,8 +3335,9 @@
       if (confirmModal) confirmModal.style.display = 'none';
     }
 
-    function handlePlayerAbandoned(abandonedIndex, abandonedName) {
+    function handlePlayerAbandoned(abandonedIndex, abandonedName, reason) {
       if (!isGameActive || hasMatchEndedByAbandon) return;
+      recordMatchResult(reason === 'timeout' ? 'timeout' : 'abandon', abandonedIndex);
       hasMatchEndedByAbandon = true;
       isGameActive = false;
       clearSavedSession();
@@ -2708,13 +3349,13 @@
 
       // Identifica quem abandonou e quem permaneceu na partida
       const leavingName = abandonedName || (players && players[abandonedIndex] && players[abandonedIndex].name) || `Jogador ${abandonedIndex + 1}`;
-      appendChatSystemMessage(`${leavingName} desconectou da partida.`);
+      appendChatSystemMessage(reason === 'timeout' ? `${leavingName} ficou sem tempo.` : `${leavingName} desconectou da partida.`);
       const remainingPlayers = (players || []).filter((p, idx) => idx !== abandonedIndex);
       const remainingWinner = remainingPlayers.length === 1 ? remainingPlayers[0] : null;
 
       const modal = document.getElementById('endModal');
       const title = modal ? modal.querySelector('h2') : null;
-      if (title) title.innerHTML = '🏆 Vitória por Abandono!';
+      if (title) title.innerHTML = reason === 'timeout' ? '🏆 Vitória por Tempo!' : '🏆 Vitória por Abandono!';
 
       const desc = document.getElementById('winnerDesc');
       if (desc) {
@@ -2726,7 +3367,7 @@
 
           listHtml = `
             <div style="margin-bottom: 16px; color: #94a3b8; font-size: 13px;">
-              <strong style="color: #f87171;">${leavingName}</strong> saiu da partida.
+              <strong style="color: #f87171;">${leavingName}</strong> ${reason === 'timeout' ? 'ficou sem tempo.' : 'saiu da partida.'}
             </div>
             <div class="endgame-list">
               <div class="endgame-item winner">
@@ -2748,7 +3389,7 @@
           const sorted = [...remainingPlayers].sort((a, b) => b.score - a.score);
           listHtml = `
             <div style="margin-bottom: 16px; color: #94a3b8; font-size: 13px;">
-              <strong style="color: #f87171;">${leavingName}</strong> saiu da partida.
+              <strong style="color: #f87171;">${leavingName}</strong> ${reason === 'timeout' ? 'ficou sem tempo.' : 'saiu da partida.'}
             </div>
             <div class="endgame-list">
               ${sorted.map((p, idx) => {
@@ -2784,6 +3425,12 @@
     function confirmExitGame() {
       closeConfirmExitModal();
 
+      // Saída voluntária de partida online em andamento conta como derrota
+      if (isP2P && isGameActive && !hasMatchEndedByAbandon && myP2PIndex !== null) {
+        recordMatchResult('abandon', myP2PIndex);
+      }
+      matchRecorded = false;
+
       // Notifica os outros jogadores que este jogador abandonou a partida
       if (isP2P && isGameActive) {
         const myName = (myP2PIndex !== null && players && players[myP2PIndex] && players[myP2PIndex].name)
@@ -2812,10 +3459,7 @@
             try { clientHostConn.close(); } catch (e) { }
             clientHostConn = null;
           }
-          if (peer && !peer.destroyed) {
-            try { peer.destroy(); } catch (e) { }
-            peer = null;
-          }
+          destroyRealtimeRoom();
           isP2P = false;
           isHost = false;
           myP2PIndex = null;
@@ -2852,21 +3496,10 @@
       document.getElementById('mainMenuModal').style.display = 'flex';
     }
 
-    // Auto-reconexão inteligente ao desbloquear a tela ou focar na aba
+    // Ao desbloquear a tela / voltar para a aba: garante o socket do Realtime ativo
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && isP2P && isGameActive && !hasMatchEndedByAbandon) {
-        if (!isHost) {
-          if (!clientHostConn || !clientHostConn.open) {
-            console.log('App visível novamente: reconectando ao Host...');
-            updateP2PBadge('waiting', 'Reconectando ao Host...');
-            attemptGuestReconnect();
-          }
-        } else {
-          // Se sou Host e o peer foi fechado pelo SO durante suspensão, reabre
-          if (peer && peer.disconnected && !peer.destroyed) {
-            try { peer.reconnect(); } catch (e) { }
-          }
-        }
+      if (document.visibilityState === 'visible' && isP2P && rtRoom) {
+        ensureRealtimeConnected();
       }
     });
 
@@ -2932,6 +3565,7 @@
 
     function initGame(names = null) {
       hasMatchEndedByAbandon = false;
+      matchRecorded = false;
       const endTitle = document.querySelector('#endModal h2');
       if (endTitle) endTitle.textContent = 'Fim de Jogo';
 
@@ -2953,6 +3587,7 @@
         players.push({
           id: i,
           name: pName,
+          clock: CLOCK_INITIAL_MS,
           score: 0,
           pattern: [
             { size: 1, count: 0, color: null },
@@ -3709,6 +4344,9 @@
         broadcastP2P({ type: 'ACTION', action: { type: 'CONFIRM_MOVE' } });
       }
 
+      if (isP2P && typeof p.clock === 'number') {
+        p.clock = Math.min(CLOCK_MAX_MS, p.clock + CLOCK_INCREMENT_MS);
+      }
       finishTurn();
     }
 
@@ -4047,6 +4685,7 @@
         </div>
       `;
       modal.style.display = 'flex';
+      recordMatchResult('normal');
       saveSessionToStorage();
     }
 
@@ -4216,7 +4855,7 @@
               <span class="turn-indicator"></span>
               <span>${playerTitle}</span>
             </span>
-            <span class="player-pts" id="playerPts_${p.id}">${p.score} pts</span>
+            <span class="player-pts" id="playerPts_${p.id}">${isP2P ? `<span class="player-clock" id="playerClock_${p.id}">⏱ ${formatClock(p.clock)}</span> ` : ''}${p.score} pts</span>
           `;
         card.appendChild(top);
 
@@ -4429,16 +5068,15 @@
           if (isHost) {
             updateP2PBadge('waiting', `P1 (Reconectando Host...)`);
             applyFullGameState(session.gameState);
-            initPeerJS('azul-' + currentRoomCode.toLowerCase(), (peerId) => {
+            initRealtimeRoom(currentRoomCode, 'host', () => {
               updateP2PBadge('online', `P1 (Host - ${targetOnlinePlayers}P)`);
             });
           } else {
             updateP2PBadge('waiting', `Reconectando...`);
             applyFullGameState(session.gameState);
-            initPeerJS(null, (myId) => {
-              clientHostConn = peer.connect('azul-' + currentRoomCode.toLowerCase());
-              setupClientConnection();
-            });
+            clientHostConn = new RtConn(null);
+            setupClientConnection();
+            initRealtimeRoom(currentRoomCode, 'guest');
           }
           return true;
         } else if (session.mode === 'bot') {
@@ -4503,10 +5141,6 @@
     window.addEventListener('beforeunload', () => {
       // Salva estado antes de fechar/recarregar
       saveSessionToStorage();
-      // Desconecta socket do peer de forma limpa para evitar bloqueio de ID pelo broker
-      if (peer && !peer.destroyed) {
-        try { peer.disconnect(); } catch (e) { }
-      }
     });
   </script>
 </body>
