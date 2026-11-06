@@ -1557,3 +1557,9 @@
     .fx-box { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1.5px solid var(--border-focus); border-radius: 4px; color: #0f1216; flex-shrink: 0; }
     .fx-box .ic { width: 12px; height: 12px; stroke-width: 3; }
     .menu-fx[aria-pressed="true"] .fx-box { background: var(--accent-active); border-color: var(--accent-active); }
+
+    /* botão pequeno só com ícone (desenhos de azulejo) */
+    .fx-btn.fx-icon { padding: 5px 8px; }
+    .fx-btn.fx-icon .ic { width: 15px; height: 15px; }
+    /* desenhos desligados: some o motivo de azulejo das peças */
+    body:not(.motifs) .tile::after { display: none !important; }

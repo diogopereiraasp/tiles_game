@@ -438,7 +438,25 @@
     });
 
     // ── Efeito 3D nas peças (selecionável; lembra a escolha neste navegador) ──
-    // Chave nova (v2): o 3D começa LIGADO para todos, mesmo para quem desligou antes de a opção existir como padrão
+    // ── Desenhos de azulejo nas peças (liga/desliga; padrão: ligado) ──
+    const MOTIFS_KEY = 'azul_motifs_v1';
+    function applyMotifs(on) {
+      document.body.classList.toggle('motifs', on);
+      const b = document.getElementById('fxMotifBtn');
+      if (b) { b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); }
+    }
+    function toggleMotifs() {
+      const on = !document.body.classList.contains('motifs');
+      applyMotifs(on);
+      try { localStorage.setItem(MOTIFS_KEY, on ? '1' : '0'); } catch (e) { }
+    }
+    (function initMotifs() {
+      let on = true; // padrão: ligado
+      try { if (localStorage.getItem(MOTIFS_KEY) === '0') on = false; } catch (e) { }
+      applyMotifs(on);
+    })();
+
+        // Chave nova (v2): o 3D começa LIGADO para todos, mesmo para quem desligou antes de a opção existir como padrão
     const FX3D_KEY = 'azul_fx3d_v2';
     function applyFx3d(on) {
       document.body.classList.toggle('fx3d', on);
