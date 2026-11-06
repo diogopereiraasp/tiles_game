@@ -26,6 +26,11 @@
       --tile-black: #1e252b;
       --tile-surface: #636c76; /* SÓ nas fábricas (discos e centro): cinza mais claro que destaca a peça preta */
       --tile-white: #e2e8f0;
+      --azulejo-blue: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.4%22%3E%3Cg stroke=%22%23dbeafe%22 opacity=%220.75%22%3E%3Cpath d=%22M12 3.5 20.5 12 12 20.5 3.5 12Z%22/%3E%3Cpath d=%22M12 8 16 12 12 16 8 12Z%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.2%22/%3E%3C/g%3E%3C/svg%3E");
+      --azulejo-yellow: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.4%22%3E%3Cg stroke=%22%23fffbeb%22 opacity=%220.8%22%3E%3Cpath d=%22M3.5 12a8.5 8.5 0 0 1 8.5-8.5%22/%3E%3Cpath d=%22M20.5 12A8.5 8.5 0 0 0 12 3.5%22/%3E%3Cpath d=%22M3.5 12a8.5 8.5 0 0 0 8.5 8.5%22/%3E%3Cpath d=%22M20.5 12a8.5 8.5 0 0 1-8.5 8.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.8%22/%3E%3C/g%3E%3C/svg%3E");
+      --azulejo-red: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.4%22%3E%3Cg stroke=%22%23fee2e2%22 opacity=%220.75%22%3E%3Cpath d=%22M12 3.5v17M3.5 12h17%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%224.6%22/%3E%3C/g%3E%3C/svg%3E");
+      --azulejo-white: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.4%22%3E%3Cg stroke=%22%2394a3b8%22 opacity=%220.55%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%228.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%225%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.3%22/%3E%3C/g%3E%3C/svg%3E");
+      --azulejo-black: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.4%22%3E%3Cg stroke=%22%2394a3b8%22 opacity=%220.55%22%3E%3Cpath d=%22M4 4h16v16H4Z%22/%3E%3Cpath d=%22M12 4 20 12 12 20 4 12Z%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.3%22/%3E%3C/g%3E%3C/svg%3E"); /* motivos de azulejo desenhados DENTRO das peças (tom mais claro da própria cor) */
       --tile-starter: #d99c2b;
 
       /* Dynamic tile sizing */
@@ -1530,3 +1535,15 @@
         0 0 0 2px rgba(0, 0, 0, 0.35);
     }
     body.fx3d .slot-empty, body.fx3d .floor-slot:not(.occupied) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); border-style: solid; }
+
+    /* desenho leve de azulejo dentro de cada peça colorida (também nos ladrilhos de referência da parede) */
+    .tile.blue, .tile.yellow, .tile.red, .tile.white, .tile.black { position: relative; }
+    .tile.blue::after, .tile.yellow::after, .tile.red::after, .tile.white::after, .tile.black::after {
+      content: ''; position: absolute; inset: 14%; pointer-events: none;
+      background-repeat: no-repeat; background-position: center; background-size: contain;
+    }
+    .tile.blue::after   { background-image: var(--azulejo-blue); }
+    .tile.yellow::after { background-image: var(--azulejo-yellow); }
+    .tile.red::after    { background-image: var(--azulejo-red); }
+    .tile.white::after  { background-image: var(--azulejo-white); }
+    .tile.black::after  { background-image: var(--azulejo-black); }
