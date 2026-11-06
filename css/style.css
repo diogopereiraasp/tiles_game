@@ -1,16 +1,18 @@
     :root {
       /* Theme: code-editor-dark */
-      --bg-canvas: #0f1216;
-      --bg-card: #151819;
-      --bg-header: #1c2022;
-      --border-subtle: #222729;
-      --border-focus: #3b454b;
+      --bg-canvas: #262b31;   /* fundo da tela toda: cinza-azulado (chumbo) */
+      --bg-card: #2e343a;     /* cartões, painéis e modais */
+      --bg-header: #353c43;   /* cabeçalho e superfícies elevadas */
+      --bg-recess: #22272c;   /* campos e áreas rebaixadas */
+      --bg-hover: #424a52;    /* hover / botão ativo */
+      --border-subtle: #4a535c;
+      --border-focus: #5f6c77;
 
-      --text-pri: #8d9a9e;
-      --text-mid: #5a6568;
-      --text-sec: #485154;
-      --text-muted: #333a3d;
-      --text-comment: #2d3538;
+      --text-pri: #b9c3c9;
+      --text-mid: #8f9ba4;
+      --text-sec: #76828c;
+      --text-muted: #5f6b75;
+      --text-comment: #525d66;
 
       --accent-active: #38bdf8;
       --accent-red: #d85040;
@@ -22,7 +24,7 @@
       --tile-yellow: #eab308;
       --tile-red: #ef4444;
       --tile-black: #1e252b;
-      --tile-surface: #4a5055; /* fundo dos discos/centro/tabuleiro onde as peças ficam: cinza médio que destaca a peça preta sem ficar claro demais */
+      --tile-surface: #525a62; /* fundo dos discos/centro/tabuleiro onde as peças ficam: cinza médio que destaca a peça preta sem ficar claro demais */
       --tile-white: #e2e8f0;
       --tile-starter: #d99c2b;
 
@@ -101,13 +103,13 @@
     .btn-toggle:hover {
       color: #fff;
       border-color: var(--border-focus);
-      background: #1c2022;
+      background: var(--bg-header);
     }
 
     .btn-toggle.active {
       color: #fff;
       border-color: var(--border-focus);
-      background: #252b2e;
+      background: var(--bg-hover);
     }
 
     .btn-toggle:disabled,
@@ -119,14 +121,14 @@
     }
 
     .btn-online {
-      background: #151819;
+      background: var(--bg-card);
       border: 1px solid var(--border-focus);
       color: #fff;
     }
 
     .btn-online:hover {
-      background: #1c2022;
-      border-color: #4b5860;
+      background: var(--bg-header);
+      border-color: var(--border-focus);
       color: #fff;
     }
 
@@ -923,7 +925,7 @@
     .modal-input {
       width: 100%;
       padding: 8px 12px;
-      background: #0f1216;
+      background: var(--bg-recess);
       border: 1px solid var(--border-subtle);
       border-radius: 6px;
       color: #fff;
@@ -940,7 +942,7 @@
     .modal-name-input {
       width: 100%;
       padding: 8px 12px;
-      background: #0f1216;
+      background: var(--bg-recess);
       border: 1px solid var(--border-subtle);
       border-radius: 6px;
       color: #fff;
@@ -1209,7 +1211,7 @@
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: #1c2022;
+      background: var(--bg-header);
       border: 1px solid var(--border-focus);
       color: #fff;
       display: flex;
@@ -1223,7 +1225,7 @@
     }
 
     .chat-floating-btn:hover {
-      background: #252b2e;
+      background: var(--bg-hover);
       transform: scale(1.06);
       border-color: var(--accent-active);
     }
@@ -1238,7 +1240,7 @@
       font-weight: 700;
       padding: 1px 5px;
       border-radius: 10px;
-      border: 1px solid #1c2022;
+      border: 1px solid var(--bg-header);
       line-height: 1.2;
     }
 
@@ -1248,7 +1250,7 @@
       right: 20px;
       width: 320px;
       height: 390px;
-      background: #151819;
+      background: var(--bg-card);
       border: 1px solid var(--border-focus);
       border-radius: 8px;
       box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
@@ -1270,7 +1272,7 @@
     }
 
     .chat-header {
-      background: #1c2022;
+      background: var(--bg-header);
       border-bottom: 1px solid var(--border-subtle);
       padding: 8px 12px;
       display: flex;
@@ -1303,7 +1305,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      background: #101315;
+      background: var(--bg-recess);
     }
 
     .chat-messages::-webkit-scrollbar {
@@ -1382,7 +1384,7 @@
 
     .chat-input {
       flex: 1;
-      background: #101315;
+      background: var(--bg-recess);
       border: 1px solid var(--border-subtle);
       border-radius: 4px;
       padding: 7px 10px;
@@ -1398,7 +1400,7 @@
     }
 
     .chat-send-btn {
-      background: #252b2e;
+      background: var(--bg-hover);
       border: 1px solid var(--border-focus);
       color: var(--accent-active);
       border-radius: 4px;
@@ -1417,8 +1419,8 @@
     .menu-box { max-width: 380px; padding: 28px 22px 22px; }
     .menu-logo { font-size: 28px; font-weight: 900; letter-spacing: 5px; color: #fff; margin-bottom: 4px; }
     .menu-tagline { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-active); margin-bottom: 22px; }
-    .profile-card { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 18px; background: #101315; border: 1px solid var(--border-focus); border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; transition: border-color .15s; }
-    .profile-card:hover { border-color: #4b5860; }
+    .profile-card { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 18px; background: var(--bg-recess); border: 1px solid var(--border-focus); border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; transition: border-color .15s; }
+    .profile-card:hover { border-color: var(--border-focus); }
     .pc-info { flex: 1; min-width: 0; }
     .pc-name { color: #fff; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pc-sub { color: #94a3b8; font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1434,7 +1436,7 @@
     .mp-sub { font-size: 11px; font-weight: 600; opacity: .75; }
     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .menu-secondary { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; background: var(--bg-card); color: #fff; border: 1px solid var(--border-focus); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; transition: background .15s; }
-    .menu-secondary:hover, .menu-ranking:hover { background: #1c2022; }
+    .menu-secondary:hover, .menu-ranking:hover { background: var(--bg-header); }
     .ms-icon { font-size: 20px; }
     .menu-ranking { width: 100%; padding: 12px; background: transparent; color: #fff; border: 1px solid var(--border-focus); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; }
     .acc-summary { margin-bottom: 16px; }

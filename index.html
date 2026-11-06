@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="alternate icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <meta name="theme-color" content="#0f1216">
+  <meta name="theme-color" content="#262b31">
   <!-- Segurança: só carrega scripts do próprio site e do jsDelivr (com SRI); conexões só ao Supabase do jogo; sem plugins/forms/base.
        'unsafe-inline' em script-src ainda é necessário porque o HTML usa onclick="..." (ver CLAUDE.md). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://cbhjtbjrbtkelpsmqsly.supabase.co wss://cbhjtbjrbtkelpsmqsly.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
@@ -308,7 +308,7 @@
             + Criar Nova Sala (Ser o Host)
           </button>
           <div id="hostRoomInfo"
-            style="display: none; background: #0f1216; padding: 12px; border-radius: 6px; border: 1px dashed var(--border-focus); margin-top: 6px;">
+            style="display: none; background: var(--bg-recess); padding: 12px; border-radius: 6px; border: 1px dashed var(--border-focus); margin-top: 6px;">
             <div style="font-size: 11px; color: var(--text-mid);">Seu Código de Convite (4 dígitos):</div>
             <div>
               <span id="myRoomCode" class="invite-code-display">----</span>
