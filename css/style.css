@@ -1486,3 +1486,47 @@
     .chat-alert-text { color: #fff; font-size: 17px; font-weight: 700; line-height: 1.3; word-break: break-word; }
     @keyframes chat-alert-drop { from { opacity: 0; transform: translate(-50%, -30px); } to { opacity: 1; transform: translate(-50%, 0); } }
     @keyframes chat-alert-pulse { 0%, 100% { box-shadow: 0 10px 40px rgba(56,189,248,0.35), 0 0 0 4px rgba(56,189,248,0.12); } 50% { box-shadow: 0 10px 50px rgba(56,189,248,0.7), 0 0 0 8px rgba(56,189,248,0.25); } }
+
+    /* ── Efeito 3D nas peças (body.fx3d; botão "3D" no cabeçalho e no menu) ── */
+    .fx-btn { display: inline-flex; align-items: center; gap: 6px; }
+    .fx-btn.active { color: var(--accent-active); border-color: var(--accent-active); }
+    .menu-fx { width: 100%; margin-top: 10px; padding: 9px; background: transparent; border: 1px dashed var(--border-focus); border-radius: 10px; color: var(--text-pri); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .menu-fx[aria-pressed="true"] { color: var(--accent-active); border-color: var(--accent-active); }
+
+    body.fx3d .tile.blue   { --tile-edge: #1e3a8a; }
+    body.fx3d .tile.yellow { --tile-edge: #854d0e; }
+    body.fx3d .tile.red    { --tile-edge: #7f1d1d; }
+    body.fx3d .tile.black  { --tile-edge: #05080a; }
+    body.fx3d .tile.white  { --tile-edge: #8a97a8; }
+    body.fx3d .tile {
+      /* relevo: brilho no topo, sombra embaixo, "espessura" (borda inferior) e sombra projetada */
+      box-shadow:
+        inset 0 2px 1px rgba(255, 255, 255, 0.40),
+        inset 0 -3px 2px rgba(0, 0, 0, 0.28),
+        0 3px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
+        0 6px 7px rgba(0, 0, 0, 0.38);
+      transform: translateY(-1px);
+    }
+    body.fx3d .factory-disc .tile:hover,
+    body.fx3d .center-table-disc .tile:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        inset 0 2px 1px rgba(255, 255, 255, 0.45),
+        inset 0 -3px 2px rgba(0, 0, 0, 0.28),
+        0 5px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
+        0 10px 10px rgba(0, 0, 0, 0.35);
+    }
+    body.fx3d .tile:active { transform: translateY(2px); box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.3), 0 1px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)); }
+
+    /* encaixes: a parede e as linhas viram "soquetes" rebaixados; a peça colocada assenta no encaixe */
+    body.fx3d .wall-grid { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45); }
+    body.fx3d .wall-cell:not(.filled) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.10); transform: none; }
+    body.fx3d .wall-cell.filled {
+      transform: none;
+      box-shadow:
+        inset 0 2px 1px rgba(255, 255, 255, 0.38),
+        inset 0 -2px 2px rgba(0, 0, 0, 0.25),
+        0 1px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
+        0 0 0 2px rgba(0, 0, 0, 0.35);
+    }
+    body.fx3d .slot-empty, body.fx3d .floor-slot:not(.occupied) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); border-style: solid; }
