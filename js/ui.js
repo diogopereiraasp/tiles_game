@@ -438,24 +438,28 @@
     });
 
     // ── Efeito 3D nas peças (selecionável; lembra a escolha neste navegador) ──
+    // Chave nova (v2): o 3D começa LIGADO para todos, mesmo para quem desligou antes de a opção existir como padrão
+    const FX3D_KEY = 'azul_fx3d_v2';
     function applyFx3d(on) {
       document.body.classList.toggle('fx3d', on);
       const b = document.getElementById('fx3dBtn');
       if (b) { b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); }
       const m = document.getElementById('fx3dMenuBtn');
       if (m) m.setAttribute('aria-pressed', String(on));
+      const box = document.getElementById('fx3dBox');
+      if (box) box.innerHTML = on ? icon('check') : '';
       const l = document.getElementById('fx3dMenuLabel');
-      if (l) l.textContent = 'Efeito 3D nas peças: ' + (on ? 'ligado' : 'desligado');
+      if (l) l.textContent = 'Efeito 3D nas peças';
     }
     function toggleFx3d() {
       const on = !document.body.classList.contains('fx3d');
       applyFx3d(on);
-      try { localStorage.setItem('azul_fx3d', on ? '1' : '0'); } catch (e) { }
+      try { localStorage.setItem(FX3D_KEY, on ? '1' : '0'); } catch (e) { }
     }
     (function initFx3d() {
-      let on = true; // padrão: ligado
-      try { if (localStorage.getItem('azul_fx3d') === '0') on = false; } catch (e) { }
+      let on = true; // padrão: ligado e marcado
+      try { if (localStorage.getItem(FX3D_KEY) === '0') on = false; } catch (e) { }
       applyFx3d(on);
     })();
 
-    hydrateIcons();
+        hydrateIcons();

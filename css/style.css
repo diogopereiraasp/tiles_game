@@ -1527,13 +1527,16 @@
     body.fx3d .wall-grid { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45); }
     body.fx3d .wall-cell:not(.filled) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.10); transform: none; }
     body.fx3d .wall-cell.filled {
-      transform: none;
+      /* peça encaixada na parede: relevo um pouco maior (altura, brilho e sombra), assentada no encaixe */
+      transform: translateY(-1px);
       box-shadow:
-        inset 0 2px 1px rgba(255, 255, 255, 0.38),
-        inset 0 -2px 2px rgba(0, 0, 0, 0.25),
-        0 1px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
-        0 0 0 2px rgba(0, 0, 0, 0.35);
+        inset 0 3px 1px rgba(255, 255, 255, 0.46),
+        inset 0 -4px 3px rgba(0, 0, 0, 0.30),
+        0 3px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
+        0 6px 7px rgba(0, 0, 0, 0.40),
+        0 0 0 2px rgba(0, 0, 0, 0.38);
     }
+    body.fx3d .wall-cell.filled::after { inset: 11%; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.30)); }
     body.fx3d .slot-empty, body.fx3d .floor-slot:not(.occupied) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); border-style: solid; }
 
     /* desenho leve de azulejo dentro de cada peça colorida (também nos ladrilhos de referência da parede) */
@@ -1550,3 +1553,7 @@
 
     /* ladrilhos de referência da parede (ainda vazios): só a corzinha de fundo, SEM desenho */
     .wall-cell:not(.filled)::after { display: none !important; }
+
+    .fx-box { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1.5px solid var(--border-focus); border-radius: 4px; color: #0f1216; flex-shrink: 0; }
+    .fx-box .ic { width: 12px; height: 12px; stroke-width: 3; }
+    .menu-fx[aria-pressed="true"] .fx-box { background: var(--accent-active); border-color: var(--accent-active); }

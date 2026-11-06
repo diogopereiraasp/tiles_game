@@ -36,7 +36,7 @@
         <span><span data-icon="chat"></span> Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
       </button>
-      <button id="fx3dBtn" class="btn-toggle fx-btn" onclick="toggleFx3d()" title="Efeito 3D nas peças" aria-pressed="true">
+      <button id="fx3dBtn" class="btn-toggle fx-btn active" onclick="toggleFx3d()" title="Efeito 3D nas peças" aria-pressed="true">
         <span data-icon="cube"></span> 3D
       </button>
       <button class="btn-toggle" onclick="exitToMainMenu()" style="color: var(--text-pri);">Sair da Partida</button>
@@ -121,7 +121,7 @@
         </button>
       </div>
       <button id="fx3dMenuBtn" class="menu-fx" onclick="toggleFx3d()" aria-pressed="true">
-        <span data-icon="cube"></span> <span id="fx3dMenuLabel">Efeito 3D nas peças: ligado</span>
+        <span id="fx3dBox" class="fx-box" aria-hidden="true"></span> <span data-icon="cube"></span> <span id="fx3dMenuLabel">Efeito 3D nas peças</span>
       </button>
     </div>
   </div>
