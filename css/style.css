@@ -1,12 +1,12 @@
     :root {
       /* Theme: code-editor-dark */
-      --bg-canvas: #262b31;   /* fundo da tela toda: cinza-azulado (chumbo) */
-      --bg-card: #2e343a;     /* cartões, painéis e modais */
-      --bg-header: #353c43;   /* cabeçalho e superfícies elevadas */
-      --bg-recess: #22272c;   /* campos e áreas rebaixadas */
-      --bg-hover: #424a52;    /* hover / botão ativo */
-      --border-subtle: #4a535c;
-      --border-focus: #5f6c77;
+      --bg-canvas: #39414a;   /* fundo da tela toda: cinza-azulado (chumbo) */
+      --bg-card: #434b55;     /* cartões, painéis e modais */
+      --bg-header: #4b545e;   /* cabeçalho e superfícies elevadas */
+      --bg-recess: #343b43;   /* campos e áreas rebaixadas */
+      --bg-hover: #54606b;    /* hover / botão ativo */
+      --border-subtle: #5a6671;
+      --border-focus: #74828f;
 
       --text-pri: #b9c3c9;
       --text-mid: #8f9ba4;
@@ -24,7 +24,7 @@
       --tile-yellow: #eab308;
       --tile-red: #ef4444;
       --tile-black: #1e252b;
-      --tile-surface: #525a62; /* SÓ nas fábricas (discos e centro): cinza mais claro que destaca a peça preta */
+      --tile-surface: #636c76; /* SÓ nas fábricas (discos e centro): cinza mais claro que destaca a peça preta */
       --tile-white: #e2e8f0;
       --tile-starter: #d99c2b;
 
