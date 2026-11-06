@@ -34,7 +34,7 @@
           const msg = { type: 'PLAYER_ABANDONED', playerIndex: p.id, playerName: p.name, reason: 'timeout' };
           broadcastP2P(msg);
           handlePlayerAbandoned(p.id, p.name, 'timeout');
-        } else if (++clockSyncCounter >= 20) { // ~5s
+        } else if (++clockSyncCounter >= 120) { // ~30s (cada celular já conta o tempo; isto só corrige desvios)
           clockSyncCounter = 0;
           broadcastP2P({ type: 'CLOCK_SYNC', clocks: players.map(x => x.clock), turn });
         }
@@ -803,7 +803,7 @@
         rtHealthBusy = false;
       }
     }
-    setInterval(() => { if (isP2P && rtRoom && document.visibilityState === 'visible') checkRealtimeHealth(); }, 15000);
+    setInterval(() => { if (isP2P && rtRoom && document.visibilityState === 'visible') checkRealtimeHealth(); }, 45000);
 
     // Host recebe ação de um convidado, executa localmente e replica para os outros convidados
     function handleHostReceivedMessage(senderConn, msg) {

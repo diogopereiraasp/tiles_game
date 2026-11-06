@@ -35,5 +35,6 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 - Elo começa em 0 (piso 0). Níveis: Bronze <100, Prata ≥100, Ouro ≥300, Platina ≥600, Diamante ≥1000.
 - Segurança: nomes/textos da rede são dados, nunca HTML: use `escapeHtml`/`cleanName` (config.js) e `sanitizeIncomingState` (online.js). O anfitrião valida jogadas (`validateGuestAction`: vez, legalidade) e só deixa cada jogador abandonar/renomear a si mesmo; convidados só aceitam mensagens de quem é `host` no Presence. Script do Supabase com SRI e CSP em meta (script-src ainda tem 'unsafe-inline' por causa dos `onclick=` no HTML).
 - Sem emojis na UI: use ícones SVG (`ICONS`/`icon('nome')` em config.js; no HTML `<span data-icon="nome"></span>`). Avatar do perfil = chave de ícone (`AVATAR_KEYS`, máx. 8 caracteres).
+- Plano gratuito do Supabase: poucas mensagens Realtime (~2M/mês). Evite mensagens periódicas frequentes (relógio sincroniza a cada 30s, health check a cada 45s). E-mail embutido é muito limitado: configurar SMTP próprio para o link de "Salvar conta".
 - Ao testar com duas abas: o jogo salva a sessão em `beforeunload`; zere `isGameActive` e o storage antes de recarregar.
 - Publicar = commit em `main` + merge/push em `gh-pages`, só quando o usuário pedir.
