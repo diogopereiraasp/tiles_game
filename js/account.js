@@ -150,7 +150,12 @@
     async function ensureSignedIn() {
       if (!sb) return null;
       if (authUser) return authUser;
-      const { data: { session } } = await sb.auth.getSession();
+      let { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        // Valida no servidor: se a conta foi apagada (ex.: limpeza do banco), descarta a sessão antiga
+        const { error: stale } = await sb.auth.getUser();
+        if (stale) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } session = null; }
+      }
       if (session) {
         authUser = session.user;
       } else {
