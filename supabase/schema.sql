@@ -114,8 +114,9 @@ $$;
 grant execute on function public.is_username_available(text) to anon, authenticated;
 
 -- Login por usuário + senha: o Supabase exige um e-mail por trás, então cada conta usa um endereço INTERNO
--- derivado do id da conta (<id>@users.azul.invalid; nada é enviado para ele). Esta função devolve esse
--- endereço a partir do nome de usuário. Para usuário inexistente devolve um endereço falso (não revela quem existe).
+-- (<uuid aleatório>@users.azul.invalid; nada é enviado para ele). Esta função devolve esse endereço a partir do
+-- nome de usuário (só para endereços internos; nunca expõe e-mail real). Para usuário inexistente devolve um
+-- endereço falso, então não revela quem tem conta.
 create or replace function public.login_email_for(p_username text)
 returns text
 language sql
@@ -123,8 +124,9 @@ stable
 security definer set search_path = public
 as $$
   select coalesce(
-    (select p.id::text from public.profiles p where lower(p.display_name) = lower(p_username)),
-    '00000000-0000-0000-0000-000000000000') || '@users.azul.invalid';
+    (select u.email from auth.users u join public.profiles p on p.id = u.id
+      where lower(p.display_name) = lower(p_username) and u.email like '%@users.azul.invalid'),
+    '00000000-0000-0000-0000-000000000000@users.azul.invalid');
 $$;
 grant execute on function public.login_email_for(text) to anon, authenticated;
 
@@ -152,11 +154,21 @@ security definer set search_path = public
 as $$
 declare
   v_name text;
+  v_req text := nullif(trim(new.raw_user_meta_data ->> 'username'), '');
 begin
-  v_name := left(regexp_replace(coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', ''), '[^A-Za-z0-9_]', '', 'g'), 15);
-  if length(v_name) < 3 or public.reserved_username(v_name)
-     or exists (select 1 from public.profiles p where lower(p.display_name) = lower(v_name)) then
-    v_name := public.gen_username();
+  if v_req is not null then
+    -- cadastro com usuário escolhido: se o nome for inválido ou já existir, o cadastro inteiro é recusado
+    if v_req !~ '^[A-Za-z0-9_]{3,15}$' or public.reserved_username(v_req)
+       or exists (select 1 from public.profiles p where lower(p.display_name) = lower(v_req)) then
+      raise exception 'username_unavailable';
+    end if;
+    v_name := v_req;
+  else
+    v_name := left(regexp_replace(coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', ''), '[^A-Za-z0-9_]', '', 'g'), 15);
+    if length(v_name) < 3 or public.reserved_username(v_name)
+       or exists (select 1 from public.profiles p where lower(p.display_name) = lower(v_name)) then
+      v_name := public.gen_username();
+    end if;
   end if;
 
   insert into public.profiles (id, display_name, email_norm)
@@ -215,6 +227,19 @@ alter table public.matches drop constraint if exists matches_mode_check;
 alter table public.matches add constraint matches_mode_check
   check (mode in ('online', 'bot', 'local', 'friends'));
 
+-- Exige conta com login (não anônima). Convidados anônimos não jogam online nem gravam partidas.
+create or replace function public.require_real_user()
+returns void
+language plpgsql
+stable
+as $$
+begin
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'login required' using errcode = '28000';
+  end if;
+end;
+$$;
+
 -- ───────────────────────── Registro de partida SEM Elo (bot / amigos) ─────────────────────────
 -- Partidas valendo Elo ('online') NÃO passam por aqui: só por report_ranked_result.
 drop function if exists public.record_match(text, int, int, int, boolean, text, text, jsonb);
@@ -239,6 +264,7 @@ begin
   if v_uid is null then
     raise exception 'not authenticated';
   end if;
+  perform public.require_real_user();
   if p_mode not in ('bot', 'friends') then
     raise exception 'mode not allowed (ranked results go through report_ranked_result)';
   end if;
@@ -319,6 +345,7 @@ declare
   i int;
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
+  perform public.require_real_user();
 
   perform pg_advisory_xact_lock(hashtext('azul_ranked_queue'));
   delete from public.queue q where q.match_id is null and q.seen_at < now() - interval '12 seconds';
@@ -529,6 +556,7 @@ declare
   v_rep jsonb;
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
+  perform public.require_real_user();
   select * into m from public.ranked_matches r where r.id = p_match_id;
   if not found or (v_uid <> m.host_id and v_uid <> m.guest_id) then raise exception 'not your match'; end if;
   v_is_host := (v_uid = m.host_id);

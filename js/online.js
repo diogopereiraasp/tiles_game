@@ -161,6 +161,7 @@
     }
 
     function chooseOnlineMode() {
+      if (!requireLogin('Entre ou crie sua conta para jogar online com amigos.', chooseOnlineMode)) return;
       document.getElementById('mainMenuModal').style.display = 'none';
       isBotMode = false;
       openMultiplayerModal();
@@ -1169,6 +1170,7 @@
     }
 
     function openMultiplayerModal(initialTab = 'create') {
+      if (!requireLogin('Entre ou crie sua conta para jogar online com amigos.', () => openMultiplayerModal(initialTab))) return;
       loadSavedPlayerNames();
       document.getElementById('mainMenuModal').style.display = 'none';
       document.getElementById('multiplayerModal').style.display = 'flex';

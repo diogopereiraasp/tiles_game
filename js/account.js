@@ -12,7 +12,6 @@
     let authProfile = null;
     let matchRecorded = false;
     let leaderboardTab = 'online';
-    let settledOnce = false;
 
     async function loadProfile() {
       if (!sb || !authUser) { authProfile = null; return; }
@@ -31,33 +30,35 @@
     function renderAuthBar() {
       const $ = id => document.getElementById(id);
       if (!$('pcName')) return;
-      const name = (authProfile && authProfile.display_name) || 'Jogador';
-      const elo = (authProfile && typeof authProfile.elo === 'number') ? authProfile.elo : null;
+      const loggedIn = !!authUser;
+      const name = (authProfile && authProfile.display_name) || '';
+      const elo = (loggedIn && authProfile && typeof authProfile.elo === 'number') ? authProfile.elo : null;
       const tier = elo !== null ? getEloTier(elo) : null;
-      const initial = name.trim().charAt(0).toUpperCase() || '?';
-      const isGuest = !authUser || authUser.is_anonymous;
+      const sub = $('pcSub');
 
-      applyProfileNameToInputs();
-      $('pcName').textContent = sb ? name : 'Offline';
-      $('accName').textContent = name;
+      if (!sb) {
+        $('pcName').textContent = 'Offline';
+        sub.textContent = 'Ranking indisponível'; sub.className = 'pc-sub';
+      } else if (!loggedIn) {
+        $('pcName').textContent = 'Entrar ou criar conta';
+        sub.innerHTML = icon('alert') + ' Necessário para jogar online'; sub.className = 'pc-sub warn';
+      } else {
+        $('pcName').textContent = name || '...';
+        sub.innerHTML = icon('check') + ' Conectado'; sub.className = 'pc-sub';
+      }
       $('pcElo').textContent = elo !== null ? elo : '—';
       $('pcTier').textContent = tier ? tier.name : 'Elo';
       $('pcTier').className = 'pc-tier ' + (tier ? tier.cls : '');
-      $('accElo').textContent = elo !== null ? `${elo} Elo · ${tier.name}` : 'Sem conexão com o ranking';
 
-      const sub = $('pcSub');
-      if (!sb) { sub.textContent = 'Ranking indisponível'; sub.className = 'pc-sub'; }
-      else if (isGuest) { sub.innerHTML = icon('alert') + ' Convidado · toque para salvar'; sub.className = 'pc-sub warn'; }
-      else { sub.innerHTML = icon('check') + ' Progresso salvo'; sub.className = 'pc-sub'; }
-
-      $('accGuestBox').style.display = isGuest ? '' : 'none';
-      $('accSavedBox').style.display = isGuest ? 'none' : '';
-      $('accEmail').textContent = name;
+      $('accName').textContent = name;
+      $('accElo').textContent = elo !== null ? `${elo} Elo · ${tier.name}` : '';
+      $('accOutBox').style.display = loggedIn ? 'none' : '';
+      $('accInBox').style.display = loggedIn ? '' : 'none';
+      applyProfileNameToInputs();
     }
 
     const USERNAME_RE = /^[A-Za-z0-9_]{3,15}$/;
     const RESERVED_USERNAMES = ['admin', 'administrador', 'azul', 'bot', 'suporte', 'moderador', 'sistema', 'jogador', 'voce'];
-    const isDefaultUsername = (n) => /^jogador\d{8}$/i.test(n || '');
 
     // Em partidas online o nome do jogador é sempre o nome de usuário (único): o campo fica travado
     function applyProfileNameToInputs() {
@@ -72,12 +73,12 @@
 
     let usernameCheckTimer = null;
     let usernameCheckSeq = 0;
-    // Verifica enquanto digita se o nome é válido e está livre
-    function onUsernameInput() {
-      const status = document.getElementById('accNameStatus');
-      const name = document.getElementById('accNameInput').value.trim();
+    // Verifica enquanto digita se o nome é válido e está livre (inputId/statusId: campo do perfil ou do cadastro)
+    function checkUsernameField(inputId, statusId, skipAvailability) {
+      const status = document.getElementById(statusId);
+      const name = document.getElementById(inputId).value.trim();
       clearTimeout(usernameCheckTimer);
-      if (!name) { status.textContent = '3 a 15 letras, números ou _ (sem espaços).'; status.style.color = ''; return; }
+      if (!name || skipAvailability) { status.textContent = skipAvailability ? '' : '3 a 15 letras, números ou _ (sem espaços).'; status.style.color = ''; return; }
       if (!USERNAME_RE.test(name)) { status.textContent = 'Use 3 a 15 letras, números ou _ (sem espaços ou acentos).'; status.style.color = '#f87171'; return; }
       if (RESERVED_USERNAMES.includes(name.toLowerCase())) { status.textContent = 'Esse nome é reservado.'; status.style.color = '#f87171'; return; }
       if (authProfile && authProfile.display_name === name) { status.textContent = 'Este é o seu nome atual.'; status.style.color = ''; return; }
@@ -92,6 +93,8 @@
         status.style.color = data ? '#4ade80' : '#f87171';
       }, 400);
     }
+    function onUsernameInput() { checkUsernameField('accNameInput', 'accNameStatus', false); }
+    function onAuthUserInput() { checkUsernameField('authUserInput', 'authUserStatus', authMode === 'login'); }
 
     async function saveProfileEdits() {
       const msg = document.getElementById('accProfileMsg');
@@ -109,47 +112,47 @@
       }
       authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name };
       renderAuthBar();
-      msg.innerHTML = icon('check') + ' Perfil salvo!';
+      msg.innerHTML = icon('check') + ' Nome salvo!';
       return true;
     }
 
+    // Ação a executar depois que a pessoa entrar (ex.: abrir a fila ranqueada)
+    let pendingAfterLogin = null;
+
+    // Jogar online exige conta: se não houver login, abre a tela de entrar/criar conta
+    function requireLogin(hint, after) {
+      if (authUser) return true;
+      pendingAfterLogin = after || null;
+      openAccountModal(hint);
+      return false;
+    }
+
     function openAccountModal(hint) {
-      setAuthMode(authMode);
-      document.getElementById('accPasswordMsg') && (document.getElementById('accPasswordMsg').textContent = '');
-      document.getElementById('accProfileMsg').textContent = hint || '';
-      document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
-      onUsernameInput();
       document.getElementById('accountModal').style.display = 'flex';
+      document.getElementById('accPasswordMsg').textContent = '';
+      document.getElementById('accProfileMsg').textContent = '';
+      if (authUser) {
+        document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
+        onUsernameInput();
+      } else {
+        setAuthMode(authMode);
+        if (hint) document.getElementById('authEmailMsg').textContent = hint;
+      }
       renderAuthBar();
     }
 
     function closeAccountModal() {
       document.getElementById('accountModal').style.display = 'none';
+      pendingAfterLogin = null;
+      if (!isGameActive && !isScoringAnimationActive) document.getElementById('mainMenuModal').style.display = 'flex';
     }
 
-    async function ensureSignedIn() {
-      if (!sb) return null;
-      if (authUser) return authUser;
-      let { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        // Valida no servidor: se a conta foi apagada (ex.: limpeza do banco), descarta a sessão antiga
-        const { error: stale } = await sb.auth.getUser();
-        if (stale) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } session = null; }
-      }
-      if (session) {
-        authUser = session.user;
-      } else {
-        const { data, error } = await sb.auth.signInAnonymously();
-        if (error) { console.warn('Login anônimo falhou:', error.message); return null; }
-        authUser = data.user;
-      }
-      if (!settledOnce) {
-        settledOnce = true;
-        try { await sb.rpc('settle_my_ranked_matches'); } catch (e) { }
-      }
-      await loadProfile();
-      renderAuthBar();
-      return authUser;
+    // Depois de entrar/criar conta: fecha a tela e continua o que a pessoa queria fazer
+    function finishLogin() {
+      document.getElementById('accountModal').style.display = 'none';
+      const next = pendingAfterLogin;
+      pendingAfterLogin = null;
+      if (next) next(); else if (!isGameActive) document.getElementById('mainMenuModal').style.display = 'flex';
     }
 
     function friendlyAuthError(m) {
@@ -158,66 +161,74 @@
       if (/at least|weak|password should/i.test(m)) return 'A senha precisa ter pelo menos 8 caracteres.';
       if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da atual.';
       if (/not confirmed/i.test(m)) return 'Esta conta está com confirmação pendente no servidor.';
-      if (/database error|already|registered|unique|duplicate/i.test(m)) return 'Esta conta já existe. Use "Já tenho conta" para entrar.';
+      if (/database error|username_unavailable|already|registered|unique|duplicate/i.test(m)) return 'Esse nome de usuário já está em uso ou não é permitido. Escolha outro.';
       if (/rate limit|too many|security purposes/i.test(m)) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
       return 'Erro: ' + m;
     }
 
-    // ── Conta com USUÁRIO + SENHA (sem e-mail) ──
-    // O Supabase exige um e-mail por trás; usamos um endereço interno derivado do id (nada é enviado a ele).
-    const internalEmail = (id) => `${id}@users.azul.invalid`;
+    // ── Conta com USUÁRIO + SENHA (sem e-mail, sem convidado) ──
+    // O Supabase exige um e-mail por trás; usamos um endereço interno aleatório (nada é enviado a ele).
+    const newInternalEmail = () => {
+      const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+      return `${id}@users.azul.invalid`;
+    };
 
     let authMode = 'create';
     function setAuthMode(mode) {
       authMode = mode;
       document.getElementById('authModeCreate').classList.toggle('active', mode === 'create');
       document.getElementById('authModeLogin').classList.toggle('active', mode === 'login');
-      document.getElementById('authUserWrap').style.display = mode === 'login' ? '' : 'none';
       document.querySelector('#authSubmitBtn .mp-title').textContent = mode === 'create' ? 'Criar conta' : 'Entrar';
       document.getElementById('authPasswordInput').autocomplete = mode === 'create' ? 'new-password' : 'current-password';
       document.getElementById('authModeHint').textContent = mode === 'create'
-        ? 'A conta usa o nome de usuário escolhido acima, e o progresso de convidado (Elo e histórico) passa para ela. Não há recuperação de senha: anote a sua.'
-        : 'Atenção: ao entrar numa conta existente, o progresso desta conta de convidado não é transferido.';
+        ? 'Não há recuperação de senha: anote a sua.'
+        : '';
       document.getElementById('authEmailMsg').textContent = '';
+      onAuthUserInput();
     }
 
     async function submitAuthForm() {
       if (!sb) return;
       const msg = document.getElementById('authEmailMsg');
+      const username = (document.getElementById('authUserInput').value || '').trim();
       const pw = document.getElementById('authPasswordInput').value || '';
+      if (!USERNAME_RE.test(username)) {
+        msg.textContent = authMode === 'login' ? 'Usuário ou senha incorretos.' : 'O usuário precisa ter de 3 a 15 letras, números ou _ (sem espaços ou acentos).';
+        return;
+      }
       if (pw.length < 8) { msg.textContent = 'A senha precisa ter pelo menos 8 caracteres.'; return; }
       if (pw.length > 72) { msg.textContent = 'A senha pode ter no máximo 72 caracteres.'; return; }
       msg.textContent = 'Aguarde...';
 
       if (authMode === 'login') {
-        const username = (document.getElementById('authUserInput').value || '').trim();
-        if (!USERNAME_RE.test(username)) { msg.textContent = 'Usuário ou senha incorretos.'; return; }
         const { data: email, error: lookupErr } = await sb.rpc('login_email_for', { p_username: username });
         if (lookupErr || !email) { msg.textContent = friendlyAuthError(lookupErr && lookupErr.message); return; }
-        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
         if (error) { msg.textContent = friendlyAuthError(error.message); return; }
-        document.getElementById('authPasswordInput').value = '';
-        msg.innerHTML = icon('check') + ' Você entrou na sua conta.';
+        await onLoggedIn(data.user);
         return;
       }
 
-      // Criar conta: usa o nome de usuário do campo acima (salva primeiro) e converte o convidado atual
-      const typed = (document.getElementById('accNameInput').value || '').trim();
-      if (isDefaultUsername(typed) || !typed) { msg.textContent = 'Escolha seu nome de usuário no campo acima antes de criar a conta.'; return; }
-      if (!authUser || !authUser.is_anonymous) { msg.textContent = 'Você já está numa conta.'; return; }
-      if (!(await saveProfileEdits())) { msg.textContent = 'Corrija o nome de usuário acima (veja a mensagem do perfil).'; return; }
-      const { data, error } = await sb.auth.updateUser({ email: internalEmail(authUser.id), password: pw });
+      // Criar conta
+      if (RESERVED_USERNAMES.includes(username.toLowerCase())) { msg.textContent = 'Esse nome é reservado. Escolha outro.'; return; }
+      const { data: free } = await sb.rpc('is_username_available', { p_name: username });
+      if (free === false) { msg.textContent = 'Esse nome de usuário já está em uso. Escolha outro.'; return; }
+      const { data, error } = await sb.auth.signUp({ email: newInternalEmail(), password: pw, options: { data: { username } } });
       if (error) { msg.textContent = friendlyAuthError(error.message); return; }
-      const u = data && data.user;
-      if (u && u.email && !u.is_anonymous) {
-        authUser = u;
-        document.getElementById('authPasswordInput').value = '';
-        await loadProfile();
-        renderAuthBar();
-        msg.textContent = '';
-      } else {
-        msg.textContent = 'O servidor ainda exige confirmação por e-mail. No painel do Supabase, desligue "Confirm email".';
-      }
+      if (!data.session) { msg.textContent = 'O servidor ainda exige confirmação por e-mail. No painel do Supabase, desligue "Confirm email".'; return; }
+      await onLoggedIn(data.user);
+    }
+
+    async function onLoggedIn(user) {
+      authUser = user;
+      document.getElementById('authPasswordInput').value = '';
+      document.getElementById('authUserInput').value = '';
+      document.getElementById('authEmailMsg').textContent = '';
+      await loadProfile();
+      renderAuthBar();
+      try { await sb.rpc('settle_my_ranked_matches'); } catch (e) { }
+      finishLogin();
     }
 
     async function changePassword() {
@@ -237,16 +248,34 @@
       authUser = null;
       authProfile = null;
       renderAuthBar();
-      ensureSignedIn();
+      setAuthMode('login');
     }
+
+    // Sessão: só contas com login. Sessões anônimas antigas (convidado) e contas apagadas são descartadas.
+    async function initAuth() {
+      if (!sb) { renderAuthBar(); return; }
+      let { data: { session } } = await sb.auth.getSession();
+      if (session && session.user.is_anonymous) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } session = null; }
+      if (session) {
+        const { error: stale } = await sb.auth.getUser();
+        if (stale) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { } session = null; }
+      }
+      authUser = session ? session.user : null;
+      if (authUser) {
+        try { await sb.rpc('settle_my_ranked_matches'); } catch (e) { }
+        await loadProfile();
+      }
+      renderAuthBar();
+    }
+    const authReady = initAuth();
+    async function ensureSignedIn() { await authReady; return authUser; } // devolve o usuário logado ou null
 
     if (sb) {
       sb.auth.onAuthStateChange((_event, session) => {
-        authUser = session ? session.user : null;
+        authUser = (session && !session.user.is_anonymous) ? session.user : null;
         // fora do callback para não travar o cliente
         setTimeout(async () => { await loadProfile(); renderAuthBar(); }, 0);
       });
-      ensureSignedIn();
     } else {
       document.addEventListener('DOMContentLoaded', renderAuthBar);
     }

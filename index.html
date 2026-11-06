@@ -132,38 +132,20 @@
     </div>
   </div>
 
-  <!-- Modal Minha Conta -->
+  <!-- Modal Entrar / Minha Conta -->
   <div id="accountModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 360px; text-align: left; max-height: 92vh; overflow-y: auto;">
-      <h2 style="text-align: center;">Minha Conta</h2>
-      <div class="acc-summary">
-        <div style="min-width: 0;">
-          <div class="pc-name" id="accName">—</div>
-          <div class="pc-sub" id="accElo">—</div>
-        </div>
-      </div>
+      <h2 style="text-align: center;">Conta</h2>
 
-      <div class="acc-section">
-        <label class="acc-label" for="accNameInput">Nome de usuário (único, aparece no jogo e no ranking)</label>
-        <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="ex.: Diogo_21" autocapitalize="off" autocomplete="off" spellcheck="false" oninput="onUsernameInput()" style="width: 100%; margin: 0 0 4px;">
-        <div id="accNameStatus" class="acc-hint" style="margin: 0 0 12px; min-height: 1.2em;">3 a 15 letras, números ou _ (sem espaços).</div>
-        <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700; margin-top: 10px;" onclick="saveProfileEdits()">Salvar perfil</button>
-        <div id="accProfileMsg" class="acc-msg"></div>
-      </div>
-
-      <div id="accGuestBox">
-        <div class="acc-warn">
-          Você está jogando como <strong>convidado</strong>. Seu Elo fica salvo só neste navegador.
-          Crie uma conta com usuário e senha para não perder o progresso e jogar em qualquer aparelho.
-        </div>
-        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+      <!-- Sem login -->
+      <div id="accOutBox">
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
           <button class="btn-toggle active" id="authModeCreate" style="flex: 1; padding: 8px; font-weight: 600;" onclick="setAuthMode('create')">Criar conta</button>
           <button class="btn-toggle" id="authModeLogin" style="flex: 1; padding: 8px; font-weight: 600;" onclick="setAuthMode('login')">Já tenho conta</button>
         </div>
-        <div id="authUserWrap" style="display: none;">
-          <label class="acc-label" for="authUserInput">Nome de usuário</label>
-          <input type="text" id="authUserInput" class="modal-name-input" placeholder="seu usuário" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="15" style="width: 100%; margin: 0 0 8px;">
-        </div>
+        <label class="acc-label" for="authUserInput">Nome de usuário</label>
+        <input type="text" id="authUserInput" class="modal-name-input" placeholder="ex.: Diogo_21" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="15" oninput="onAuthUserInput()" style="width: 100%; margin: 0 0 4px;">
+        <div id="authUserStatus" class="acc-hint" style="margin: 0 0 10px; min-height: 1.2em;"></div>
         <label class="acc-label" for="authPasswordInput">Senha (mínimo 8 caracteres)</label>
         <input type="password" id="authPasswordInput" class="modal-name-input" placeholder="********" autocomplete="new-password" style="width: 100%; margin: 0 0 10px;">
         <button class="menu-primary" id="authSubmitBtn" style="padding: 11px;" onclick="submitAuthForm()">
@@ -173,8 +155,21 @@
         <div id="authModeHint" class="acc-hint"></div>
       </div>
 
-      <div id="accSavedBox" style="display: none;">
-        <div class="acc-ok"><span data-icon="check"></span> Progresso salvo na conta <strong id="accEmail"></strong></div>
+      <!-- Com login -->
+      <div id="accInBox" style="display: none;">
+        <div class="acc-summary">
+          <div class="pc-name" id="accName">—</div>
+          <div class="pc-sub" id="accElo">—</div>
+        </div>
+
+        <div class="acc-section">
+          <label class="acc-label" for="accNameInput">Nome de usuário (único, aparece no jogo e no ranking)</label>
+          <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="ex.: Diogo_21" autocapitalize="off" autocomplete="off" spellcheck="false" oninput="onUsernameInput()" style="width: 100%; margin: 0 0 4px;">
+          <div id="accNameStatus" class="acc-hint" style="margin: 0 0 10px; min-height: 1.2em;">3 a 15 letras, números ou _ (sem espaços).</div>
+          <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700;" onclick="saveProfileEdits()">Salvar nome</button>
+          <div id="accProfileMsg" class="acc-msg"></div>
+        </div>
+
         <label class="acc-label" for="newPasswordInput">Trocar senha (mínimo 8 caracteres)</label>
         <div style="display: flex; gap: 6px; margin-bottom: 4px;">
           <input type="password" id="newPasswordInput" class="modal-name-input" placeholder="nova senha" autocomplete="new-password" style="flex: 1; margin: 0;">

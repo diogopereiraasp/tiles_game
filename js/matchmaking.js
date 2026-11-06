@@ -14,17 +14,7 @@
 
     async function startRankedSearch() {
       if (!sb) { alert('Não foi possível conectar ao servidor. Verifique sua internet.'); return; }
-      const user = await ensureSignedIn();
-      if (!user) { alert('Não foi possível entrar na sua conta. Tente novamente em instantes.'); return; }
-
-      // Primeira vez com o nome padrão: convida a escolher o nome de usuário antes de entrar no ranking
-      let prompted = false;
-      try { prompted = !!localStorage.getItem('azul_name_prompted'); } catch (e) { }
-      if (authProfile && isDefaultUsername(authProfile.display_name) && !prompted) {
-        try { localStorage.setItem('azul_name_prompted', '1'); } catch (e) { }
-        openAccountModal('Escolha seu nome de usuário (único) para aparecer no ranking. Depois toque em Partida Ranqueada de novo.');
-        return;
-      }
+      if (!requireLogin('Entre ou crie sua conta para jogar partidas ranqueadas.', startRankedSearch)) return;
 
       document.getElementById('mainMenuModal').style.display = 'none';
       document.getElementById('searchModal').style.display = 'flex';
