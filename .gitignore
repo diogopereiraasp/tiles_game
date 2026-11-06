@@ -1,0 +1,17 @@
+# Segredos e variáveis de ambiente: nunca commitar
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets*
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Dependências e artefatos
+node_modules/
+*.log
