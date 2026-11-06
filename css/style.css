@@ -1415,7 +1415,6 @@
     .menu-tagline { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-active); margin-bottom: 22px; }
     .profile-card { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 18px; background: #101315; border: 1px solid var(--border-focus); border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; transition: border-color .15s; }
     .profile-card:hover { border-color: #4b5860; }
-    .pc-avatar { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #0f1216; background: var(--accent-active); }
     .pc-info { flex: 1; min-width: 0; }
     .pc-name { color: #fff; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pc-sub { color: #94a3b8; font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1434,7 +1433,7 @@
     .menu-secondary:hover, .menu-ranking:hover { background: #1c2022; }
     .ms-icon { font-size: 20px; }
     .menu-ranking { width: 100%; padding: 12px; background: transparent; color: #fff; border: 1px solid var(--border-focus); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; }
-    .acc-summary { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .acc-summary { margin-bottom: 16px; }
     .acc-warn { font-size: 12px; line-height: 1.5; color: #cbd5e1; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
     .acc-ok { font-size: 12px; color: #4ade80; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; word-break: break-all; }
     .acc-label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
@@ -1456,14 +1455,7 @@
     @keyframes search-spin { to { transform: rotate(360deg); } }
     .search-timer { font-size: 26px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
 
-    .pc-avatar.has-icon { background: #1c2022; border: 1px solid var(--border-focus); color: var(--accent-active); }
-    .pc-avatar .ic { width: 55%; height: 55%; }
     .acc-section { border-bottom: 1px solid rgba(148,163,184,0.15); padding-bottom: 14px; margin-bottom: 14px; }
-    .avatar-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
-    .avatar-opt { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; color: #cbd5e1; border-radius: 8px; border: 1px solid transparent; background: #101315; cursor: pointer; padding: 0; }
-    .avatar-opt .ic { width: 20px; height: 20px; }
-    .avatar-opt:hover { border-color: var(--border-focus); }
-    .avatar-opt.sel { border-color: var(--accent-active); background: rgba(56,189,248,0.12); }
 
     .ic { width: 1.1em; height: 1.1em; vertical-align: -0.18em; flex-shrink: 0; }
     .ms-icon { display: flex; }

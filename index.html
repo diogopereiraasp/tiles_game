@@ -84,7 +84,6 @@
       <div class="menu-tagline">Jogo de Tabuleiro</div>
 
       <button class="profile-card" onclick="openAccountModal()" title="Minha conta">
-        <div class="pc-avatar" id="pcAvatar">?</div>
         <div class="pc-info">
           <div class="pc-name" id="pcName">Carregando...</div>
           <div class="pc-sub" id="pcSub">&nbsp;</div>
@@ -138,7 +137,6 @@
     <div class="modal-box" style="max-width: 360px; text-align: left; max-height: 92vh; overflow-y: auto;">
       <h2 style="text-align: center;">Minha Conta</h2>
       <div class="acc-summary">
-        <div class="pc-avatar" id="accAvatar">?</div>
         <div style="min-width: 0;">
           <div class="pc-name" id="accName">—</div>
           <div class="pc-sub" id="accElo">—</div>
@@ -149,8 +147,6 @@
         <label class="acc-label" for="accNameInput">Nome de usuário (único, aparece no jogo e no ranking)</label>
         <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="ex.: Diogo_21" autocapitalize="off" autocomplete="off" spellcheck="false" oninput="onUsernameInput()" style="width: 100%; margin: 0 0 4px;">
         <div id="accNameStatus" class="acc-hint" style="margin: 0 0 12px; min-height: 1.2em;">3 a 15 letras, números ou _ (sem espaços).</div>
-        <div class="acc-label">Avatar (toque de novo para remover)</div>
-        <div id="avatarGrid" class="avatar-grid"></div>
         <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700; margin-top: 10px;" onclick="saveProfileEdits()">Salvar perfil</button>
         <div id="accProfileMsg" class="acc-msg"></div>
       </div>

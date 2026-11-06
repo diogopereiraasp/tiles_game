@@ -2,7 +2,7 @@
     // Apenas a URL e a chave PUBLICÁVEL podem ficar aqui (o código é público no GitHub Pages).
     // A segurança dos dados é garantida pelas políticas RLS em supabase/schema.sql.
     const SUPABASE_URL = 'https://cbhjtbjrbtkelpsmqsly.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_dyLQNUxYMHBW_xy-DTzOhw_CQWd-hV3';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0g8-G_O9S-8mb586khzXQA_R_gX5dox';
     const sb = (window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
           realtime: { params: { eventsPerSecond: 30 } }
@@ -16,7 +16,7 @@
 
     async function loadProfile() {
       if (!sb || !authUser) { authProfile = null; return; }
-      const { data } = await sb.from('profiles').select('id, display_name, avatar, elo').eq('id', authUser.id).maybeSingle();
+      const { data } = await sb.from('profiles').select('id, display_name, elo').eq('id', authUser.id).maybeSingle();
       authProfile = data || null;
     }
 
@@ -37,11 +37,6 @@
       const initial = name.trim().charAt(0).toUpperCase() || '?';
       const isGuest = !authUser || authUser.is_anonymous;
 
-      const avatar = (authProfile && AVATAR_KEYS.includes(authProfile.avatar)) ? authProfile.avatar : '';
-      ['pcAvatar', 'accAvatar'].forEach(id => {
-        if (avatar) $(id).innerHTML = icon(avatar); else $(id).textContent = initial;
-        $(id).classList.toggle('has-icon', !!avatar);
-      });
       applyProfileNameToInputs();
       $('pcName').textContent = sb ? name : 'Offline';
       $('accName').textContent = name;
@@ -58,19 +53,6 @@
       $('accGuestBox').style.display = isGuest ? '' : 'none';
       $('accSavedBox').style.display = isGuest ? 'none' : '';
       $('accEmail').textContent = name;
-    }
-
-    let selectedAvatar = '';
-
-    function renderAvatarGrid() {
-      const grid = document.getElementById('avatarGrid');
-      if (!grid) return;
-      grid.innerHTML = AVATAR_KEYS.map(a => `<button type="button" class="avatar-opt ${a === selectedAvatar ? 'sel' : ''}" onclick="pickAvatar('${a}')" aria-label="${a}">${icon(a)}</button>`).join('');
-    }
-
-    function pickAvatar(a) {
-      selectedAvatar = (selectedAvatar === a) ? '' : a; // tocar de novo remove o avatar
-      renderAvatarGrid();
     }
 
     const USERNAME_RE = /^[A-Za-z0-9_]{3,15}$/;
@@ -118,14 +100,14 @@
       if (!USERNAME_RE.test(name)) { msg.textContent = 'O usuário precisa ter de 3 a 15 letras, números ou _ (sem espaços ou acentos).'; return false; }
       if (RESERVED_USERNAMES.includes(name.toLowerCase())) { msg.textContent = 'Esse nome é reservado. Escolha outro.'; return false; }
       msg.textContent = 'Salvando...';
-      const { error } = await sb.from('profiles').update({ display_name: name, avatar: selectedAvatar || null }).eq('id', authUser.id);
+      const { error } = await sb.from('profiles').update({ display_name: name }).eq('id', authUser.id);
       if (error) {
         msg.textContent = error.code === '23505' ? 'Esse nome de usuário já está em uso. Escolha outro.'
           : error.code === '23514' ? 'Nome de usuário inválido ou reservado.'
           : 'Não foi possível salvar: ' + error.message;
         return false;
       }
-      authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name, avatar: selectedAvatar || null };
+      authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name };
       renderAuthBar();
       msg.innerHTML = icon('check') + ' Perfil salvo!';
       return true;
@@ -137,8 +119,6 @@
       document.getElementById('accProfileMsg').textContent = hint || '';
       document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
       onUsernameInput();
-      selectedAvatar = (authProfile && AVATAR_KEYS.includes(authProfile.avatar)) ? authProfile.avatar : '';
-      renderAvatarGrid();
       document.getElementById('accountModal').style.display = 'flex';
       renderAuthBar();
     }
@@ -459,7 +439,7 @@
         <div class="lb-row ${authUser && r.user_id === authUser.id ? 'me' : ''}">
           <span class="lb-pos">${i < 3 ? `<span class="medal m${i + 1}">${i + 1}</span>` : `${i + 1}º`}</span>
           <div style="min-width:0;">
-            <div class="lb-name">${AVATAR_KEYS.includes(r.avatar) ? icon(r.avatar) + ' ' : ''}${escapeHtml(r.display_name)}</div>
+            <div class="lb-name">${escapeHtml(r.display_name)}</div>
             <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
           </div>
           <div class="lb-stat">${r.elo}<div class="lb-sub ${tier.cls}" style="font-weight:800;">${tier.name}</div></div>

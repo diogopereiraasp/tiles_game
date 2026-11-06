@@ -17,12 +17,12 @@
       const user = await ensureSignedIn();
       if (!user) { alert('Não foi possível entrar na sua conta. Tente novamente em instantes.'); return; }
 
-      // Primeira vez com o nome padrão: convida a escolher nome/avatar antes de entrar no ranking
+      // Primeira vez com o nome padrão: convida a escolher o nome de usuário antes de entrar no ranking
       let prompted = false;
       try { prompted = !!localStorage.getItem('azul_name_prompted'); } catch (e) { }
       if (authProfile && isDefaultUsername(authProfile.display_name) && !prompted) {
         try { localStorage.setItem('azul_name_prompted', '1'); } catch (e) { }
-        openAccountModal('Escolha seu nome de usuário (único) e um avatar para aparecer no ranking. Depois toque em Partida Ranqueada de novo.');
+        openAccountModal('Escolha seu nome de usuário (único) para aparecer no ranking. Depois toque em Partida Ranqueada de novo.');
         return;
       }
 

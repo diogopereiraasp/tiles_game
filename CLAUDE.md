@@ -23,7 +23,7 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 | `supabase/schema.sql` | Tabelas, RLS e funções (`record_match`, `get_leaderboard`). Rodar no SQL Editor; é idempotente |
 
 ## Regras importantes
-- **Nunca** colocar no código a `secret key` (`sb_secret_…`) nem a senha do banco do Supabase. Só URL e chave publicável (`sb_publishable_…`).
+- **Nunca** colocar no código a `secret key` (`sb_secret_…`) nem a senha do banco do Supabase. Só URL e chave publicável (`sb_publishable_…`). Se a chave publicável for apagada/recriada no painel (Project Settings > API Keys), atualize `SUPABASE_PUBLISHABLE_KEY` em js/account.js: sem isso o jogo inteiro retorna 401.
 - Só **Partida Ranqueada** (fila no servidor) vale Elo. Sala com código = "amigos" (histórico, sem Elo); bot = treino.
 - Elo é calculado no servidor. O cliente não escreve em `profiles.elo` nem insere em `matches`. Resultado ranqueado: os DOIS jogadores chamam `report_ranked_result`; só vale se os relatos baterem (senão `disputed`). Se um só relatou, vale após 60s e com >= 10 jogadas; máx. 5 partidas por par a cada 24h.
 - Migração de anfitrião: todos têm o estado completo; se o anfitrião some 10s, o convidado de menor índice presente assume (`hostEpoch` +1). O antigo, ao voltar, vê o `epoch` maior no Presence e vira convidado.
@@ -31,11 +31,11 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 - Online: o **host** é a autoridade (estado, relógio, derrota por tempo). Mensagens do Realtime não têm ordem garantida — `RtConn.send` numera e o receptor reordena.
 - Relógio: 5 min iniciais, +30 s por jogada confirmada, teto 5 min; tolerância de desconexão 5 min.
 - `profiles.display_name` é o **nome de usuário**: único sem diferenciar maiúsculas, 3 a 15 letras/números/_, nomes reservados bloqueados (constraint + índice único no banco, `is_username_available` para a tela). Contas novas recebem `jogador########`. Em partidas online o nome do jogador é sempre o usuário (campo travado). Contas não têm e-mail real (a regra de 1 e-mail = 1 conta, `email_norm`, fica inofensiva).
-- Nome e avatar vêm do perfil (`profiles.display_name`/`avatar`, editados em Minha Conta); o jogo não sobrescreve o nome do perfil.
+- O jogador só tem **nome de usuário** (sem avatar nem foto): vem do perfil (`profiles.display_name`, editado em Minha Conta); o jogo não sobrescreve o nome do perfil.
 - Desempate (regra oficial): pontos iguais => mais linhas horizontais completas (`completedRows`); persistindo, vitória dividida (empate no Elo). Os relatos ranqueados incluem `my_rows`/`opp_rows` e o servidor confere.
 - Elo começa em 0 (piso 0). Níveis: Bronze <100, Prata ≥100, Ouro ≥300, Platina ≥600, Diamante ≥1000.
 - Segurança: nomes/textos da rede são dados, nunca HTML: use `escapeHtml`/`cleanName` (config.js) e `sanitizeIncomingState` (online.js). O anfitrião valida jogadas (`validateGuestAction`: vez, legalidade) e só deixa cada jogador abandonar/renomear a si mesmo; convidados só aceitam mensagens de quem é `host` no Presence. Script do Supabase com SRI e CSP em meta (script-src ainda tem 'unsafe-inline' por causa dos `onclick=` no HTML).
-- Sem emojis na UI: use ícones SVG (`ICONS`/`icon('nome')` em config.js; no HTML `<span data-icon="nome"></span>`). Avatar do perfil = chave de ícone (`AVATAR_KEYS`, máx. 8 caracteres).
+- Sem emojis na UI: use ícones SVG (`ICONS`/`icon('nome')` em config.js; no HTML `<span data-icon="nome"></span>`).
 - Plano gratuito do Supabase: poucas mensagens Realtime (~2M/mês). Evite mensagens periódicas frequentes (relógio sincroniza a cada 30s, health check a cada 45s). E-mail embutido é muito limitado: configurar SMTP próprio para o link de "Salvar conta".
 - Login: **usuário + senha** (sem e-mail para o jogador). O Supabase exige e-mail, então cada conta usa um endereço interno `<id>@users.azul.invalid` (RPC `login_email_for(usuario)` devolve esse endereço). Convidado vira conta com `updateUser({email: interno, password})`; exige **"Confirm email" desligado** no Supabase (Authentication > Sign In / Providers > Email). Sem e-mail não há recuperação de senha. Se ativar CAPTCHA no Supabase, o cliente precisa enviar `captchaToken` (hoje não envia).
 - Ícone do site: `favicon.svg` (azulejo azul com "A"), `favicon-32.png`, `favicon.ico` e `apple-touch-icon.png`, todos referenciados no `<head>` do index.html.

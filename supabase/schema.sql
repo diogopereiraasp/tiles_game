@@ -12,7 +12,8 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists elo int not null default 0;
 alter table public.profiles alter column elo set default 0;
-alter table public.profiles add column if not exists avatar text;
+-- Avatar foi removido do jogo: só existe o nome de usuário.
+alter table public.profiles drop column if exists avatar;
 
 -- ───────── Nome de usuário: único (sem diferenciar maiúsculas), 3 a 15 letras/números/_ ─────────
 alter table public.profiles add column if not exists email_norm text;
@@ -62,15 +63,6 @@ alter table public.profiles drop constraint if exists profiles_username_fmt;
 alter table public.profiles add constraint profiles_username_fmt
   check (display_name ~ '^[A-Za-z0-9_]{3,15}$' and not public.reserved_username(display_name));
 create unique index if not exists profiles_username_key on public.profiles (lower(display_name));
-
--- Avatar: só uma das chaves de ícone do jogo (sem emoji). Remove avatares antigos fora do padrão.
-update public.profiles set avatar = null
-where avatar is not null
-  and avatar not in ('star','zap','flame','crown','rocket','dice','target','moon','leaf','heart','diamond','shield','sun','anchor','music','mountain');
-alter table public.profiles drop constraint if exists profiles_avatar_len;
-alter table public.profiles drop constraint if exists profiles_avatar_key;
-alter table public.profiles add constraint profiles_avatar_key check (
-  avatar is null or avatar in ('star','zap','flame','crown','rocket','dice','target','moon','leaf','heart','diamond','shield','sun','anchor','music','mountain'));
 
 -- ───────── 1 e-mail = 1 conta ─────────
 -- O Supabase já impede o mesmo e-mail em duas contas. Aqui impedimos também apelidos do mesmo e-mail:
@@ -138,9 +130,9 @@ grant execute on function public.login_email_for(text) to anon, authenticated;
 
 alter table public.profiles enable row level security;
 
--- O cliente só pode alterar o próprio nome e avatar. Elo é alterado apenas pela função record_match.
+-- O cliente só pode alterar o próprio nome de usuário. Elo é alterado apenas pela função record_match.
 revoke insert, update on public.profiles from anon, authenticated;
-grant update (display_name, avatar) on public.profiles to authenticated;
+grant update (display_name) on public.profiles to authenticated;
 
 drop policy if exists "profiles_select_all" on public.profiles;
 create policy "profiles_select_all" on public.profiles
@@ -624,7 +616,6 @@ create or replace function public.get_leaderboard(p_mode text default 'online', 
 returns table (
   user_id uuid,
   display_name text,
-  avatar text,
   elo int,
   games bigint,
   wins bigint,
@@ -638,7 +629,6 @@ as $$
   select
     m.user_id,
     p.display_name,
-    p.avatar,
     p.elo,
     count(*) as games,
     count(*) filter (where m.won) as wins,
@@ -648,7 +638,7 @@ as $$
   join public.profiles p on p.id = m.user_id
   where m.mode = p_mode
     and (p_mode <> 'online' or m.elo_after is not null)
-  group by m.user_id, p.display_name, p.avatar, p.elo
+  group by m.user_id, p.display_name, p.elo
   order by
     case when p_mode = 'online' then p.elo end desc nulls last,
     count(*) filter (where m.won) desc,
