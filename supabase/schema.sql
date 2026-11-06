@@ -6,11 +6,17 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default 'Jogador',
-  elo int not null default 1000,
+  elo int not null default 0,
   created_at timestamptz not null default now()
 );
 
-alter table public.profiles add column if not exists elo int not null default 1000;
+alter table public.profiles add column if not exists elo int not null default 0;
+alter table public.profiles alter column elo set default 0;
+
+-- Migração: Elo agora começa em 0. Quem ainda não jogou nenhuma partida valendo Elo volta para 0.
+update public.profiles p set elo = 0
+where p.elo = 1000
+  and not exists (select 1 from public.matches m where m.user_id = p.id and m.elo_after is not null);
 
 alter table public.profiles enable row level security;
 
@@ -148,7 +154,7 @@ begin
   end if;
 
   if v_rated > 0 then
-    v_new := greatest(100, round(v_elo + v_k * v_delta / v_rated)::int);
+    v_new := greatest(0, round(v_elo + v_k * v_delta / v_rated)::int);
     update public.profiles set elo = v_new where id = v_uid;
   else
     v_new := v_elo;

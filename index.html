@@ -1605,7 +1605,7 @@
         <button class="btn-toggle" id="lbTabHistory" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('history')">Minhas Partidas</button>
       </div>
       <div id="leaderboardContent" class="lb-content">Carregando...</div>
-      <div class="acc-hint" style="text-align:center;">Todos começam com 1000 Elo. Vencer online sobe, perder desce. Treino vs Bot não altera o Elo.</div>
+      <div class="acc-hint" style="text-align:center;">Todos começam com 0 Elo. Vencer online sobe, perder desce. Treino vs Bot não altera o Elo.</div>
       <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 14px; font-weight: 600;" onclick="closeLeaderboardModal()">Fechar</button>
     </div>
   </div>
@@ -2038,10 +2038,10 @@
     }
 
     function getEloTier(elo) {
-      if (elo >= 1500) return { name: 'Diamante', cls: 'tier-diamante' };
-      if (elo >= 1300) return { name: 'Platina', cls: 'tier-platina' };
-      if (elo >= 1100) return { name: 'Ouro', cls: 'tier-ouro' };
-      if (elo >= 900) return { name: 'Prata', cls: 'tier-prata' };
+      if (elo >= 1000) return { name: 'Diamante', cls: 'tier-diamante' };
+      if (elo >= 600) return { name: 'Platina', cls: 'tier-platina' };
+      if (elo >= 300) return { name: 'Ouro', cls: 'tier-ouro' };
+      if (elo >= 100) return { name: 'Prata', cls: 'tier-prata' };
       return { name: 'Bronze', cls: 'tier-bronze' };
     }
 
