@@ -26,6 +26,32 @@
       `).join('');
     }
 
+    // Ping leve quando passa a ser a sua vez (só contra bot e online)
+    let audioCtx = null, wasMyTurn = false;
+    function playTurnPing() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = audioCtx || new AC();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const t = audioCtx.currentTime;
+        [880, 1318].forEach((f, i) => {
+          const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+          o.type = 'sine'; o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t + i * 0.09);
+          g.gain.exponentialRampToValueAtTime(0.08, t + i * 0.09 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.09 + 0.35);
+          o.connect(g); g.connect(audioCtx.destination);
+          o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.4);
+        });
+      } catch (e) { /* som é opcional */ }
+    }
+    function checkTurnPing() {
+      const mine = (isBotMode || isP2P) && !isScoringAnimationActive && canPlayerAct();
+      if (mine && !wasMyTurn) playTurnPing();
+      wasMyTurn = mine;
+    }
+
     function renderAll() {
       const boardsGrid = document.getElementById('boardsGrid');
       boardsGrid.className = `grid-${playerCount}p`;
@@ -33,6 +59,7 @@
       renderDraftingArea();
       renderBoards();
       renderTileCounts();
+      checkTurnPing();
     }
 
     function renderDraftingArea() {
