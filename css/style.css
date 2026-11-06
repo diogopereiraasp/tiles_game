@@ -1495,8 +1495,6 @@
     /* ── Efeito 3D nas peças (body.fx3d; botão "3D" no cabeçalho e no menu) ── */
     .fx-btn { display: inline-flex; align-items: center; gap: 6px; }
     .fx-btn.active { color: var(--accent-active); border-color: var(--accent-active); }
-    .menu-fx { width: 100%; margin-top: 10px; padding: 9px; background: transparent; border: 1px dashed var(--border-focus); border-radius: 10px; color: var(--text-pri); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .menu-fx[aria-pressed="true"] { color: var(--accent-active); border-color: var(--accent-active); }
 
     body.fx3d .tile.blue   { --tile-edge: #1e3a8a; }
     body.fx3d .tile.yellow { --tile-edge: #854d0e; }
@@ -1554,9 +1552,6 @@
     /* ladrilhos de referência da parede (ainda vazios): só a corzinha de fundo, SEM desenho */
     .wall-cell:not(.filled)::after { display: none !important; }
 
-    .fx-box { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1.5px solid var(--border-focus); border-radius: 4px; color: #0f1216; flex-shrink: 0; }
-    .fx-box .ic { width: 12px; height: 12px; stroke-width: 3; }
-    .menu-fx[aria-pressed="true"] .fx-box { background: var(--accent-active); border-color: var(--accent-active); }
 
     /* botão pequeno só com ícone (desenhos de azulejo) */
     .fx-btn.fx-icon { padding: 5px 8px; }

@@ -462,12 +462,6 @@
       document.body.classList.toggle('fx3d', on);
       const b = document.getElementById('fx3dBtn');
       if (b) { b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); }
-      const m = document.getElementById('fx3dMenuBtn');
-      if (m) m.setAttribute('aria-pressed', String(on));
-      const box = document.getElementById('fx3dBox');
-      if (box) box.innerHTML = on ? icon('check') : '';
-      const l = document.getElementById('fx3dMenuLabel');
-      if (l) l.textContent = 'Efeito 3D nas peças';
     }
     function toggleFx3d() {
       const on = !document.body.classList.contains('fx3d');
