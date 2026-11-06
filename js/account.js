@@ -240,6 +240,10 @@
 
     function showEloChange(diff, newElo) {
       const tier = getEloTier(newElo);
+      if (diff === 0) {
+        showResultBanner(`Elo mantido em ${newElo} · <span class="${tier.cls}">${tier.name}</span>${newElo === 0 ? ' <span style="color:#94a3b8;font-weight:600;">(não cai abaixo de 0)</span>' : ''}`, 'info');
+        return;
+      }
       showResultBanner(`${diff > 0 ? '▲ +' : diff < 0 ? '▼ ' : ''}${diff} Elo <span style="color:#94a3b8;font-weight:600;">→ ${newElo} · <span class="${tier.cls}">${tier.name}</span></span>`, diff > 0 ? 'up' : diff < 0 ? 'down' : 'info');
     }
 
