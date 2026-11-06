@@ -1920,6 +1920,7 @@
     let clientHostConn = null;
     let guestDisconnectTimers = {};
     let hostDisconnectTimer = null;
+    const DISCONNECT_GRACE_PERIOD_MS = 25000; // 25s de tolerância para tela bloqueada / oscilação de sinal
 
     // Conjunto de caracteres legíveis (3 letras e números)
     // Omitimos letras facilmente confusas, mas garantimos suporte a 'O' e '0' com visual cortado (slashed-zero)
@@ -2279,9 +2280,12 @@
         }
         updateHostWaitingUI();
 
-        // Se a partida online estiver ativa e o convidado desconectar temporariamente (ex: reload/refresh)
+        // Se a partida online estiver ativa e o convidado desconectar temporariamente (ex: reload/refresh/bloqueio)
         if (isGameActive && !hasMatchEndedByAbandon) {
-          updateP2PBadge('waiting', `Aguardando reconexão...`);
+          const guestName = (players && players[assignedIdx] && players[assignedIdx].name)
+            ? players[assignedIdx].name
+            : `Jogador ${assignedIdx + 1}`;
+          updateP2PBadge('waiting', `Aguardando ${guestName}...`);
           if (guestDisconnectTimers[assignedIdx]) clearTimeout(guestDisconnectTimers[assignedIdx]);
           guestDisconnectTimers[assignedIdx] = setTimeout(() => {
             if (isGameActive && !hasMatchEndedByAbandon) {
@@ -2290,7 +2294,7 @@
                 : `Jogador ${assignedIdx + 1}`;
               handlePlayerAbandoned(assignedIdx, leavingName);
             }
-          }, 6000);
+          }, DISCONNECT_GRACE_PERIOD_MS);
         }
       });
     }
@@ -2343,17 +2347,39 @@
       clientHostConn.on('close', () => {
         if (isGameActive && !hasMatchEndedByAbandon) {
           updateP2PBadge('waiting', 'Reconectando ao Host...');
-          if (hostDisconnectTimer) clearTimeout(hostDisconnectTimer);
-          hostDisconnectTimer = setTimeout(() => {
-            if (isGameActive && !hasMatchEndedByAbandon) {
-              const hostName = (players && players[0] && players[0].name) ? players[0].name : 'Host';
-              handlePlayerAbandoned(0, hostName);
-            }
-          }, 6000);
+          // Tenta reconectar imediatamente caso o socket tenha caído
+          attemptGuestReconnect();
+          if (!hostDisconnectTimer) {
+            hostDisconnectTimer = setTimeout(() => {
+              if (isGameActive && !hasMatchEndedByAbandon && (!clientHostConn || !clientHostConn.open)) {
+                const hostName = (players && players[0] && players[0].name) ? players[0].name : 'Host';
+                handlePlayerAbandoned(0, hostName);
+              }
+            }, DISCONNECT_GRACE_PERIOD_MS);
+          }
         } else {
           updateP2PBadge('offline', 'Desconectado');
         }
       });
+    }
+
+    function attemptGuestReconnect() {
+      if (isHost || !isGameActive || hasMatchEndedByAbandon || !currentRoomCode) return;
+      if (clientHostConn && clientHostConn.open) return;
+
+      const targetPeerId = currentRoomCode.startsWith('azul-')
+        ? currentRoomCode.toLowerCase()
+        : ('azul-' + currentRoomCode.toLowerCase());
+
+      if (!peer || peer.destroyed) {
+        initPeerJS(null, () => {
+          clientHostConn = peer.connect(targetPeerId, { reliable: true });
+          setupClientConnection();
+        });
+      } else {
+        clientHostConn = peer.connect(targetPeerId, { reliable: true });
+        setupClientConnection();
+      }
     }
 
     // Host recebe ação de um convidado, executa localmente e replica para os outros convidados
@@ -2825,6 +2851,24 @@
       document.getElementById('endModal').style.display = 'none';
       document.getElementById('mainMenuModal').style.display = 'flex';
     }
+
+    // Auto-reconexão inteligente ao desbloquear a tela ou focar na aba
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isP2P && isGameActive && !hasMatchEndedByAbandon) {
+        if (!isHost) {
+          if (!clientHostConn || !clientHostConn.open) {
+            console.log('App visível novamente: reconectando ao Host...');
+            updateP2PBadge('waiting', 'Reconectando ao Host...');
+            attemptGuestReconnect();
+          }
+        } else {
+          // Se sou Host e o peer foi fechado pelo SO durante suspensão, reabre
+          if (peer && peer.disconnected && !peer.destroyed) {
+            try { peer.reconnect(); } catch (e) { }
+          }
+        }
+      }
+    });
 
     function restartLocalGame() {
       if (isP2P) {
