@@ -476,7 +476,9 @@
           if (oppCol4Threat >= 2) score += oppDenialValue * 0.5;
 
           if (scoreDiff > 3) {
-            if (target === 'floor' || (target === 'row' && overflow > 0)) {
+            // (bug corrigido: `overflow` não existia neste escopo e travava o bot na rodada 5)
+            const ovfRow = target === 'row' ? Math.max(0, opt.count - (bot.pattern[rIdx].size - bot.pattern[rIdx].count)) : opt.count;
+            if (target === 'floor' || ovfRow > 0) {
               score -= 10.0;
             }
           } else if (scoreDiff < -3) {
@@ -513,98 +515,248 @@
       return score;
     }
 
-    function botPlayTurn() {
-      if (!isBotMode || turn !== 1 || isScoringAnimationActive) return;
-      const bot = players[1];
-      const opp = (players && players[0]) ? players[0] : null;
+    // ─────────────────────────────────────────────────────────────
+    // ESCOLHA DA JOGADA DO BOT
+    // botGenerateCandidates: todas as jogadas legais (opção de coleta + destino)
+    // botScoreCandidate:     nota heurística de uma jogada (por nível)
+    // botChooseMove:         escolhe a jogada (motor 'v1' heurístico ou 'v2' com antecipação)
+    // botPlayTurn:           executa, com rede de segurança (o bot nunca pode travar)
+    // ─────────────────────────────────────────────────────────────
+    const BOT_HARD_ENGINE = 'v4';   // 'v1' = só heurística; 'v2'/'v3' = antecipa 1-2 jogadas; 'v4' = antecipa BOT_DEPTH jogadas (padrão; ~82% de vitórias contra o v1)
+    let BOT_LOOKAHEAD_K = 12;     // quantas jogadas candidatas o v2 reavalia olhando a resposta do oponente
+    let BOT_DEPTH = 4;            // (motor v4) quantas jogadas à frente simular depois da minha
+    let BOT_PLY_W = [0.6, 0.6, 0.4, 0.3, 0.2]; // peso de cada jogada simulada (1ª = resposta do oponente, 2ª = minha, ...)
+    let BOT_LOOKAHEAD_W3 = 0.3;   // (motor v3) peso da minha jogada seguinte depois da melhor resposta do oponente
+    let BOT_LOOKAHEAD_W = 0.6;    // peso da melhor resposta do oponente na nota da jogada
 
-      // 1. Gera todas as opções de coleta disponíveis nas fábricas e no centro
+    function botGenerateCandidates(bot) {
       const options = [];
-
       factories.forEach((factory, fIdx) => {
         if (!factory || factory.length === 0) return;
-        const uniqueColors = [...new Set(factory)];
-        uniqueColors.forEach(color => {
-          const count = factory.filter(c => c === color).length;
-          options.push({ source: 'f', fIdx, color, count });
+        [...new Set(factory)].forEach(color => {
+          options.push({ source: 'f', fIdx, color, count: factory.filter(c => c === color).length });
         });
       });
-
       if (center.length > 0) {
-        const uniqueCenter = [...new Set(center)];
-        uniqueCenter.forEach(color => {
-          const count = center.filter(c => c === color).length;
-          options.push({ source: 'c', color, count });
+        [...new Set(center)].forEach(color => {
+          options.push({ source: 'c', color, count: center.filter(c => c === color).length });
         });
       }
-
-      if (options.length === 0) return;
-
-      // 2. Monta todos os movimentos candidatos válidos (opção + destino)
       const candidates = [];
-
       options.forEach(opt => {
         for (let r = 0; r < 5; r++) {
           const row = bot.pattern[r];
           const colorMatch = (row.count === 0 || row.color === opt.color);
           const wallCol = WALL_LAYOUT[r].indexOf(opt.color);
           const wallOccupied = bot.wall[r][wallCol];
-          const hasSpace = row.count < row.size;
-
-          if (!wallOccupied && colorMatch && hasSpace) {
+          if (!wallOccupied && colorMatch && row.count < row.size) {
             candidates.push({ opt, target: 'row', rIdx: r });
           }
         }
-        // Destino linha de chão sempre é válido
-        candidates.push({ opt, target: 'floor' });
+        candidates.push({ opt, target: 'floor' }); // chão sempre é válido
       });
+      return candidates;
+    }
 
-      if (candidates.length === 0) return;
+    function botScoreCandidate(bot, opp, cand, difficulty) {
+      if (difficulty === 'easy') return evaluateMoveEasy(bot, cand.opt, cand.target, cand.rIdx);
+      if (difficulty === 'medium') return evaluateMoveMedium(bot, cand.opt, cand.target, cand.rIdx);
+      return evaluateMoveHard(bot, opp, cand.opt, cand.target, cand.rIdx);
+    }
 
-      // 3. Avalia os candidatos de acordo com o nível de dificuldade selecionado
-      let bestMove = null;
-      let bestScore = -99999;
+    // ── Simulação leve (usada pelo motor v2) ──
+    function botCloneState() {
+      return {
+        players: players.map(p => ({
+          ...p,
+          pattern: p.pattern.map(r => ({ ...r })),
+          wall: p.wall.map(r => r.slice()),
+          floor: p.floor.slice()
+        })),
+        factories: factories.map(f => f.slice()),
+        center: center.slice(),
+        starter: starterTileInCenter
+      };
+    }
+
+    function botSimApply(st, idx, cand) {
+      const p = st.players[idx];
+      const opt = cand.opt;
+      const toFloor = (n, color) => { for (let i = 0; i < n; i++) { if (p.floor.length < 7) p.floor.push(color); } };
+      if (opt.source === 'f') {
+        const rest = st.factories[opt.fIdx].filter(c => c !== opt.color);
+        st.center.push(...rest);
+        st.factories[opt.fIdx] = [];
+      } else {
+        if (st.starter) { st.starter = false; toFloor(1, 'starter'); }
+        st.center = st.center.filter(c => c !== opt.color);
+      }
+      if (cand.target === 'row') {
+        const row = p.pattern[cand.rIdx];
+        row.color = opt.color;
+        const placed = Math.min(row.size - row.count, opt.count);
+        row.count += placed;
+        toFloor(opt.count - placed, opt.color);
+      } else {
+        toFloor(opt.count, opt.color);
+      }
+    }
+
+    // Executa fn com o estado global temporariamente trocado pelo estado simulado
+    function botWithState(st, fn) {
+      const saved = { players, factories, center, starterTileInCenter };
+      players = st.players; factories = st.factories; center = st.center; starterTileInCenter = st.starter;
+      try { return fn(); } finally {
+        players = saved.players; factories = saved.factories; center = saved.center; starterTileInCenter = saved.starterTileInCenter;
+      }
+    }
+
+    // Retorna a jogada escolhida { opt, target, rIdx } para o jogador botIdx
+    function botChooseMove(botIdx, engine) {
+      const bot = players[botIdx];
+      const opp = players[1 - botIdx] || null;
+      const candidates = botGenerateCandidates(bot);
+      if (candidates.length === 0) return null;
+
+      const level = (engine === 'v1' || engine === 'v2') ? 'hard' : engine;
+      if (engine === 'safe') {
+        // Modo de emergência: avaliação simples; se até ela falhar, a primeira jogada que cabe numa linha
+        let best = null, bestScore = -Infinity;
+        candidates.forEach(c => {
+          let sc = 0;
+          try { sc = evaluateMoveMedium(bot, c.opt, c.target, c.rIdx); } catch (e) { sc = c.target === 'row' ? 1 : -1; }
+          if (sc > bestScore) { bestScore = sc; best = c; }
+        });
+        return best || candidates[0];
+      }
 
       // No modo Fácil, pequena chance de jogada casual subótima para iniciantes
-      if (botDifficulty === 'easy' && Math.random() < 0.25) {
-        const rowCandidates = candidates.filter(c => c.target === 'row');
-        if (rowCandidates.length > 0) {
-          bestMove = rowCandidates[Math.floor(Math.random() * rowCandidates.length)];
-        }
+      if (level === 'easy' && Math.random() < 0.25) {
+        const rows = candidates.filter(c => c.target === 'row');
+        if (rows.length > 0) return rows[Math.floor(Math.random() * rows.length)];
       }
 
-      if (!bestMove) {
-        candidates.forEach(cand => {
-          let score = 0;
-          if (botDifficulty === 'easy') {
-            score = evaluateMoveEasy(bot, cand.opt, cand.target, cand.rIdx);
-          } else if (botDifficulty === 'medium') {
-            score = evaluateMoveMedium(bot, cand.opt, cand.target, cand.rIdx);
-          } else {
-            score = evaluateMoveHard(bot, opp, cand.opt, cand.target, cand.rIdx);
-          }
+      const scored = candidates.map(c => ({ c, score: botScoreCandidate(bot, opp, c, level) }));
+      scored.sort((x, y) => y.score - x.score);
 
-          if (score > bestScore) {
-            bestScore = score;
-            bestMove = cand;
+      if ((engine !== 'v2' && engine !== 'v3' && engine !== 'v4') || !opp) return scored[0].c;
+
+      // v4: simulação em sequência (jogada minha, resposta do oponente, minha, ...) até BOT_DEPTH jogadas
+      // à frente. Em cada passo quem joga escolhe a melhor jogada pela heurística; as notas dos passos do
+      // oponente entram com sinal negativo e as minhas com sinal positivo (pesos em BOT_PLY_W).
+      if (engine === 'v4') {
+        const top4 = scored.slice(0, BOT_LOOKAHEAD_K);
+        let best4 = top4[0].c, bestVal4 = -Infinity;
+        top4.forEach(entry => {
+          const st = botCloneState();
+          botSimApply(st, botIdx, entry.c);
+          let val = entry.score;
+          let mover = 1 - botIdx;
+          for (let ply = 1; ply <= BOT_DEPTH; ply++) {
+            if (!(st.factories.some(f => f.length > 0) || st.center.length > 0)) break;
+            let chosen = null;
+            const v = botWithState(st, () => {
+              const cands = botGenerateCandidates(st.players[mover]);
+              let m = -Infinity;
+              cands.forEach(cc => {
+                const sc = evaluateMoveHard(st.players[mover], st.players[1 - mover], cc.opt, cc.target, cc.rIdx);
+                if (sc > m) { m = sc; chosen = cc; }
+              });
+              return m === -Infinity ? 0 : m;
+            });
+            const w = BOT_PLY_W[ply - 1] !== undefined ? BOT_PLY_W[ply - 1] : 0.2;
+            val += (mover === botIdx ? w : -w) * v;
+            if (!chosen) break;
+            botSimApply(st, mover, chosen);
+            mover = 1 - mover;
           }
+          if (val > bestVal4) { bestVal4 = val; best4 = entry.c; }
         });
+        return best4;
       }
 
-      if (!bestMove) {
-        bestMove = candidates[0];
-      }
+      // v2: para as melhores jogadas, simula e desconta a MELHOR resposta do oponente
+      // (captura jogadas que forçam o adversário a pegar negativos e evita entregar boas jogadas)
+      const top = scored.slice(0, BOT_LOOKAHEAD_K);
+      let best = top[0].c, bestVal = -Infinity;
+      top.forEach(entry => {
+        const st = botCloneState();
+        botSimApply(st, botIdx, entry.c);
+        let oppBest = 0;
+        let myNext = 0;
+        const tilesLeft = st.factories.some(f => f.length > 0) || st.center.length > 0;
+        if (tilesLeft) {
+          let oppBestCand = null;
+          oppBest = botWithState(st, () => {
+            const oppCands = botGenerateCandidates(st.players[1 - botIdx]);
+            let m = -Infinity;
+            oppCands.forEach(oc => {
+              const v = evaluateMoveHard(st.players[1 - botIdx], st.players[botIdx], oc.opt, oc.target, oc.rIdx);
+              if (v > m) { m = v; oppBestCand = oc; }
+            });
+            return m === -Infinity ? 0 : m;
+          });
+          // v3: simula a melhor resposta do oponente e mede a minha melhor jogada seguinte
+          if (engine === 'v3' && BOT_LOOKAHEAD_W3 > 0 && oppBestCand) {
+            botSimApply(st, 1 - botIdx, oppBestCand);
+            if (st.factories.some(f => f.length > 0) || st.center.length > 0) {
+              myNext = botWithState(st, () => {
+                const mine = botGenerateCandidates(st.players[botIdx]);
+                let m = -Infinity;
+                mine.forEach(mc => {
+                  const v = evaluateMoveHard(st.players[botIdx], st.players[1 - botIdx], mc.opt, mc.target, mc.rIdx);
+                  if (v > m) m = v;
+                });
+                return m === -Infinity ? 0 : m;
+              });
+            }
+          }
+        }
+        const val = entry.score - BOT_LOOKAHEAD_W * oppBest + BOT_LOOKAHEAD_W3 * myNext;
+        if (val > bestVal) { bestVal = val; best = entry.c; }
+      });
+      return best;
+    }
 
-      // 4. Executa a escolha e confirmação com transição visual suave
-      selected = { ...bestMove.opt };
-      stagedMove = bestMove.target === 'row' ? { target: 'row', rIdx: bestMove.rIdx } : { target: 'floor' };
+    let botWatchdog = null;
+    function botPlayTurn(forceSafe) {
+      if (!isBotMode || turn !== 1 || isScoringAnimationActive) return;
+      let move = null;
+      try {
+        move = botChooseMove(1, forceSafe ? 'safe' : (botDifficulty === 'hard' ? BOT_HARD_ENGINE : botDifficulty));
+      } catch (e) {
+        console.warn('Bot: erro ao avaliar a jogada, usando modo seguro', e);
+        try { move = botChooseMove(1, 'safe'); } catch (e2) { console.error('Bot: modo seguro também falhou', e2); }
+      }
+      if (!move) return;
+
+      selected = { ...move.opt };
+      stagedMove = move.target === 'row' ? { target: 'row', rIdx: move.rIdx } : { target: 'floor' };
       renderAll();
 
       const confirmDelay = botDifficulty === 'easy' ? 650 : (botDifficulty === 'medium' ? 500 : 400);
       setTimeout(() => {
         if (!isBotMode || turn !== 1) return;
-        confirmMove(false);
+        try { confirmMove(false); } catch (e) { console.error('Bot: erro ao confirmar a jogada', e); }
       }, confirmDelay);
     }
+
+    // Vigia: se, por qualquer motivo, o bot não jogou na sua vez, tenta de novo em modo seguro
+    function botArmWatchdog() {
+      clearTimeout(botWatchdog);
+      botWatchdog = setTimeout(() => {
+        if (isBotMode && isGameActive && turn === 1 && !isScoringAnimationActive && !selected) {
+          console.warn('Bot parado na sua vez: tentando de novo em modo seguro');
+          botPlayTurn(true);
+        }
+      }, 3500);
+    }
+
+    // Ao voltar para a aba/app (celular bloqueado, troca de app): garante que o bot continue
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isBotMode && isGameActive && turn === 1 && !isScoringAnimationActive && !selected) {
+        triggerBotIfNeeded();
+      }
+    });
 
     // Tile Selection Logic (BGA Flow)

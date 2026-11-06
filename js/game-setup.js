@@ -114,7 +114,8 @@
       const thinkDelay = botDifficulty === 'easy' ? 700 : (botDifficulty === 'medium' ? 600 : 500);
       botTurnTimer = setTimeout(() => {
         botTurnTimer = null;
-        botPlayTurn();
+        try { botPlayTurn(); } catch (e) { console.error('Bot: erro inesperado', e); }
       }, thinkDelay);
+      botArmWatchdog();
     }
 
