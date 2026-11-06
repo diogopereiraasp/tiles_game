@@ -564,6 +564,9 @@
       gap: var(--gap-board);
       align-items: flex-end;
       flex: 1;
+      background: var(--tile-surface);
+      border-radius: 6px;
+      padding: 3px;
     }
 
     .pattern-row {
@@ -607,7 +610,7 @@
       grid-template-columns: repeat(5, var(--tile-size));
       grid-template-rows: repeat(5, var(--tile-size));
       gap: var(--gap-board);
-      background: #101315;
+      background: var(--tile-surface);
       padding: 3px;
       border-radius: 6px;
       border: 1px solid var(--border-subtle);
@@ -721,7 +724,7 @@
       gap: var(--gap-board);
       align-items: center;
       justify-content: flex-start;
-      background: #101315;
+      background: var(--tile-surface);
       padding: 4px 6px;
       border-radius: 6px;
       border: 1px solid var(--border-subtle);
