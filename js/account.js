@@ -57,7 +57,7 @@
 
       $('accGuestBox').style.display = isGuest ? '' : 'none';
       $('accSavedBox').style.display = isGuest ? 'none' : '';
-      $('accEmail').textContent = (authUser && authUser.email) || '';
+      $('accEmail').textContent = name;
     }
 
     let selectedAvatar = '';
@@ -113,21 +113,22 @@
 
     async function saveProfileEdits() {
       const msg = document.getElementById('accProfileMsg');
-      if (!sb || !authUser) { msg.textContent = 'Sem conexão com o servidor.'; return; }
+      if (!sb || !authUser) { msg.textContent = 'Sem conexão com o servidor.'; return false; }
       const name = document.getElementById('accNameInput').value.trim();
-      if (!USERNAME_RE.test(name)) { msg.textContent = 'O usuário precisa ter de 3 a 15 letras, números ou _ (sem espaços ou acentos).'; return; }
-      if (RESERVED_USERNAMES.includes(name.toLowerCase())) { msg.textContent = 'Esse nome é reservado. Escolha outro.'; return; }
+      if (!USERNAME_RE.test(name)) { msg.textContent = 'O usuário precisa ter de 3 a 15 letras, números ou _ (sem espaços ou acentos).'; return false; }
+      if (RESERVED_USERNAMES.includes(name.toLowerCase())) { msg.textContent = 'Esse nome é reservado. Escolha outro.'; return false; }
       msg.textContent = 'Salvando...';
       const { error } = await sb.from('profiles').update({ display_name: name, avatar: selectedAvatar || null }).eq('id', authUser.id);
       if (error) {
         msg.textContent = error.code === '23505' ? 'Esse nome de usuário já está em uso. Escolha outro.'
           : error.code === '23514' ? 'Nome de usuário inválido ou reservado.'
           : 'Não foi possível salvar: ' + error.message;
-        return;
+        return false;
       }
       authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name, avatar: selectedAvatar || null };
       renderAuthBar();
       msg.innerHTML = icon('check') + ' Perfil salvo!';
+      return true;
     }
 
     function openAccountModal(hint) {
@@ -168,37 +169,29 @@
 
     function friendlyAuthError(m) {
       m = m || '';
-      if (/invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
+      if (/invalid login credentials/i.test(m)) return 'Usuário ou senha incorretos.';
       if (/at least|weak|password should/i.test(m)) return 'A senha precisa ter pelo menos 8 caracteres.';
       if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da atual.';
-      if (/not confirmed/i.test(m)) return 'Este e-mail ainda está com confirmação pendente no servidor.';
-      if (/database error|already|registered|unique|duplicate/i.test(m)) return 'Esse e-mail (ou uma variação dele, como com +algo ou pontos no Gmail) já tem conta. Use "Já tenho conta" para entrar.';
+      if (/not confirmed/i.test(m)) return 'Esta conta está com confirmação pendente no servidor.';
+      if (/database error|already|registered|unique|duplicate/i.test(m)) return 'Esta conta já existe. Use "Já tenho conta" para entrar.';
       if (/rate limit|too many|security purposes/i.test(m)) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
       return 'Erro: ' + m;
     }
 
-    // Erro vindo de um link de e-mail antigo (ex.: e-mail já usado por outra conta): avisa e limpa o endereço
-    function showAuthRedirectError() {
-      try {
-        const params = new URLSearchParams(window.location.hash.replace(/^#/, '') || window.location.search.replace(/^\?/, ''));
-        const desc = params.get('error_description');
-        if (!desc) return;
-        history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => alert(friendlyAuthError(desc.replace(/\+/g, ' '))), 500);
-      } catch (e) { }
-    }
-    showAuthRedirectError();
+    // ── Conta com USUÁRIO + SENHA (sem e-mail) ──
+    // O Supabase exige um e-mail por trás; usamos um endereço interno derivado do id (nada é enviado a ele).
+    const internalEmail = (id) => `${id}@users.azul.invalid`;
 
-    // ── Conta com e-mail + senha (sem envio de e-mail) ──
     let authMode = 'create';
     function setAuthMode(mode) {
       authMode = mode;
       document.getElementById('authModeCreate').classList.toggle('active', mode === 'create');
       document.getElementById('authModeLogin').classList.toggle('active', mode === 'login');
+      document.getElementById('authUserWrap').style.display = mode === 'login' ? '' : 'none';
       document.querySelector('#authSubmitBtn .mp-title').textContent = mode === 'create' ? 'Criar conta' : 'Entrar';
       document.getElementById('authPasswordInput').autocomplete = mode === 'create' ? 'new-password' : 'current-password';
       document.getElementById('authModeHint').textContent = mode === 'create'
-        ? 'Seu progresso de convidado (Elo e histórico) passa para a conta nova.'
+        ? 'A conta usa o nome de usuário escolhido acima, e o progresso de convidado (Elo e histórico) passa para ela. Não há recuperação de senha: anote a sua.'
         : 'Atenção: ao entrar numa conta existente, o progresso desta conta de convidado não é transferido.';
       document.getElementById('authEmailMsg').textContent = '';
     }
@@ -206,40 +199,40 @@
     async function submitAuthForm() {
       if (!sb) return;
       const msg = document.getElementById('authEmailMsg');
-      const email = (document.getElementById('authEmailInput').value || '').trim().toLowerCase();
       const pw = document.getElementById('authPasswordInput').value || '';
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = 'E-mail inválido.'; return; }
       if (pw.length < 8) { msg.textContent = 'A senha precisa ter pelo menos 8 caracteres.'; return; }
       if (pw.length > 72) { msg.textContent = 'A senha pode ter no máximo 72 caracteres.'; return; }
       msg.textContent = 'Aguarde...';
 
       if (authMode === 'login') {
+        const username = (document.getElementById('authUserInput').value || '').trim();
+        if (!USERNAME_RE.test(username)) { msg.textContent = 'Usuário ou senha incorretos.'; return; }
+        const { data: email, error: lookupErr } = await sb.rpc('login_email_for', { p_username: username });
+        if (lookupErr || !email) { msg.textContent = friendlyAuthError(lookupErr && lookupErr.message); return; }
         const { error } = await sb.auth.signInWithPassword({ email, password: pw });
         if (error) { msg.textContent = friendlyAuthError(error.message); return; }
         document.getElementById('authPasswordInput').value = '';
-        // onAuthStateChange atualiza o usuário e o perfil
         msg.innerHTML = icon('check') + ' Você entrou na sua conta.';
         return;
       }
 
-      // Criar conta: converte o convidado atual (mantém Elo e histórico)
-      if (authUser && authUser.is_anonymous) {
-        const { data, error } = await sb.auth.updateUser({ email, password: pw });
-        if (error) { msg.textContent = friendlyAuthError(error.message); return; }
-        const u = data && data.user;
-        if (u && u.email && String(u.email).toLowerCase() === email) {
-          authUser = u;
-          document.getElementById('authPasswordInput').value = '';
-          await loadProfile();
-          renderAuthBar();
-          document.getElementById('accProfileMsg').textContent = '';
-        } else {
-          msg.textContent = 'O servidor ainda exige confirmação por e-mail. No painel do Supabase, desligue "Confirm email" para criar conta só com senha.';
-        }
-        return;
+      // Criar conta: usa o nome de usuário do campo acima (salva primeiro) e converte o convidado atual
+      const typed = (document.getElementById('accNameInput').value || '').trim();
+      if (isDefaultUsername(typed) || !typed) { msg.textContent = 'Escolha seu nome de usuário no campo acima antes de criar a conta.'; return; }
+      if (!authUser || !authUser.is_anonymous) { msg.textContent = 'Você já está numa conta.'; return; }
+      if (!(await saveProfileEdits())) { msg.textContent = 'Corrija o nome de usuário acima (veja a mensagem do perfil).'; return; }
+      const { data, error } = await sb.auth.updateUser({ email: internalEmail(authUser.id), password: pw });
+      if (error) { msg.textContent = friendlyAuthError(error.message); return; }
+      const u = data && data.user;
+      if (u && u.email && !u.is_anonymous) {
+        authUser = u;
+        document.getElementById('authPasswordInput').value = '';
+        await loadProfile();
+        renderAuthBar();
+        msg.textContent = '';
+      } else {
+        msg.textContent = 'O servidor ainda exige confirmação por e-mail. No painel do Supabase, desligue "Confirm email".';
       }
-      const { error } = await sb.auth.signUp({ email, password: pw });
-      msg.textContent = error ? friendlyAuthError(error.message) : 'Conta criada.';
     }
 
     async function changePassword() {

@@ -121,6 +121,21 @@ as $$
 $$;
 grant execute on function public.is_username_available(text) to anon, authenticated;
 
+-- Login por usuário + senha: o Supabase exige um e-mail por trás, então cada conta usa um endereço INTERNO
+-- derivado do id da conta (<id>@users.azul.invalid; nada é enviado para ele). Esta função devolve esse
+-- endereço a partir do nome de usuário. Para usuário inexistente devolve um endereço falso (não revela quem existe).
+create or replace function public.login_email_for(p_username text)
+returns text
+language sql
+stable
+security definer set search_path = public
+as $$
+  select coalesce(
+    (select p.id::text from public.profiles p where lower(p.display_name) = lower(p_username)),
+    '00000000-0000-0000-0000-000000000000') || '@users.azul.invalid';
+$$;
+grant execute on function public.login_email_for(text) to anon, authenticated;
+
 alter table public.profiles enable row level security;
 
 -- O cliente só pode alterar o próprio nome e avatar. Elo é alterado apenas pela função record_match.
