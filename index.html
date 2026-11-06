@@ -338,6 +338,15 @@
     </div>
   </div>
 
+  <!-- Alerta grande de nova mensagem do chat (aparece por cima de tudo, some sozinho; toque para abrir o chat) -->
+  <div id="chatAlert" class="chat-alert" style="display: none;" onclick="openChatFromAlert()" role="alert">
+    <span class="chat-alert-icon" data-icon="chat"></span>
+    <div class="chat-alert-body">
+      <div class="chat-alert-name" id="chatAlertName"></div>
+      <div class="chat-alert-text" id="chatAlertText"></div>
+    </div>
+  </div>
+
   <!-- Botão Flutuante e Janela do Chat Online (Exclusivo para partidas online) -->
   <button id="chatFloatingBtn" class="chat-floating-btn" onclick="toggleChatWindow()" title="Abrir Chat da Partida"
     style="display: none;">

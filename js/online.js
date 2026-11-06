@@ -1,7 +1,7 @@
-    // ── Relógio de ação (online): 5min inicial, +30s por jogada, teto de 5min ──
-    const CLOCK_INITIAL_MS = 300000;
-    const CLOCK_INCREMENT_MS = 30000;
-    const CLOCK_MAX_MS = 300000;
+    // ── Relógio de ação (online): 3min inicial, +15s por jogada, teto de 3min ──
+    const CLOCK_INITIAL_MS = 180000;
+    const CLOCK_INCREMENT_MS = 15000;
+    const CLOCK_MAX_MS = 180000;
     let clockLastTick = Date.now();
     let clockSyncCounter = 0;
 

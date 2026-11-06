@@ -31,11 +31,41 @@
       }
     }
 
+    // Alerta grande quando chega mensagem de outro jogador e o chat está fechado
+    let chatAlertTimer = null;
+    function showChatAlert(name, text) {
+      const box = document.getElementById('chatAlert');
+      if (!box) return;
+      document.getElementById('chatAlertName').textContent = name || 'Nova mensagem';
+      const t = String(text || '');
+      document.getElementById('chatAlertText').textContent = t.length > 90 ? t.slice(0, 90) + '…' : t;
+      box.style.display = 'flex';
+      box.classList.remove('chat-alert-in');
+      void box.offsetWidth; // reinicia a animação se chegar outra mensagem
+      box.classList.add('chat-alert-in');
+      try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch (e) { }
+      clearTimeout(chatAlertTimer);
+      chatAlertTimer = setTimeout(hideChatAlert, 6000);
+    }
+
+    function hideChatAlert() {
+      const box = document.getElementById('chatAlert');
+      if (box) box.style.display = 'none';
+      clearTimeout(chatAlertTimer);
+    }
+
+    function openChatFromAlert() {
+      hideChatAlert();
+      const chatWin = document.getElementById('chatWindow');
+      if (chatWin && (chatWin.style.display === 'none' || !chatWin.style.display)) toggleChatWindow();
+    }
+
     function toggleChatWindow() {
       const chatWin = document.getElementById('chatWindow');
       if (!chatWin) return;
       const isOpening = (chatWin.style.display === 'none' || !chatWin.style.display);
       if (isOpening) {
+        hideChatAlert();
         chatWin.style.display = 'flex';
         unreadChatCount = 0;
         updateChatBadge();
@@ -74,6 +104,7 @@
       if (!isOpen && !isOwn) {
         unreadChatCount++;
         updateChatBadge();
+        showChatAlert(senderName || `Jogador ${(typeof senderIndex === 'number' ? senderIndex + 1 : 1)}`, text);
       }
 
       const safeText = escapeChatHTML(text);
