@@ -37,10 +37,10 @@
       const initial = name.trim().charAt(0).toUpperCase() || '?';
       const isGuest = !authUser || authUser.is_anonymous;
 
-      const avatar = (authProfile && authProfile.avatar) || '';
+      const avatar = (authProfile && AVATAR_KEYS.includes(authProfile.avatar)) ? authProfile.avatar : '';
       ['pcAvatar', 'accAvatar'].forEach(id => {
-        $(id).textContent = avatar || initial;
-        $(id).classList.toggle('has-emoji', !!avatar);
+        if (avatar) $(id).innerHTML = icon(avatar); else $(id).textContent = initial;
+        $(id).classList.toggle('has-icon', !!avatar);
       });
       applyProfileNameToInputs();
       $('pcName').textContent = sb ? name : 'Offline';
@@ -52,22 +52,20 @@
 
       const sub = $('pcSub');
       if (!sb) { sub.textContent = 'Ranking indisponível'; sub.className = 'pc-sub'; }
-      else if (isGuest) { sub.textContent = '⚠ Convidado · toque para salvar'; sub.className = 'pc-sub warn'; }
-      else { sub.textContent = '✓ Progresso salvo'; sub.className = 'pc-sub'; }
+      else if (isGuest) { sub.innerHTML = icon('alert') + ' Convidado · toque para salvar'; sub.className = 'pc-sub warn'; }
+      else { sub.innerHTML = icon('check') + ' Progresso salvo'; sub.className = 'pc-sub'; }
 
       $('accGuestBox').style.display = isGuest ? '' : 'none';
       $('accSavedBox').style.display = isGuest ? 'none' : '';
       $('accEmail').textContent = (authUser && authUser.email) || '';
     }
 
-    const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐸', '🐙', '🦉', '🐧', '🦄', '🐲', '🐳', '🦋',
-      '🌵', '🍀', '🔥', '⚡', '🌙', '⭐', '🎲', '🎯', '🧩', '👑', '🚀', '🎸'];
     let selectedAvatar = '';
 
     function renderAvatarGrid() {
       const grid = document.getElementById('avatarGrid');
       if (!grid) return;
-      grid.innerHTML = AVATARS.map(a => `<button type="button" class="avatar-opt ${a === selectedAvatar ? 'sel' : ''}" onclick="pickAvatar('${a}')">${a}</button>`).join('');
+      grid.innerHTML = AVATAR_KEYS.map(a => `<button type="button" class="avatar-opt ${a === selectedAvatar ? 'sel' : ''}" onclick="pickAvatar('${a}')" aria-label="${a}">${icon(a)}</button>`).join('');
     }
 
     function pickAvatar(a) {
@@ -93,14 +91,14 @@
       if (error) { msg.textContent = 'Não foi possível salvar: ' + error.message; return; }
       authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name, avatar: selectedAvatar || null };
       renderAuthBar();
-      msg.textContent = '✓ Perfil salvo!';
+      msg.innerHTML = icon('check') + ' Perfil salvo!';
     }
 
     function openAccountModal(hint) {
       document.getElementById('authEmailMsg').textContent = '';
       document.getElementById('accProfileMsg').textContent = hint || '';
       document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
-      selectedAvatar = (authProfile && authProfile.avatar) || '';
+      selectedAvatar = (authProfile && AVATAR_KEYS.includes(authProfile.avatar)) ? authProfile.avatar : '';
       renderAvatarGrid();
       document.getElementById('accountModal').style.display = 'flex';
       renderAuthBar();
@@ -279,7 +277,7 @@
         showResultBanner(`Elo mantido em ${newElo} · <span class="${tier.cls}">${tier.name}</span>${newElo === 0 ? ' <span style="color:#94a3b8;font-weight:600;">(não cai abaixo de 0)</span>' : ''}`, 'info');
         return;
       }
-      showResultBanner(`${diff > 0 ? '▲ +' : diff < 0 ? '▼ ' : ''}${diff} Elo <span style="color:#94a3b8;font-weight:600;">→ ${newElo} · <span class="${tier.cls}">${tier.name}</span></span>`, diff > 0 ? 'up' : diff < 0 ? 'down' : 'info');
+      showResultBanner(`${diff > 0 ? icon('arrow-up') + ' +' : diff < 0 ? icon('arrow-down') + ' ' : ''}${diff} Elo <span style="color:#94a3b8;font-weight:600;">→ ${newElo} · <span class="${tier.cls}">${tier.name}</span></span>`, diff > 0 ? 'up' : diff < 0 ? 'down' : 'info');
     }
 
     // Resposta do servidor para uma partida ranqueada: done | pending | disputed | void
@@ -291,7 +289,7 @@
         showEloChange(diff, row.r_elo_after);
         renderAuthBar();
       } else if (row.r_status === 'pending') {
-        showResultBanner('⏳ Confirmando o resultado com o oponente...', 'info');
+        showResultBanner(icon('clock') + ' Confirmando o resultado com o oponente...', 'info');
         if (attempt < 20) {
           setTimeout(async () => {
             const { data, error } = await sb.rpc('get_ranked_result', { p_match_id: matchId });
@@ -361,14 +359,13 @@
       if (leaderboardTab !== tab) return;
       if (error) { box.innerHTML = `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`; return; }
       if (!data || !data.length) { box.innerHTML = '<div class="lb-empty">Ninguém no ranking ainda.<br>Jogue uma partida online para entrar!</div>'; return; }
-      const medals = ['🥇', '🥈', '🥉'];
       box.innerHTML = data.map((r, i) => {
         const tier = getEloTier(r.elo);
         return `
         <div class="lb-row ${authUser && r.user_id === authUser.id ? 'me' : ''}">
-          <span class="lb-pos">${medals[i] || `${i + 1}º`}</span>
+          <span class="lb-pos">${i < 3 ? `<span class="medal m${i + 1}">${i + 1}</span>` : `${i + 1}º`}</span>
           <div style="min-width:0;">
-            <div class="lb-name">${r.avatar ? escapeHtml(r.avatar) + ' ' : ''}${escapeHtml(r.display_name)}</div>
+            <div class="lb-name">${AVATAR_KEYS.includes(r.avatar) ? icon(r.avatar) + ' ' : ''}${escapeHtml(r.display_name)}</div>
             <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
           </div>
           <div class="lb-stat">${r.elo}<div class="lb-sub ${tier.cls}" style="font-weight:800;">${tier.name}</div></div>

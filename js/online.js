@@ -14,7 +14,7 @@
       (players || []).forEach(p => {
         const el = document.getElementById(`playerClock_${p.id}`);
         if (!el) return;
-        el.textContent = `⏱ ${formatClock(p.clock)}`;
+        el.innerHTML = `${icon('clock')} ${formatClock(p.clock)}`;
         el.classList.toggle('clock-low', p.clock <= 30000);
       });
     }
@@ -1230,7 +1230,7 @@
 
       const modal = document.getElementById('endModal');
       const title = modal ? modal.querySelector('h2') : null;
-      if (title) title.innerHTML = reason === 'timeout' ? '🏆 Vitória por Tempo!' : '🏆 Vitória por Abandono!';
+      if (title) title.innerHTML = icon('trophy') + (reason === 'timeout' ? ' Vitória por Tempo!' : ' Vitória por Abandono!');
 
       const desc = document.getElementById('winnerDesc');
       if (desc) {
@@ -1248,7 +1248,7 @@
               <div class="endgame-item winner">
                 <div class="endgame-header-row">
                   <div class="endgame-left">
-                    <span class="endgame-rank">🏆 1º</span>
+                    <span class="endgame-rank">${icon('trophy')} 1º</span>
                     <span class="endgame-name">${winnerLabel}</span>
                   </div>
                   <div class="endgame-right">
@@ -1276,7 +1276,7 @@
                   <div class="endgame-item ${isWinner ? 'winner' : ''}">
                     <div class="endgame-header-row">
                       <div class="endgame-left">
-                        <span class="endgame-rank">${idx === 0 ? '🏆 1º' : `${idx + 1}º`}</span>
+                        <span class="endgame-rank">${idx === 0 ? `${icon('trophy')} 1º` : `${idx + 1}º`}</span>
                         <span class="endgame-name">${pLabel}</span>
                       </div>
                       <div class="endgame-right">

@@ -28,7 +28,7 @@
     <div class="header-ctrls">
       <button id="chatHeaderBtn" class="btn-toggle" onclick="toggleChatWindow()"
         style="display: none; align-items: center; gap: 6px; position: relative;" title="Abrir Chat da Partida">
-        <span>💬 Chat</span>
+        <span><span data-icon="chat"></span> Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
       </button>
       <button class="btn-toggle" onclick="exitToMainMenu()" style="color: var(--text-pri);">Sair da Partida</button>
@@ -91,25 +91,25 @@
       </button>
 
       <button class="menu-primary" onclick="startRankedSearch()">
-        <span class="mp-title">⚔ Partida Ranqueada</span>
+        <span class="mp-title"><span data-icon="swords"></span> Partida Ranqueada</span>
         <span class="mp-sub">Oponente com Elo parecido · vale Elo</span>
       </button>
 
       <div class="menu-grid">
         <button class="menu-secondary" onclick="chooseOnlineMode()">
-          <span class="ms-icon">🧑‍🤝‍🧑</span>
+          <span class="ms-icon" data-icon="users"></span>
           <span>Jogar com amigos</span>
         </button>
         <button class="menu-secondary" onclick="openBotModal()">
-          <span class="ms-icon">🤖</span>
+          <span class="ms-icon" data-icon="bot"></span>
           <span>Treinar vs Bot</span>
         </button>
         <button class="menu-secondary" onclick="openLocalModal()">
-          <span class="ms-icon">👥</span>
+          <span class="ms-icon" data-icon="phone"></span>
           <span>Mesmo aparelho</span>
         </button>
         <button class="menu-secondary" onclick="openLeaderboardModal()">
-          <span class="ms-icon">🏆</span>
+          <span class="ms-icon" data-icon="trophy"></span>
           <span>Ranking</span>
         </button>
       </div>
@@ -164,7 +164,7 @@
       </div>
 
       <div id="accSavedBox" style="display: none;">
-        <div class="acc-ok">✓ Progresso salvo em <strong id="accEmail"></strong></div>
+        <div class="acc-ok"><span data-icon="check"></span> Progresso salvo em <strong id="accEmail"></strong></div>
         <button class="btn-toggle" style="width: 100%; padding: 10px; font-weight: 600;" onclick="signOutAccount()">Sair da conta</button>
       </div>
 
@@ -175,7 +175,7 @@
   <!-- Modal Ranking & Histórico -->
   <div id="leaderboardModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 440px;">
-      <h2>🏆 Ranking</h2>
+      <h2><span data-icon="trophy"></span> Ranking</h2>
       <div style="display: flex; gap: 8px; margin-bottom: 14px;">
         <button class="btn-toggle active" id="lbTabOnline" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('online')">Ranking Elo</button>
         <button class="btn-toggle" id="lbTabHistory" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('history')">Minhas Partidas</button>
@@ -329,7 +329,7 @@
   <!-- Botão Flutuante e Janela do Chat Online (Exclusivo para partidas online) -->
   <button id="chatFloatingBtn" class="chat-floating-btn" onclick="toggleChatWindow()" title="Abrir Chat da Partida"
     style="display: none;">
-    💬
+    <span data-icon="chat"></span>
     <span id="chatFloatingBadge" class="chat-badge" style="display: none;">0</span>
   </button>
 
@@ -340,7 +340,7 @@
         <span style="font-weight: 700; color: #fff; font-size: 12px; letter-spacing: 0.5px;">Chat da Partida</span>
       </div>
       <div style="display: flex; align-items: center; gap: 4px;">
-        <button class="chat-btn-icon" onclick="toggleChatWindow()" title="Fechar Chat">✕</button>
+        <button class="chat-btn-icon" onclick="toggleChatWindow()" title="Fechar Chat"><span data-icon="x"></span></button>
       </div>
     </div>
     <div id="chatMessages" class="chat-messages">

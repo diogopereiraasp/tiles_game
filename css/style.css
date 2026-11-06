@@ -1456,9 +1456,22 @@
     @keyframes search-spin { to { transform: rotate(360deg); } }
     .search-timer { font-size: 26px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
 
-    .pc-avatar.has-emoji { background: #1c2022; border: 1px solid var(--border-focus); font-size: 22px; }
+    .pc-avatar.has-icon { background: #1c2022; border: 1px solid var(--border-focus); color: var(--accent-active); }
+    .pc-avatar .ic { width: 55%; height: 55%; }
     .acc-section { border-bottom: 1px solid rgba(148,163,184,0.15); padding-bottom: 14px; margin-bottom: 14px; }
-    .avatar-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
-    .avatar-opt { aspect-ratio: 1; font-size: 18px; line-height: 1; border-radius: 8px; border: 1px solid transparent; background: #101315; cursor: pointer; padding: 0; }
+    .avatar-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+    .avatar-opt { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; color: #cbd5e1; border-radius: 8px; border: 1px solid transparent; background: #101315; cursor: pointer; padding: 0; }
+    .avatar-opt .ic { width: 20px; height: 20px; }
     .avatar-opt:hover { border-color: var(--border-focus); }
     .avatar-opt.sel { border-color: var(--accent-active); background: rgba(56,189,248,0.12); }
+
+    .ic { width: 1.1em; height: 1.1em; vertical-align: -0.18em; flex-shrink: 0; }
+    .ms-icon { display: flex; }
+    .ms-icon .ic { width: 22px; height: 22px; }
+    .mp-title .ic { width: 1.05em; height: 1.05em; margin-right: 2px; }
+    .chat-floating-btn .ic { width: 22px; height: 22px; }
+    .player-clock .ic { width: 0.95em; height: 0.95em; vertical-align: -0.12em; }
+    .pc-sub .ic, .acc-ok .ic, .acc-msg .ic { width: 1em; height: 1em; }
+    .medal { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 800; color: #0f1216; }
+    .medal.m1 { background: #facc15; } .medal.m2 { background: #cbd5e1; } .medal.m3 { background: #d08b4f; }
+    .endgame-rank .ic { width: 1em; height: 1em; }

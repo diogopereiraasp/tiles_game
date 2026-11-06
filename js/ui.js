@@ -146,7 +146,7 @@
               <span class="turn-indicator"></span>
               <span>${playerTitle}</span>
             </span>
-            <span class="player-pts" id="playerPts_${p.id}">${isP2P ? `<span class="player-clock" id="playerClock_${p.id}">⏱ ${formatClock(p.clock)}</span> ` : ''}${p.score} pts</span>
+            <span class="player-pts" id="playerPts_${p.id}">${isP2P ? `<span class="player-clock" id="playerClock_${p.id}">${icon('clock')} ${formatClock(p.clock)}</span> ` : ''}${p.score} pts</span>
           `;
         card.appendChild(top);
 
@@ -436,3 +436,5 @@
       // Salva estado antes de fechar/recarregar
       saveSessionToStorage();
     });
+
+    hydrateIcons();
