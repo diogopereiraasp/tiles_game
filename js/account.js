@@ -131,7 +131,8 @@
     }
 
     function openAccountModal(hint) {
-      document.getElementById('authEmailMsg').textContent = '';
+      setAuthMode(authMode);
+      document.getElementById('accPasswordMsg') && (document.getElementById('accPasswordMsg').textContent = '');
       document.getElementById('accProfileMsg').textContent = hint || '';
       document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
       onUsernameInput();
@@ -166,12 +167,17 @@
     }
 
     function friendlyAuthError(m) {
-      if (/database error|already|registered|unique|duplicate/i.test(m || '')) return 'Esse e-mail (ou uma variação dele, como com +algo ou pontos no Gmail) já está vinculado a outra conta.';
-      if (/rate limit|too many|security purposes/i.test(m || '')) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
+      m = m || '';
+      if (/invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
+      if (/at least|weak|password should/i.test(m)) return 'A senha precisa ter pelo menos 8 caracteres.';
+      if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da atual.';
+      if (/not confirmed/i.test(m)) return 'Este e-mail ainda está com confirmação pendente no servidor.';
+      if (/database error|already|registered|unique|duplicate/i.test(m)) return 'Esse e-mail (ou uma variação dele, como com +algo ou pontos no Gmail) já tem conta. Use "Já tenho conta" para entrar.';
+      if (/rate limit|too many|security purposes/i.test(m)) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
       return 'Erro: ' + m;
     }
 
-    // Link do e-mail que falhou (ex.: e-mail já usado por outra conta): avisa e limpa o endereço
+    // Erro vindo de um link de e-mail antigo (ex.: e-mail já usado por outra conta): avisa e limpa o endereço
     function showAuthRedirectError() {
       try {
         const params = new URLSearchParams(window.location.hash.replace(/^#/, '') || window.location.search.replace(/^\?/, ''));
@@ -183,33 +189,68 @@
     }
     showAuthRedirectError();
 
-    async function submitEmailLogin() {
-      if (!sb) return;
-      const input = document.getElementById('authEmailInput');
-      const msg = document.getElementById('authEmailMsg');
-      const email = (input.value || '').trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = 'E-mail inválido.'; return; }
-      msg.textContent = 'Enviando...';
-      const emailRedirectTo = window.location.origin + window.location.pathname;
+    // ── Conta com e-mail + senha (sem envio de e-mail) ──
+    let authMode = 'create';
+    function setAuthMode(mode) {
+      authMode = mode;
+      document.getElementById('authModeCreate').classList.toggle('active', mode === 'create');
+      document.getElementById('authModeLogin').classList.toggle('active', mode === 'login');
+      document.querySelector('#authSubmitBtn .mp-title').textContent = mode === 'create' ? 'Criar conta' : 'Entrar';
+      document.getElementById('authPasswordInput').autocomplete = mode === 'create' ? 'new-password' : 'current-password';
+      document.getElementById('authModeHint').textContent = mode === 'create'
+        ? 'Seu progresso de convidado (Elo e histórico) passa para a conta nova.'
+        : 'Atenção: ao entrar numa conta existente, o progresso desta conta de convidado não é transferido.';
+      document.getElementById('authEmailMsg').textContent = '';
+    }
 
-      // Convidado: vincula o e-mail à conta atual (mantém o histórico)
-      if (authUser && authUser.is_anonymous) {
-        const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo });
-        if (!error) {
-          msg.textContent = `Link enviado para ${email}. Abra o e-mail e clique no link para salvar sua conta.`;
-          return;
-        }
-        // E-mail já tem conta (ex.: outro aparelho): o link ENTRA nessa conta (1 e-mail = 1 usuário)
-        if (!/already|registered|exists/i.test(error.message)) {
-          msg.textContent = friendlyAuthError(error.message);
-          return;
-        }
+    async function submitAuthForm() {
+      if (!sb) return;
+      const msg = document.getElementById('authEmailMsg');
+      const email = (document.getElementById('authEmailInput').value || '').trim().toLowerCase();
+      const pw = document.getElementById('authPasswordInput').value || '';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = 'E-mail inválido.'; return; }
+      if (pw.length < 8) { msg.textContent = 'A senha precisa ter pelo menos 8 caracteres.'; return; }
+      if (pw.length > 72) { msg.textContent = 'A senha pode ter no máximo 72 caracteres.'; return; }
+      msg.textContent = 'Aguarde...';
+
+      if (authMode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if (error) { msg.textContent = friendlyAuthError(error.message); return; }
+        document.getElementById('authPasswordInput').value = '';
+        // onAuthStateChange atualiza o usuário e o perfil
+        msg.innerHTML = icon('check') + ' Você entrou na sua conta.';
+        return;
       }
 
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo } });
-      msg.textContent = error
-        ? friendlyAuthError(error.message)
-        : `Link enviado para ${email}. Esse e-mail já tem conta: clique no link para entrar nela (o progresso desta conta de convidado não é transferido).`;
+      // Criar conta: converte o convidado atual (mantém Elo e histórico)
+      if (authUser && authUser.is_anonymous) {
+        const { data, error } = await sb.auth.updateUser({ email, password: pw });
+        if (error) { msg.textContent = friendlyAuthError(error.message); return; }
+        const u = data && data.user;
+        if (u && u.email && String(u.email).toLowerCase() === email) {
+          authUser = u;
+          document.getElementById('authPasswordInput').value = '';
+          await loadProfile();
+          renderAuthBar();
+          document.getElementById('accProfileMsg').textContent = '';
+        } else {
+          msg.textContent = 'O servidor ainda exige confirmação por e-mail. No painel do Supabase, desligue "Confirm email" para criar conta só com senha.';
+        }
+        return;
+      }
+      const { error } = await sb.auth.signUp({ email, password: pw });
+      msg.textContent = error ? friendlyAuthError(error.message) : 'Conta criada.';
+    }
+
+    async function changePassword() {
+      const msg = document.getElementById('accPasswordMsg');
+      const pw = document.getElementById('newPasswordInput').value || '';
+      if (pw.length < 8 || pw.length > 72) { msg.textContent = 'A senha precisa ter de 8 a 72 caracteres.'; return; }
+      msg.textContent = 'Aguarde...';
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) { msg.textContent = friendlyAuthError(error.message); return; }
+      document.getElementById('newPasswordInput').value = '';
+      msg.innerHTML = icon('check') + ' Senha alterada.';
     }
 
     async function signOutAccount() {

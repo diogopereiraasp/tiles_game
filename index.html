@@ -153,19 +153,31 @@
       <div id="accGuestBox">
         <div class="acc-warn">
           Você está jogando como <strong>convidado</strong>. Seu Elo fica salvo só neste navegador.
-          Salve com seu e-mail para não perder o progresso e jogar em qualquer aparelho.
+          Crie uma conta com e-mail e senha para não perder o progresso e jogar em qualquer aparelho.
         </div>
-        <label class="acc-label" for="authEmailInput">Seu e-mail</label>
-        <input type="email" id="authEmailInput" class="modal-name-input" placeholder="seu@email.com" style="width: 100%; margin: 0 0 8px;">
-        <button class="menu-primary" style="padding: 11px;" onclick="submitEmailLogin()">
-          <span class="mp-title" style="font-size: 13px;">Enviar link de acesso</span>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button class="btn-toggle active" id="authModeCreate" style="flex: 1; padding: 8px; font-weight: 600;" onclick="setAuthMode('create')">Criar conta</button>
+          <button class="btn-toggle" id="authModeLogin" style="flex: 1; padding: 8px; font-weight: 600;" onclick="setAuthMode('login')">Já tenho conta</button>
+        </div>
+        <label class="acc-label" for="authEmailInput">E-mail</label>
+        <input type="email" id="authEmailInput" class="modal-name-input" placeholder="seu@email.com" autocomplete="email" style="width: 100%; margin: 0 0 8px;">
+        <label class="acc-label" for="authPasswordInput">Senha (mínimo 8 caracteres)</label>
+        <input type="password" id="authPasswordInput" class="modal-name-input" placeholder="********" autocomplete="new-password" style="width: 100%; margin: 0 0 10px;">
+        <button class="menu-primary" id="authSubmitBtn" style="padding: 11px;" onclick="submitAuthForm()">
+          <span class="mp-title" style="font-size: 13px;">Criar conta</span>
         </button>
         <div id="authEmailMsg" class="acc-msg"></div>
-        <div class="acc-hint">Já salvou em outro aparelho? Use o mesmo e-mail para entrar.</div>
+        <div id="authModeHint" class="acc-hint">Seu progresso de convidado (Elo e histórico) passa para a conta nova.</div>
       </div>
 
       <div id="accSavedBox" style="display: none;">
         <div class="acc-ok"><span data-icon="check"></span> Progresso salvo em <strong id="accEmail"></strong></div>
+        <label class="acc-label" for="newPasswordInput">Trocar senha (mínimo 8 caracteres)</label>
+        <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+          <input type="password" id="newPasswordInput" class="modal-name-input" placeholder="nova senha" autocomplete="new-password" style="flex: 1; margin: 0;">
+          <button class="btn-toggle btn-online" style="padding: 8px 12px; font-weight: 600;" onclick="changePassword()">Trocar</button>
+        </div>
+        <div id="accPasswordMsg" class="acc-msg" style="margin-bottom: 8px;"></div>
         <button class="btn-toggle" style="width: 100%; padding: 10px; font-weight: 600;" onclick="signOutAccount()">Sair da conta</button>
       </div>
 
