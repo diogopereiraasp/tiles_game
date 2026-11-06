@@ -617,8 +617,8 @@
 
     .wall-cell {
       border-radius: var(--radius-tile);
-      opacity: 0.28;
-      filter: grayscale(40%);
+      opacity: 0.42; /* ladrilho de referência (ainda vazio): cor mais presente, mas claramente 'apagado' */
+      filter: grayscale(30%);
       transition: opacity 0.2s, filter 0.2s;
     }
 
