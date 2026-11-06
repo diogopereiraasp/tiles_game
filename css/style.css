@@ -22,6 +22,7 @@
       --tile-yellow: #eab308;
       --tile-red: #ef4444;
       --tile-black: #1e252b;
+      --tile-surface: #666666; /* fundo dos discos/centro onde as peças ficam: cinza claro para destacar a peça preta */
       --tile-white: #e2e8f0;
       --tile-starter: #d99c2b;
 
@@ -166,8 +167,8 @@
 
     .factory-disc {
       border-radius: 50%;
-      background: #101315;
-      border: 1px solid var(--border-subtle);
+      background: var(--tile-surface);
+      border: 1px solid #7d7d7d;
       display: grid;
       grid-template-columns: repeat(2, var(--tile-size-factory));
       grid-template-rows: repeat(2, var(--tile-size-factory));
@@ -194,8 +195,8 @@
       min-width: calc(var(--tile-size-factory) * 3);
       max-width: 480px;
       min-height: calc(var(--tile-size-factory) * 2 + 10px);
-      background: #101315;
-      border: 1px dashed var(--border-subtle);
+      background: var(--tile-surface);
+      border: 1px dashed #8c8c8c;
       border-radius: 12px;
       display: flex;
       flex-wrap: wrap;
