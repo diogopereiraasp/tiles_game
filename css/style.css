@@ -258,8 +258,8 @@
     }
 
     .tile.black {
-      background: linear-gradient(145deg, #2a343d 0%, #151a1e 100%);
-      border: 1px solid #5a6975;
+      background: linear-gradient(145deg, #36424c 0%, #171c20 100%);
+      border: 1px solid #8fa0ae; /* contorno claro: a peça preta tinha borda apagada e parecia menor que as outras */
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 4px rgba(0, 0, 0, 0.6);
     }
 
