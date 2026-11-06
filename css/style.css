@@ -31,7 +31,7 @@
       --azulejo-red: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.3%22%3E%3Cg stroke=%22%23ff8a8a%22 opacity=%220.55%22%3E%3Cpath d=%22M12 3.5v17M3.5 12h17%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%224.6%22/%3E%3C/g%3E%3C/svg%3E");
       --azulejo-white: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.3%22%3E%3Cg stroke=%22%23b8c4d4%22 opacity=%220.6%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%228.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%225%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.3%22/%3E%3C/g%3E%3C/svg%3E");
       --azulejo-black: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.3%22%3E%3Cg stroke=%22%234a5866%22 opacity=%220.8%22%3E%3Cpath d=%22M4 4h16v16H4Z%22/%3E%3Cpath d=%22M12 4 20 12 12 20 4 12Z%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.3%22/%3E%3C/g%3E%3C/svg%3E"); /* motivos de azulejo desenhados DENTRO das peças (tom mais claro da própria cor) */
-      --tile-starter: #d99c2b;
+      --tile-starter: #8b5cf6; /* peça do 1º jogador: roxa */
 
       /* Dynamic tile sizing */
       --tile-size: clamp(24px, 3.8vw, 44px);
@@ -271,11 +271,12 @@
     }
 
     .tile.starter {
-      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #d8e2ec 60%, #b8c7d6 100%);
-      color: #1e3a5f;
+      background: linear-gradient(145deg, #a78bfa 0%, #7c3aed 55%, #5b21b6 100%);
+      color: #ffffff;
       font-weight: 900;
-      border: 2px solid #38bdf8;
-      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+      border: 2px solid #c4b5fd;
+      box-shadow: 0 0 8px rgba(167, 139, 250, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.45);
+      text-shadow: 0 1px 1px rgba(46, 16, 101, 0.6);
       position: relative;
     }
 
@@ -1501,6 +1502,7 @@
     body.fx3d .tile.red    { --tile-edge: #7f1d1d; }
     body.fx3d .tile.black  { --tile-edge: #05080a; }
     body.fx3d .tile.white  { --tile-edge: #8a97a8; }
+    body.fx3d .tile.starter { --tile-edge: #3b0764; }
     body.fx3d .tile {
       /* relevo: brilho no topo, sombra embaixo, "espessura" (borda inferior) e sombra projetada */
       box-shadow:
