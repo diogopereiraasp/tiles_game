@@ -12,12 +12,21 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists elo int not null default 0;
 alter table public.profiles alter column elo set default 0;
+alter table public.profiles add column if not exists avatar text;
+
+-- Nome: 1 a 15 caracteres. Avatar: um emoji curto. (not valid = não reprova linhas antigas)
+do $$ begin
+  alter table public.profiles add constraint profiles_name_len check (char_length(display_name) between 1 and 15) not valid;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.profiles add constraint profiles_avatar_len check (avatar is null or char_length(avatar) <= 8) not valid;
+exception when duplicate_object then null; end $$;
 
 alter table public.profiles enable row level security;
 
--- O cliente só pode alterar o próprio nome. Elo é alterado apenas pela função record_match.
+-- O cliente só pode alterar o próprio nome e avatar. Elo é alterado apenas pela função record_match.
 revoke insert, update on public.profiles from anon, authenticated;
-grant update (display_name) on public.profiles to authenticated;
+grant update (display_name, avatar) on public.profiles to authenticated;
 
 drop policy if exists "profiles_select_all" on public.profiles;
 create policy "profiles_select_all" on public.profiles
@@ -40,8 +49,8 @@ begin
   values (
     new.id,
     coalesce(
-      left(new.raw_user_meta_data ->> 'full_name', 15),
-      left(new.raw_user_meta_data ->> 'name', 15),
+      nullif(left(new.raw_user_meta_data ->> 'full_name', 15), ''),
+      nullif(left(new.raw_user_meta_data ->> 'name', 15), ''),
       'Jogador'
     )
   )
@@ -309,7 +318,9 @@ begin
       v_ok := false;
     elsif v_reason = 'normal' then
       v_ok := (hr ->> 'my_score')::int = (gr ->> 'opp_score')::int
-          and (hr ->> 'opp_score')::int = (gr ->> 'my_score')::int;
+          and (hr ->> 'opp_score')::int = (gr ->> 'my_score')::int
+          and coalesce((hr ->> 'my_rows')::int, 0) = coalesce((gr ->> 'opp_rows')::int, 0)
+          and coalesce((hr ->> 'opp_rows')::int, 0) = coalesce((gr ->> 'my_rows')::int, 0);
     else
       v_ok := (hr ->> 'loser' = 'me' and gr ->> 'loser' = 'opp')
            or (hr ->> 'loser' = 'opp' and gr ->> 'loser' = 'me');
@@ -318,7 +329,10 @@ begin
     v_hs := (hr ->> 'my_score')::int; v_gs := (hr ->> 'opp_score')::int;
     if v_ok then
       if v_reason = 'normal' then
-        v_s := case when v_hs > v_gs then 1 when v_hs = v_gs then 0.5 else 0 end;
+        v_s := case when v_hs > v_gs then 1 when v_hs < v_gs then 0
+                    else case when coalesce((hr ->> 'my_rows')::int, 0) > coalesce((hr ->> 'opp_rows')::int, 0) then 1
+                              when coalesce((hr ->> 'my_rows')::int, 0) < coalesce((hr ->> 'opp_rows')::int, 0) then 0
+                              else 0.5 end end;
       else
         v_s := case when hr ->> 'loser' = 'me' then 0 else 1 end;
       end if;
@@ -333,7 +347,12 @@ begin
       v_hs := case when host_side then (r ->> 'my_score')::int else (r ->> 'opp_score')::int end;
       v_gs := case when host_side then (r ->> 'opp_score')::int else (r ->> 'my_score')::int end;
       if v_reason = 'normal' then
-        v_s := case when v_hs > v_gs then 1 when v_hs = v_gs then 0.5 else 0 end;
+        declare rh int := case when host_side then coalesce((r ->> 'my_rows')::int, 0) else coalesce((r ->> 'opp_rows')::int, 0) end;
+                rg int := case when host_side then coalesce((r ->> 'opp_rows')::int, 0) else coalesce((r ->> 'my_rows')::int, 0) end;
+        begin
+          v_s := case when v_hs > v_gs then 1 when v_hs < v_gs then 0
+                      else case when rh > rg then 1 when rh < rg then 0 else 0.5 end end;
+        end;
       else
         -- Relato de quem reportou: 'me' perdeu / 'opp' perdeu
         v_s := case when (r ->> 'loser' = 'me') = host_side then 0 else 1 end;
@@ -390,7 +409,7 @@ $$;
 revoke execute on function public._settle_ranked(uuid) from public, anon, authenticated;
 
 drop function if exists public.report_ranked_result(uuid, jsonb);
--- p_report: { my_score, opp_score, end_reason: normal|timeout|abandon, loser: me|opp|null, moves }
+-- p_report: { my_score, opp_score, my_rows, opp_rows (linhas completas: desempate), end_reason: normal|timeout|abandon, loser: me|opp|null, moves }
 create or replace function public.report_ranked_result(p_match_id uuid, p_report jsonb)
 returns table (r_status text, r_elo_before int, r_elo_after int)
 language plpgsql
@@ -412,7 +431,9 @@ begin
     'opp_score', least(greatest(coalesce((p_report ->> 'opp_score')::int, 0), 0), 400),
     'end_reason', case when p_report ->> 'end_reason' in ('normal', 'timeout', 'abandon') then p_report ->> 'end_reason' else 'normal' end,
     'loser', case when p_report ->> 'loser' in ('me', 'opp') then p_report ->> 'loser' end,
-    'moves', least(greatest(coalesce((p_report ->> 'moves')::int, 0), 0), 1000)
+    'moves', least(greatest(coalesce((p_report ->> 'moves')::int, 0), 0), 1000),
+    'my_rows', least(greatest(coalesce((p_report ->> 'my_rows')::int, 0), 0), 5),
+    'opp_rows', least(greatest(coalesce((p_report ->> 'opp_rows')::int, 0), 0), 5)
   );
 
   if v_is_host and m.host_report is null then
@@ -488,6 +509,7 @@ create or replace function public.get_leaderboard(p_mode text default 'online', 
 returns table (
   user_id uuid,
   display_name text,
+  avatar text,
   elo int,
   games bigint,
   wins bigint,
@@ -501,6 +523,7 @@ as $$
   select
     m.user_id,
     p.display_name,
+    p.avatar,
     p.elo,
     count(*) as games,
     count(*) filter (where m.won) as wins,
@@ -510,7 +533,7 @@ as $$
   join public.profiles p on p.id = m.user_id
   where m.mode = p_mode
     and (p_mode <> 'online' or m.elo_after is not null)
-  group by m.user_id, p.display_name, p.elo
+  group by m.user_id, p.display_name, p.avatar, p.elo
   order by
     case when p_mode = 'online' then p.elo end desc nulls last,
     count(*) filter (where m.won) desc,

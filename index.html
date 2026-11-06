@@ -127,7 +127,7 @@
 
   <!-- Modal Minha Conta -->
   <div id="accountModal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 360px; text-align: left;">
+    <div class="modal-box" style="max-width: 360px; text-align: left; max-height: 92vh; overflow-y: auto;">
       <h2 style="text-align: center;">Minha Conta</h2>
       <div class="acc-summary">
         <div class="pc-avatar" id="accAvatar">?</div>
@@ -135,6 +135,15 @@
           <div class="pc-name" id="accName">—</div>
           <div class="pc-sub" id="accElo">—</div>
         </div>
+      </div>
+
+      <div class="acc-section">
+        <label class="acc-label" for="accNameInput">Seu nome no jogo e no ranking</label>
+        <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="Seu nome" style="width: 100%; margin: 0 0 12px;">
+        <div class="acc-label">Avatar (toque de novo para remover)</div>
+        <div id="avatarGrid" class="avatar-grid"></div>
+        <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700; margin-top: 10px;" onclick="saveProfileEdits()">Salvar perfil</button>
+        <div id="accProfileMsg" class="acc-msg"></div>
       </div>
 
       <div id="accGuestBox">

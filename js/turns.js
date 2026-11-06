@@ -395,15 +395,22 @@
       isScoringAnimationActive = false;
 
       // Exibe modal final com os vencedores e pontuações calculadas
-      const sorted = [...players].sort((a, b) => b.score - a.score);
+      // Regra oficial: empate em pontos => vence quem completou mais linhas horizontais; persistindo, dividem a vitória
+      const sorted = [...players].sort((a, b) => (b.score - a.score) || (completedRows(b) - completedRows(a)));
+      const rankOf = sorted.map((p, i) => {
+        let r = i;
+        while (r > 0 && sorted[r - 1].score === p.score && completedRows(sorted[r - 1]) === completedRows(p)) r--;
+        return r + 1;
+      });
+      const tiedOnScore = sorted.length > 1 && sorted[0].score === sorted[1].score;
       const modal = document.getElementById('endModal');
       const desc = document.getElementById('winnerDesc');
 
       desc.innerHTML = `
         <div class="endgame-list">
           ${sorted.map((p, idx) => {
-        const isWinner = idx === 0;
-        const rankLabel = isWinner ? '1º' : `${idx + 1}º`;
+        const isWinner = rankOf[idx] === 1;
+        const rankLabel = `${rankOf[idx]}º`;
         const name = p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`);
         const boardPts = (p.boardScore !== undefined) ? p.boardScore : (p.score - (p.finalBonus || 0));
         const lBonus = p.lineBonus || 0;
@@ -428,15 +435,22 @@
                   ${lBonus > 0 ? `<span class="endgame-tag bonus-tag" title="Bônus por linhas horizontais completas">Linha: <strong>+${lBonus}</strong></span>` : ''}
                   ${cBonus > 0 ? `<span class="endgame-tag bonus-tag" title="Bônus por colunas verticais completas">Coluna: <strong>+${cBonus}</strong></span>` : ''}
                   ${clrBonus > 0 ? `<span class="endgame-tag bonus-tag" title="Bônus por todas as 5 peças de uma cor">Cor: <strong>+${clrBonus}</strong></span>` : ''}
+                  ${tiedOnScore ? `<span class="endgame-tag" title="Critério de desempate: linhas horizontais completas">Linhas completas: <strong>${completedRows(p)}</strong></span>` : ''}
                 </div>
               </div>
             `;
       }).join('')}
         </div>
+        ${tiedOnScore ? `<div style="margin-top:10px;font-size:11px;color:#94a3b8;">Empate em pontos: desempate por linhas horizontais completas${rankOf[0] === rankOf[1] ? ' (persistiu o empate: vitória dividida)' : ''}.</div>` : ''}
       `;
       modal.style.display = 'flex';
       recordMatchResult('normal');
       saveSessionToStorage();
+    }
+
+    // Linhas horizontais completas da parede (critério de desempate do Azul)
+    function completedRows(p) {
+      return (p.wall || []).filter(row => row.every(v => v === true)).length;
     }
 
     async function endGame() {

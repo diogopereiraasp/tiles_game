@@ -17,6 +17,15 @@
       const user = await ensureSignedIn();
       if (!user) { alert('Não foi possível entrar na sua conta. Tente novamente em instantes.'); return; }
 
+      // Primeira vez com o nome padrão: convida a escolher nome/avatar antes de entrar no ranking
+      let prompted = false;
+      try { prompted = !!localStorage.getItem('azul_name_prompted'); } catch (e) { }
+      if (authProfile && authProfile.display_name === 'Jogador' && !prompted) {
+        try { localStorage.setItem('azul_name_prompted', '1'); } catch (e) { }
+        openAccountModal('Escolha um nome e um avatar para aparecer no ranking. Depois toque em Partida Ranqueada de novo.');
+        return;
+      }
+
       document.getElementById('mainMenuModal').style.display = 'none';
       document.getElementById('searchModal').style.display = 'flex';
       const elo = (authProfile && typeof authProfile.elo === 'number') ? authProfile.elo : 0;

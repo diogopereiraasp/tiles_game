@@ -20,7 +20,7 @@
 
     async function loadProfile() {
       if (!sb || !authUser) { authProfile = null; return; }
-      const { data } = await sb.from('profiles').select('id, display_name, elo').eq('id', authUser.id).maybeSingle();
+      const { data } = await sb.from('profiles').select('id, display_name, avatar, elo').eq('id', authUser.id).maybeSingle();
       authProfile = data || null;
     }
 
@@ -41,8 +41,12 @@
       const initial = name.trim().charAt(0).toUpperCase() || '?';
       const isGuest = !authUser || authUser.is_anonymous;
 
-      $('pcAvatar').textContent = initial;
-      $('accAvatar').textContent = initial;
+      const avatar = (authProfile && authProfile.avatar) || '';
+      ['pcAvatar', 'accAvatar'].forEach(id => {
+        $(id).textContent = avatar || initial;
+        $(id).classList.toggle('has-emoji', !!avatar);
+      });
+      applyProfileNameToInputs();
       $('pcName').textContent = sb ? name : 'Offline';
       $('accName').textContent = name;
       $('pcElo').textContent = elo !== null ? elo : '—';
@@ -60,8 +64,48 @@
       $('accEmail').textContent = (authUser && authUser.email) || '';
     }
 
-    function openAccountModal() {
+    const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐸', '🐙', '🦉', '🐧', '🦄', '🐲', '🐳', '🦋',
+      '🌵', '🍀', '🔥', '⚡', '🌙', '⭐', '🎲', '🎯', '🧩', '👑', '🚀', '🎸'];
+    let selectedAvatar = '';
+
+    function renderAvatarGrid() {
+      const grid = document.getElementById('avatarGrid');
+      if (!grid) return;
+      grid.innerHTML = AVATARS.map(a => `<button type="button" class="avatar-opt ${a === selectedAvatar ? 'sel' : ''}" onclick="pickAvatar('${a}')">${a}</button>`).join('');
+    }
+
+    function pickAvatar(a) {
+      selectedAvatar = (selectedAvatar === a) ? '' : a; // tocar de novo remove o avatar
+      renderAvatarGrid();
+    }
+
+    // Nome do perfil vira o nome padrão nos campos de nome do jogo (salas de amigos)
+    function applyProfileNameToInputs() {
+      const name = authProfile && authProfile.display_name;
+      if (!name || name === 'Jogador') return;
+      const inp = document.getElementById('onlineMyNameInput');
+      if (inp && (!inp.value.trim() || /^Jogador \d$/.test(inp.value.trim()))) inp.value = name;
+    }
+
+    async function saveProfileEdits() {
+      const msg = document.getElementById('accProfileMsg');
+      if (!sb || !authUser) { msg.textContent = 'Sem conexão com o servidor.'; return; }
+      const name = document.getElementById('accNameInput').value.replace(/\s+/g, ' ').trim();
+      if (name.length < 2 || name.length > 15) { msg.textContent = 'O nome precisa ter de 2 a 15 caracteres.'; return; }
+      msg.textContent = 'Salvando...';
+      const { error } = await sb.from('profiles').update({ display_name: name, avatar: selectedAvatar || null }).eq('id', authUser.id);
+      if (error) { msg.textContent = 'Não foi possível salvar: ' + error.message; return; }
+      authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name, avatar: selectedAvatar || null };
+      renderAuthBar();
+      msg.textContent = '✓ Perfil salvo!';
+    }
+
+    function openAccountModal(hint) {
       document.getElementById('authEmailMsg').textContent = '';
+      document.getElementById('accProfileMsg').textContent = hint || '';
+      document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
+      selectedAvatar = (authProfile && authProfile.avatar) || '';
+      renderAvatarGrid();
       document.getElementById('accountModal').style.display = 'flex';
       renderAuthBar();
     }
@@ -159,7 +203,7 @@
           if (x.id === abandonedIndex) return 1;
           if (y.id === abandonedIndex) return -1;
         }
-        return y.score - x.score;
+        return (y.score - x.score) || (completedRows(y) - completedRows(x));
       });
       const placeOf = id => order.findIndex(p => p.id === id) + 1;
       const placement = placeOf(me.id);
@@ -169,19 +213,14 @@
         const user = await ensureSignedIn();
         if (!user) { matchRecorded = false; return; }
 
-        // Mantém o nome do perfil igual ao nome usado no jogo
-        const gameName = (me.name || '').trim().slice(0, 15);
-        if (gameName && (!authProfile || authProfile.display_name !== gameName) && !/^(Você|Jogador \d|P\d)$/.test(gameName)) {
-          const { error: nameErr } = await sb.from('profiles').update({ display_name: gameName }).eq('id', user.id);
-          if (!nameErr) authProfile = { ...(authProfile || {}), id: user.id, display_name: gameName };
-        }
-
         // Partida ranqueada: o resultado vai para o servidor, que só dá Elo se os DOIS lados relatarem o mesmo
         if (mode === 'online') {
           const opp = players.find(p => p.id !== me.id) || { score: 0 };
           const report = {
             my_score: Math.max(0, me.score | 0),
             opp_score: Math.max(0, opp.score | 0),
+            my_rows: completedRows(me),
+            opp_rows: opp.wall ? completedRows(opp) : 0,
             end_reason: endReason,
             loser: endReason === 'normal' ? null : (abandonedIndex === me.id ? 'me' : 'opp'),
             moves: movesPlayed
@@ -333,7 +372,7 @@
         <div class="lb-row ${authUser && r.user_id === authUser.id ? 'me' : ''}">
           <span class="lb-pos">${medals[i] || `${i + 1}º`}</span>
           <div style="min-width:0;">
-            <div class="lb-name">${escapeHtml(r.display_name)}</div>
+            <div class="lb-name">${r.avatar ? escapeHtml(r.avatar) + ' ' : ''}${escapeHtml(r.display_name)}</div>
             <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
           </div>
           <div class="lb-stat">${r.elo}<div class="lb-sub ${tier.cls}" style="font-weight:800;">${tier.name}</div></div>
