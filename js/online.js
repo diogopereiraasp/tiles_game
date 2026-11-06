@@ -1,7 +1,16 @@
     // ── Relógio de ação (online): 3min inicial, +15s por jogada, teto de 3min ──
-    const CLOCK_INITIAL_MS = 180000;
+    // Tempo por jogador: 3 min (ranqueada) ou 3/5/10 min (salas de amigos). O teto é igual ao tempo inicial.
+    const CLOCK_OPTIONS_MIN = [3, 5, 10];
+    let CLOCK_INITIAL_MS = 180000;
     const CLOCK_INCREMENT_MS = 15000;
-    const CLOCK_MAX_MS = 180000;
+    let CLOCK_MAX_MS = 180000;
+    const validClockMs = (ms) => CLOCK_OPTIONS_MIN.includes(Math.round(Number(ms) / 60000)) ? Math.round(Number(ms) / 60000) * 60000 : 180000;
+    function setClockMinutes(min) { CLOCK_INITIAL_MS = CLOCK_MAX_MS = validClockMs(min * 60000); }
+    let selectedRoomMinutes = 3;
+    function selectRoomTime(min) {
+      selectedRoomMinutes = CLOCK_OPTIONS_MIN.includes(min) ? min : 3;
+      CLOCK_OPTIONS_MIN.forEach(m => { const b = document.getElementById('roomTime' + m); if (b) b.classList.toggle('active', m === selectedRoomMinutes); });
+    }
     let clockLastTick = Date.now();
     let clockSyncCounter = 0;
 
@@ -542,6 +551,7 @@
       const myName = (players && players[myP2PIndex] && players[myP2PIndex].name) || 'Você';
       updateP2PBadge('online', `${myName} (Anfitrião - ${targetOnlinePlayers}P)`);
       startGuestDisconnectTimer(0); // o antigo anfitrião tem a mesma tolerância de qualquer jogador
+      if (typeof rearmWallChoicesAsHost === 'function') rearmWallChoicesAsHost(); // modo avançado: assume escolhas de coluna pendentes
       saveSessionToStorage();
     }
 
@@ -574,7 +584,9 @@
     }
 
     function p2pCreateRoom(fixedCode = null, opts = {}) {
-      advancedMode = false; // online (ranqueada e amigos) usa sempre as regras normais
+      // modo avançado só nas salas de amigos (a caixinha da sala); a partida ranqueada usa sempre as regras normais
+      advancedMode = !opts.ranked && !!(document.getElementById('advModeRoom') || {}).checked;
+      setClockMinutes(opts.ranked ? 3 : selectedRoomMinutes); // ranqueada sempre 3 min; amigos: 3, 5 ou 10
       savePlayerNamesToStorage();
       const roomInfo = document.getElementById('hostRoomInfo');
       const roomCodeEl = document.getElementById('myRoomCode');
@@ -876,6 +888,8 @@
           document.getElementById('mainMenuModal').style.display = 'none';
           updateChatVisibility();
         }
+      } else if (msg.type === 'WALL_PICK') {
+        receiveWallPick(senderConn.assignedIndex, msg);
       } else if (msg.type === 'SET_PLAYER_NAME') {
         if (msg.playerIndex === senderConn.assignedIndex && players && players[msg.playerIndex] && cleanName(msg.name)) {
           players[msg.playerIndex].name = cleanName(msg.name);
@@ -954,9 +968,11 @@
         const myName = (myP2PIndex !== null && players[myP2PIndex] && players[myP2PIndex].name)
           ? players[myP2PIndex].name
           : (myP2PIndex !== null ? `P${myP2PIndex + 1}` : '?');
-        updateP2PBadge('online', `${myName} (${playerCount}P)`);
+        updateP2PBadge('online', `${myName} (${playerCount}P)${advancedMode ? ' · Avançado' : ''}`);
         updateChatVisibility();
         saveSessionToStorage();
+      } else if (msg.type === 'WALL_CHOICE') {
+        receiveWallChoice(msg);
       } else if (msg.type === 'ACTION') {
         executeGameAction(msg.action, false);
       } else if (msg.type === 'CHAT') {
@@ -1030,7 +1046,8 @@
         stagedMove,
         hostEpoch,
         movesPlayed,
-        advancedMode
+        advancedMode,
+        clockMaxMs: CLOCK_MAX_MS
       };
     }
 
@@ -1082,8 +1099,10 @@
       const out = { ...st };
       out.playerCount = num(st.playerCount, 2, 2, 4);
       out.advancedMode = !!st.advancedMode;
+      out.clockMaxMs = validClockMs(st.clockMaxMs);
+      const maxClock = out.clockMaxMs;
       out.players = (Array.isArray(st.players) ? st.players : []).slice(0, 4).map((p, i) => {
-        const q = { ...p, id: i, name: cleanName(p.name), score: num(p.score, 0, 0, 1000), clock: num(p.clock, CLOCK_INITIAL_MS, 0, CLOCK_MAX_MS) };
+        const q = { ...p, id: i, name: cleanName(p.name), score: num(p.score, 0, 0, 1000), clock: num(p.clock, maxClock, 0, maxClock) };
         ['boardScore', 'lineBonus', 'colBonus', 'colorBonus', 'finalBonus'].forEach(k => { if (p[k] !== undefined) q[k] = num(p[k], 0, 0, 1000); });
         q.floor = tiles(p.floor).slice(0, 7);
         q.pattern = Array.from({ length: 5 }, (_, r) => {
@@ -1115,6 +1134,7 @@
     function applyFullGameState(state) {
       state = sanitizeIncomingState(state);
       advancedMode = !!state.advancedMode;
+      CLOCK_INITIAL_MS = CLOCK_MAX_MS = validClockMs(state.clockMaxMs);
       playerCount = state.playerCount;
       players = state.players;
       players.forEach(p => { if (typeof p.clock !== 'number') p.clock = CLOCK_INITIAL_MS; });

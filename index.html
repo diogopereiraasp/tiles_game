@@ -319,6 +319,18 @@
             <button class="btn-toggle" id="host4pBtn" style="flex: 1;" onclick="selectHostPCount(4)">4 Jogadores</button>
           </div>
 
+          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Tempo por jogador (ganha +15 s a cada jogada, até o limite):</div>
+          <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
+            <button class="btn-toggle active" id="roomTime3" style="flex: 1;" onclick="selectRoomTime(3)">3 min</button>
+            <button class="btn-toggle" id="roomTime5" style="flex: 1;" onclick="selectRoomTime(5)">5 min</button>
+            <button class="btn-toggle" id="roomTime10" style="flex: 1;" onclick="selectRoomTime(10)">10 min</button>
+          </div>
+
+          <label class="adv-option">
+            <input type="checkbox" id="advModeRoom">
+            <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Cada jogador escolhe a coluna de suas peças na parede. Vale só para esta sala de amigos.</small></span>
+          </label>
+
           <button class="btn-toggle btn-online" style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-bottom: 8px;"
             onclick="p2pCreateRoom()">
             + Criar Nova Sala (Ser o Host)

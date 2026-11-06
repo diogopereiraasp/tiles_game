@@ -152,15 +152,127 @@
     let wallChoice = null;      // { playerId, r, cols, color, resolve } enquanto alguém escolhe
     let autoWallChoice = false; // testes/bots: escolhe sozinho para todos
 
+    // Online (modo avançado nas salas de amigos): a coluna é decidida pelo ANFITRIÃO, que valida e confirma
+    // (WALL_CHOICE) para todos; o dono da peça só envia o pedido (WALL_PICK). Assim os dois aparelhos ficam iguais.
+    const WALL_CHOICE_TIMEOUT_MS = 60000; // se o dono não escolher em 60s, o anfitrião escolhe a melhor coluna
+    const wallChoiceInbox = new Map();    // confirmações que chegaram antes de serem usadas
+    const wallChoiceWaiters = new Map();  // convidado: aguardando a confirmação do anfitrião
+    const wallPickInbox = new Map();      // anfitrião: pedidos dos convidados que chegaram antes
+    const wallPickWaiters = new Map();    // anfitrião: aguardando o pedido de um convidado
+    const wallKey = (rd, pid, r) => `${rd}:${pid}:${r}`;
+
+    function pruneWallChoiceMaps() {
+      [wallChoiceInbox, wallPickInbox].forEach(m => [...m.keys()].forEach(k => { if (Number(k.split(':')[0]) < round) m.delete(k); }));
+    }
+
     function chooseWallColumn(p, r, color) {
       const cols = validCols(p, r, color);
       if (cols.length === 0) return Promise.resolve(-1);
       if (cols.length === 1) return Promise.resolve(cols[0]);
       if (autoWallChoice || (isBotMode && p.id === 1)) return Promise.resolve(bestWallCol(p, r, color, cols));
+
+      if (!isP2P) {
+        return new Promise(resolve => {
+          wallChoice = { playerId: p.id, r, cols, color, resolve };
+          showWallChoiceHint(p, r, color);
+          renderBoards();
+        });
+      }
+
+      const key = wallKey(round, p.id, r);
+      const mine = (p.id === myP2PIndex);
+
+      if (isHost) {
+        return new Promise(resolve => {
+          let timer = null;
+          const decide = (c) => {
+            clearTimeout(timer);
+            wallPickWaiters.delete(key);
+            const col = (Number.isInteger(c) && cols.includes(c)) ? c : bestWallCol(p, r, color, cols); // valida: pedido inválido => melhor coluna
+            wallChoice = null;
+            hideWallChoiceHint();
+            broadcastP2P({ type: 'WALL_CHOICE', round, playerId: p.id, r, c: col });
+            renderBoards();
+            resolve(col);
+          };
+          if (mine) {
+            wallChoice = { playerId: p.id, r, cols, color, resolve: decide };
+            showWallChoiceHint(p, r, color);
+            renderBoards();
+          } else {
+            showWallWaitHint(p, r, color);
+            if (wallPickInbox.has(key)) { const c = wallPickInbox.get(key); wallPickInbox.delete(key); decide(c); return; }
+            wallPickWaiters.set(key, decide);
+            timer = setTimeout(() => decide(null), WALL_CHOICE_TIMEOUT_MS);
+          }
+        });
+      }
+
+      // convidado: só aplica o que o anfitrião confirmou
       return new Promise(resolve => {
-        wallChoice = { playerId: p.id, r, cols, color, resolve };
-        showWallChoiceHint(p, r, color);
-        renderBoards();
+        const finish = (c) => {
+          wallChoiceWaiters.delete(key);
+          wallChoice = null;
+          hideWallChoiceHint();
+          renderBoards();
+          resolve(c);
+        };
+        if (wallChoiceInbox.has(key)) { const c = wallChoiceInbox.get(key); wallChoiceInbox.delete(key); resolve(c); return; }
+        wallChoiceWaiters.set(key, finish);
+        if (mine) {
+          wallChoice = {
+            playerId: p.id, r, cols, color,
+            resolve: (c) => {
+              // envia o pedido e aguarda a confirmação do anfitrião
+              try { clientHostConn.send({ type: 'WALL_PICK', round, playerId: p.id, r, c }); } catch (e) { }
+              showWallWaitHint(p, r, color, 'Confirmando a sua escolha...');
+            }
+          };
+          showWallChoiceHint(p, r, color);
+          renderBoards();
+        } else {
+          showWallWaitHint(p, r, color);
+        }
+      });
+    }
+
+    // Convidado recebeu a confirmação do anfitrião
+    function receiveWallChoice(msg) {
+      if (!msg || !Number.isInteger(msg.round) || !Number.isInteger(msg.playerId) || !Number.isInteger(msg.r) || !Number.isInteger(msg.c)) return;
+      if (msg.r < 0 || msg.r > 4 || msg.c < 0 || msg.c > 4) return;
+      const key = wallKey(msg.round, msg.playerId, msg.r);
+      const w = wallChoiceWaiters.get(key);
+      if (w) w(msg.c); else wallChoiceInbox.set(key, msg.c);
+    }
+
+    // Anfitrião recebeu o pedido de um convidado (só vale do dono da peça)
+    function receiveWallPick(seat, msg) {
+      if (!msg || msg.playerId !== seat || !Number.isInteger(msg.round) || !Number.isInteger(msg.r) || !Number.isInteger(msg.c)) return;
+      if (msg.r < 0 || msg.r > 4 || msg.c < 0 || msg.c > 4) return;
+      const key = wallKey(msg.round, msg.playerId, msg.r);
+      const w = wallPickWaiters.get(key);
+      if (w) w(msg.c); else wallPickInbox.set(key, msg.c);
+    }
+
+    // Se o anfitrião caiu no meio da escolha e este aparelho assumiu a sala, passa a decidir as escolhas pendentes
+    function rearmWallChoicesAsHost() {
+      wallChoiceWaiters.forEach((finish, key) => {
+        const [rd, pid, r] = key.split(':').map(Number);
+        const p = players[pid];
+        if (!p || !p.pattern[r]) return;
+        const color = p.pattern[r].color;
+        const cols = validCols(p, r, color);
+        let t = null;
+        const decide = (c) => {
+          clearTimeout(t);
+          wallPickWaiters.delete(key);
+          const col = (Number.isInteger(c) && cols.includes(c)) ? c : bestWallCol(p, r, color, cols);
+          broadcastP2P({ type: 'WALL_CHOICE', round: rd, playerId: pid, r, c: col });
+          finish(col);
+        };
+        t = setTimeout(() => decide(null), WALL_CHOICE_TIMEOUT_MS);
+        wallPickWaiters.set(key, decide);
+        if (wallChoice && wallChoice.playerId === pid && wallChoice.r === r) wallChoice.resolve = decide;
       });
     }
 
@@ -170,6 +282,7 @@
       wallChoice = null;
       hideWallChoiceHint();
       w.resolve(c);
+      renderBoards();
     }
 
     const COLOR_LABEL_PT = { blue: 'azul', yellow: 'amarela', red: 'vermelha', black: 'preta', white: 'branca' };
@@ -184,6 +297,13 @@
       if (sw) sw.className = `tile ${color}`;
       box.style.display = 'flex';
     }
+    function showWallWaitHint(p, r, color, text) {
+      showWallChoiceHint(p, r, color);
+      const tx = document.getElementById('wallChoiceText');
+      if (tx) tx.textContent = text || `Aguardando ${p.name || 'o jogador'} escolher a coluna da peça ${COLOR_LABEL_PT[color] || ''} (linha ${r + 1})...`;
+      const nm = document.getElementById('wallChoiceName');
+      if (nm) nm.textContent = text ? '' : (p.name || '');
+    }
     function hideWallChoiceHint() {
       const box = document.getElementById('wallChoiceHint');
       if (box) box.style.display = 'none';
@@ -192,6 +312,7 @@
     async function scoreRound() {
       if (isScoringAnimationActive) return;
       isScoringAnimationActive = true;
+      pruneWallChoiceMaps();
       let gameEnds = false;
 
       // Desativa interação temporária
