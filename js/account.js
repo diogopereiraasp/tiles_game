@@ -87,7 +87,7 @@
       usernameCheckTimer = setTimeout(async () => {
         if (!sb) return;
         const { data, error } = await sb.rpc('is_username_available', { p_name: name });
-        if (seq !== usernameCheckSeq) return;
+        if (seq !== usernameCheckSeq || document.getElementById(inputId).value.trim() !== name) return;
         if (error) { status.textContent = ''; return; }
         status.innerHTML = data ? icon('check') + ' Disponível' : icon('x') + ' Já está em uso';
         status.style.color = data ? '#4ade80' : '#f87171';
@@ -225,6 +225,7 @@
       document.getElementById('authPasswordInput').value = '';
       document.getElementById('authUserInput').value = '';
       document.getElementById('authEmailMsg').textContent = '';
+      onAuthUserInput();
       await loadProfile();
       renderAuthBar();
       try { await sb.rpc('settle_my_ranked_matches'); } catch (e) { }
