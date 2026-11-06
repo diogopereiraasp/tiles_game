@@ -1467,3 +1467,8 @@
     .medal { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 800; color: #0f1216; }
     .medal.m1 { background: #facc15; } .medal.m2 { background: #cbd5e1; } .medal.m3 { background: #d08b4f; }
     .endgame-rank .ic { width: 1em; height: 1em; }
+
+    .btn-spinner { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border-radius: 50%; border: 2px solid rgba(15,18,22,0.25); border-top-color: #0f1216; animation: search-spin 0.8s linear infinite; }
+    .menu-primary.loading { opacity: 0.85; cursor: progress; }
+    .menu-primary:disabled { cursor: progress; }
+    #accOutBox input:disabled, #accOutBox .btn-toggle:disabled { opacity: 0.6; }

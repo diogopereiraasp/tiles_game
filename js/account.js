@@ -188,7 +188,29 @@
       onAuthUserInput();
     }
 
+    // Estado de carregamento do formulário de conta (botão com spinner, campos travados)
+    let authBusy = false;
+    function setAuthBusy(busy, label) {
+      authBusy = busy;
+      const btn = document.getElementById('authSubmitBtn');
+      const title = btn.querySelector('.mp-title');
+      if (busy) {
+        title.innerHTML = '<span class="btn-spinner"></span>' + escapeHtml(label);
+      } else {
+        title.textContent = authMode === 'create' ? 'Criar conta' : 'Entrar';
+      }
+      btn.classList.toggle('loading', busy);
+      btn.disabled = busy;
+      ['authUserInput', 'authPasswordInput', 'authModeCreate', 'authModeLogin'].forEach(id => { document.getElementById(id).disabled = busy; });
+    }
+
     async function submitAuthForm() {
+      if (authBusy) return;
+      setAuthBusy(true, authMode === 'create' ? 'Criando sua conta...' : 'Entrando...');
+      try { await submitAuthFormInner(); } finally { setAuthBusy(false); }
+    }
+
+    async function submitAuthFormInner() {
       if (!sb) return;
       const msg = document.getElementById('authEmailMsg');
       const username = (document.getElementById('authUserInput').value || '').trim();
@@ -199,7 +221,7 @@
       }
       if (pw.length < 8) { msg.textContent = 'A senha precisa ter pelo menos 8 caracteres.'; return; }
       if (pw.length > 72) { msg.textContent = 'A senha pode ter no máximo 72 caracteres.'; return; }
-      msg.textContent = 'Aguarde...';
+      msg.textContent = '';
 
       if (authMode === 'login') {
         const { data: email, error: lookupErr } = await sb.rpc('login_email_for', { p_username: username });
