@@ -1530,3 +1530,6 @@
         0 0 0 2px rgba(0, 0, 0, 0.35);
     }
     body.fx3d .slot-empty, body.fx3d .floor-slot:not(.occupied) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); border-style: solid; }
+
+    /* peças "voando" ao pegar (clones animados por JS) */
+    .fly-tile { position: fixed; z-index: 500; margin: 0 !important; pointer-events: none; transition: none !important; will-change: transform, opacity; box-shadow: 0 10px 16px rgba(0, 0, 0, 0.45), inset 0 2px 1px rgba(255, 255, 255, 0.4); }

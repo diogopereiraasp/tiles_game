@@ -437,6 +437,56 @@
       saveSessionToStorage();
     });
 
+    // ── Animação: as peças pegas "voam" da fábrica/centro até o jogador (e as sobras para o centro) ──
+    function flyTiles(els, targetEl, opts = {}) {
+      if (!els.length || !targetEl) return;
+      const t = targetEl.getBoundingClientRect();
+      const tx = t.left + (opts.anchorLeft ? Math.min(60, t.width * 0.15) : t.width / 2);
+      const ty = t.top + (opts.anchorLeft ? Math.min(34, t.height * 0.1) : t.height / 2);
+      els.forEach((el, i) => {
+        const r = el.getBoundingClientRect();
+        if (!r.width) return;
+        const clone = el.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.onclick = null;
+        clone.className = el.className.replace('preview-ghost', '') + ' fly-tile';
+        clone.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
+        document.body.appendChild(clone);
+        const dx = tx - (r.left + r.width / 2);
+        const dy = ty - (r.top + r.height / 2);
+        const scaleEnd = opts.scaleEnd !== undefined ? opts.scaleEnd : 0.6;
+        const anim = clone.animate([
+          { transform: 'translate(0, 0) scale(1) rotate(0deg)', opacity: 1 },
+          { transform: `translate(${dx * 0.3}px, ${dy * 0.3 - 26}px) scale(1.22) rotate(${i % 2 ? 7 : -7}deg)`, opacity: 1, offset: 0.35 },
+          { transform: `translate(${dx}px, ${dy}px) scale(${scaleEnd}) rotate(0deg)`, opacity: opts.fadeEnd ? 0.1 : 0.9 }
+        ], { duration: (opts.duration || 560) + i * 45, delay: opts.delay || 0, easing: 'cubic-bezier(0.22, 0.8, 0.25, 1)', fill: 'forwards' });
+        const done = () => clone.remove();
+        anim.onfinish = done;
+        anim.oncancel = done;
+        setTimeout(done, 1800); // garantia
+      });
+    }
+
+    // Chamado ANTES de redesenhar: as peças ainda estão na posição de origem
+    function flyPickedTiles(source, fIdx, color, playerIdx) {
+      try {
+        if (document.hidden || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+        const card = (document.getElementById('playerPts_' + playerIdx) || {}).closest ? document.getElementById('playerPts_' + playerIdx).closest('.player-card') : null;
+        const topEl = card ? (card.querySelector('.card-top') || card) : null;
+        if (source === 'f') {
+          const disc = document.querySelectorAll('#factoriesWrap .factory-disc')[fIdx];
+          if (!disc) return;
+          const picked = [...disc.querySelectorAll('.tile')].filter(e => e.classList.contains(color));
+          const rest = [...disc.querySelectorAll('.tile')].filter(e => !e.classList.contains(color));
+          flyTiles(picked, topEl, { anchorLeft: true });
+          flyTiles(rest, document.getElementById('centerDisc'), { scaleEnd: 0.9, fadeEnd: true, duration: 480, delay: 140 });
+        } else {
+          const picked = [...document.querySelectorAll('#centerDisc .tile')].filter(e => e.classList.contains(color));
+          flyTiles(picked, topEl, { anchorLeft: true });
+        }
+      } catch (e) { console.warn('animação das peças:', e); }
+    }
+
     // ── Efeito 3D nas peças (selecionável; lembra a escolha neste navegador) ──
     function applyFx3d(on) {
       document.body.classList.toggle('fx3d', on);
