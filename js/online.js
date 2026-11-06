@@ -444,6 +444,9 @@
           }
           conn._emit('data', payload.data);
         } else if (clientHostConn) {
+          // Segurança: convidado só aceita mensagens de quem está anunciado como anfitrião
+          const sender = room.readPresence().get(payload.from);
+          if (!sender || sender.role !== 'host') return;
           if (!clientHostConn.open) { clientHostConn.peer = payload.from; clientHostConn.open = true; }
           clientHostConn._emit('data', payload.data);
         }
@@ -451,6 +454,7 @@
 
       channel.on('broadcast', { event: 'ctl' }, ({ payload }) => {
         if (room.destroyed || !payload || payload.to !== myId || payload.ctl !== 'close') return;
+        if (room.role !== 'host' && payload.from !== (clientHostConn && clientHostConn.peer)) return; // só o anfitrião fecha a conexão do convidado
         const conn = room.role === 'host' ? room.conns.get(payload.from) : clientHostConn;
         if (conn && conn.open) { conn.open = false; conn._emit('close'); }
       });
@@ -803,7 +807,13 @@
 
     // Host recebe ação de um convidado, executa localmente e replica para os outros convidados
     function handleHostReceivedMessage(senderConn, msg) {
+      if (!msg || typeof msg !== 'object') return;
       if (msg.type === 'ACTION') {
+        // Segurança: o anfitrião só aceita jogada de quem está na vez e que seja legal
+        if (!validateGuestAction(senderConn.assignedIndex, msg.action)) {
+          try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
+          return;
+        }
         executeGameAction(msg.action, false);
         // Repassa para os outros convidados
         hostGuestConnections.forEach(c => {
@@ -812,9 +822,15 @@
           }
         });
       } else if (msg.type === 'REQUEST_SYNC') {
-        const idx = (typeof msg.requestedIndex === 'number' && msg.requestedIndex >= 0 && msg.requestedIndex !== myP2PIndex)
+        const idx = (Number.isInteger(msg.requestedIndex) && msg.requestedIndex >= 0 && msg.requestedIndex < targetOnlinePlayers && msg.requestedIndex !== myP2PIndex)
           ? msg.requestedIndex
           : (senderConn.assignedIndex || (hostGuestConnections.indexOf(senderConn) + 1));
+        // Segurança: não deixa outro cliente tomar o assento de quem está conectado agora
+        const seatTaken = hostGuestConnections.some(c => c !== senderConn && c.open && c.assignedIndex === idx && c.peer !== senderConn.peer);
+        if (seatTaken) {
+          try { senderConn.send({ type: 'ROOM_FULL' }); } catch (e) { }
+          return;
+        }
         senderConn.assignedIndex = idx;
 
         // Cancela qualquer timer de abandono por desconexão para este jogador
@@ -832,7 +848,7 @@
         }
 
         if (msg.playerName && players && players[idx]) {
-          players[idx].name = msg.playerName;
+          players[idx].name = cleanName(msg.playerName) || players[idx].name;
         }
         senderConn.send({
           type: 'WELCOME',
@@ -857,27 +873,58 @@
           updateChatVisibility();
         }
       } else if (msg.type === 'SET_PLAYER_NAME') {
-        if (typeof msg.playerIndex === 'number' && players && players[msg.playerIndex]) {
-          players[msg.playerIndex].name = msg.name;
+        if (msg.playerIndex === senderConn.assignedIndex && players && players[msg.playerIndex] && cleanName(msg.name)) {
+          players[msg.playerIndex].name = cleanName(msg.name);
           broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
           renderBoards();
           saveSessionToStorage();
         }
       } else if (msg.type === 'CHAT') {
-        const isFromMe = (typeof msg.senderIndex === 'number' && myP2PIndex !== null && msg.senderIndex === myP2PIndex);
-        appendChatMessage(msg.senderIndex, msg.senderName, msg.text, msg.time, isFromMe);
+        // O índice do remetente é o do assento da conexão (não confia no que o cliente declara)
+        const seat = senderConn.assignedIndex;
+        if (!Number.isInteger(seat)) return;
+        const safeMsg = { type: 'CHAT', senderIndex: seat, senderName: cleanName(players && players[seat] && players[seat].name), text: String(msg.text ?? '').slice(0, 500), time: String(msg.time ?? '').slice(0, 10) };
+        appendChatMessage(safeMsg.senderIndex, safeMsg.senderName, safeMsg.text, safeMsg.time, false);
         hostGuestConnections.forEach(c => {
           if (c !== senderConn && c.open) {
-            try { c.send(msg); } catch (e) { }
+            try { c.send(safeMsg); } catch (e) { }
           }
         });
       } else if (msg.type === 'PLAYER_ABANDONED') {
-        handlePlayerAbandoned(msg.playerIndex, msg.playerName, msg.reason);
+        // Segurança: um jogador só pode abandonar a si mesmo (nunca declarar que outro saiu)
+        const seat = senderConn.assignedIndex;
+        if (!Number.isInteger(seat) || msg.playerIndex !== seat) return;
+        const name = cleanName(players && players[seat] && players[seat].name);
+        handlePlayerAbandoned(seat, name, 'abandon');
         hostGuestConnections.forEach(c => {
           if (c !== senderConn && c.open) {
-            c.send(msg);
+            try { c.send({ type: 'PLAYER_ABANDONED', playerIndex: seat, playerName: name, reason: 'abandon' }); } catch (e) { }
           }
         });
+      }
+    }
+
+    // Segurança: valida uma jogada recebida de um convidado
+    function validateGuestAction(seat, a) {
+      if (!a || typeof a !== 'object' || !Number.isInteger(seat)) return false;
+      if (!isGameActive || hasMatchEndedByAbandon || isScoringAnimationActive) return false;
+      if (seat !== turn) return false;
+      switch (a.type) {
+        case 'PICK_FACTORY':
+          return Number.isInteger(a.fIdx) && !!factories[a.fIdx] && COLORS.includes(a.color) && factories[a.fIdx].includes(a.color);
+        case 'PICK_CENTER':
+          return COLORS.includes(a.color) && center.includes(a.color);
+        case 'STAGE_ROW': {
+          if (!selected || !Number.isInteger(a.rIdx) || a.rIdx < 0 || a.rIdx > 4) return false;
+          const p = players[turn];
+          const row = p.pattern[a.rIdx];
+          if (row.count > 0 && row.color !== selected.color) return false;
+          return !p.wall[a.rIdx][WALL_LAYOUT[a.rIdx].indexOf(selected.color)];
+        }
+        case 'STAGE_FLOOR': return !!selected;
+        case 'CONFIRM_MOVE': return !!selected && !!stagedMove;
+        case 'CANCEL_MOVE': return !!selected;
+        default: return false;
       }
     }
 
@@ -912,7 +959,8 @@
         const isFromMe = (typeof msg.senderIndex === 'number' && myP2PIndex !== null && msg.senderIndex === myP2PIndex);
         appendChatMessage(msg.senderIndex, msg.senderName, msg.text, msg.time, isFromMe);
       } else if (msg.type === 'PLAYER_ABANDONED') {
-        handlePlayerAbandoned(msg.playerIndex, msg.playerName, msg.reason);
+        if (!Number.isInteger(msg.playerIndex)) return;
+        handlePlayerAbandoned(msg.playerIndex, cleanName(msg.playerName), msg.reason === 'timeout' ? 'timeout' : 'abandon');
       } else if (msg.type === 'CLOCK_SYNC') {
         if (players && Array.isArray(msg.clocks)) {
           msg.clocks.forEach((c, i) => { if (players[i] && typeof c === 'number') players[i].clock = c; });
@@ -1021,7 +1069,44 @@
       } catch (e) { }
     }
 
+    // Segurança: estado vindo da rede é validado (tipos, cores, nomes) antes de ir para a tela
+    function sanitizeIncomingState(st) {
+      const num = (v, d, lo, hi) => { v = Number(v); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+      const tile = c => COLORS.includes(c) || c === 'starter';
+      const tiles = arr => (Array.isArray(arr) ? arr.filter(tile).slice(0, 120) : []);
+      const out = { ...st };
+      out.playerCount = num(st.playerCount, 2, 2, 4);
+      out.players = (Array.isArray(st.players) ? st.players : []).slice(0, 4).map((p, i) => {
+        const q = { ...p, id: i, name: cleanName(p.name), score: num(p.score, 0, 0, 1000), clock: num(p.clock, CLOCK_INITIAL_MS, 0, CLOCK_MAX_MS) };
+        ['boardScore', 'lineBonus', 'colBonus', 'colorBonus', 'finalBonus'].forEach(k => { if (p[k] !== undefined) q[k] = num(p[k], 0, 0, 1000); });
+        q.floor = tiles(p.floor).slice(0, 7);
+        q.pattern = Array.from({ length: 5 }, (_, r) => {
+          const row = (p.pattern && p.pattern[r]) || {};
+          return { size: r + 1, count: num(row.count, 0, 0, r + 1), color: COLORS.includes(row.color) ? row.color : null };
+        });
+        q.wall = Array.from({ length: 5 }, (_, r) => Array.from({ length: 5 }, (_, c) => !!(p.wall && p.wall[r] && p.wall[r][c])));
+        delete q.uid;
+        return q;
+      });
+      out.factories = (Array.isArray(st.factories) ? st.factories : []).slice(0, 9).map(tiles);
+      out.center = tiles(st.center);
+      out.bag = tiles(st.bag);
+      out.discard = tiles(st.discard);
+      out.turn = num(st.turn, 0, 0, 3);
+      out.round = num(st.round, 1, 1, 99);
+      out.nextStartPlayer = num(st.nextStartPlayer, 0, 0, 3);
+      out.starterTileInCenter = !!st.starterTileInCenter;
+      const sel = st.selected;
+      out.selected = (sel && COLORS.includes(sel.color) && (sel.source === 'f' || sel.source === 'c'))
+        ? { source: sel.source, color: sel.color, count: num(sel.count, 1, 1, 20), fIdx: Number.isInteger(sel.fIdx) ? sel.fIdx : undefined } : null;
+      const sm = st.stagedMove;
+      out.stagedMove = (sm && (sm.target === 'floor' || (sm.target === 'row' && Number.isInteger(sm.rIdx) && sm.rIdx >= 0 && sm.rIdx <= 4)))
+        ? (sm.target === 'floor' ? { target: 'floor' } : { target: 'row', rIdx: sm.rIdx }) : null;
+      return out;
+    }
+
     function applyFullGameState(state) {
+      state = sanitizeIncomingState(state);
       playerCount = state.playerCount;
       players = state.players;
       players.forEach(p => { if (typeof p.clock !== 'number') p.clock = CLOCK_INITIAL_MS; });
@@ -1152,12 +1237,12 @@
         let listHtml = '';
         if (remainingWinner) {
           const isMe = (isP2P && remainingWinner.id === myP2PIndex);
-          const baseName = remainingWinner.name || `Jogador ${remainingWinner.id + 1}`;
+          const baseName = escapeHtml(remainingWinner.name || `Jogador ${remainingWinner.id + 1}`);
           const winnerLabel = isMe ? `${baseName} (Você)` : baseName;
 
           listHtml = `
             <div style="margin-bottom: 16px; color: #94a3b8; font-size: 13px;">
-              <strong style="color: #f87171;">${leavingName}</strong> ${reason === 'timeout' ? 'ficou sem tempo.' : 'saiu da partida.'}
+              <strong style="color: #f87171;">${escapeHtml(leavingName)}</strong> ${reason === 'timeout' ? 'ficou sem tempo.' : 'saiu da partida.'}
             </div>
             <div class="endgame-list">
               <div class="endgame-item winner">
@@ -1179,13 +1264,13 @@
           const sorted = [...remainingPlayers].sort((a, b) => b.score - a.score);
           listHtml = `
             <div style="margin-bottom: 16px; color: #94a3b8; font-size: 13px;">
-              <strong style="color: #f87171;">${leavingName}</strong> ${reason === 'timeout' ? 'ficou sem tempo.' : 'saiu da partida.'}
+              <strong style="color: #f87171;">${escapeHtml(leavingName)}</strong> ${reason === 'timeout' ? 'ficou sem tempo.' : 'saiu da partida.'}
             </div>
             <div class="endgame-list">
               ${sorted.map((p, idx) => {
             const isWinner = idx === 0;
             const isMe = (isP2P && p.id === myP2PIndex);
-            const baseName = p.name || `Jogador ${p.id + 1}`;
+            const baseName = escapeHtml(p.name || `Jogador ${p.id + 1}`);
             const pLabel = isMe ? `${baseName} (Você)` : baseName;
             return `
                   <div class="endgame-item ${isWinner ? 'winner' : ''}">

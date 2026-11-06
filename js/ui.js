@@ -132,7 +132,7 @@
         card.className = `player-card ${isCurrentTurn ? 'active-turn' : ''}`;
 
         const isMe = (isP2P && myP2PIndex !== null && p.id === myP2PIndex);
-        const baseName = p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`);
+        const baseName = escapeHtml(p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`));
         let playerTitle = isMe ? `${baseName} (Você)` : baseName;
         if (isBotMode && p.id === 1) {
           playerTitle = `<span class="player-name">${baseName}</span><span class="bot-level-badge bot-level-${botDifficulty}">${getBotDifficultyLabel(botDifficulty)}</span>`;

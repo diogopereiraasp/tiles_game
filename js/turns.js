@@ -411,7 +411,7 @@
           ${sorted.map((p, idx) => {
         const isWinner = rankOf[idx] === 1;
         const rankLabel = `${rankOf[idx]}º`;
-        const name = p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`);
+        const name = escapeHtml(p.name || (isBotMode ? (p.id === 1 ? 'Bot' : 'Você') : `Jogador ${p.id + 1}`));
         const boardPts = (p.boardScore !== undefined) ? p.boardScore : (p.score - (p.finalBonus || 0));
         const lBonus = p.lineBonus || 0;
         const cBonus = p.colBonus || 0;

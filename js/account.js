@@ -14,10 +14,6 @@
     let leaderboardTab = 'online';
     let settledOnce = false;
 
-    function escapeHtml(str) {
-      return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-    }
-
     async function loadProfile() {
       if (!sb || !authUser) { authProfile = null; return; }
       const { data } = await sb.from('profiles').select('id, display_name, avatar, elo').eq('id', authUser.id).maybeSingle();

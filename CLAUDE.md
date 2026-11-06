@@ -33,5 +33,6 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 - Nome e avatar vêm do perfil (`profiles.display_name`/`avatar`, editados em Minha Conta); o jogo não sobrescreve o nome do perfil.
 - Desempate (regra oficial): pontos iguais => mais linhas horizontais completas (`completedRows`); persistindo, vitória dividida (empate no Elo). Os relatos ranqueados incluem `my_rows`/`opp_rows` e o servidor confere.
 - Elo começa em 0 (piso 0). Níveis: Bronze <100, Prata ≥100, Ouro ≥300, Platina ≥600, Diamante ≥1000.
+- Segurança: nomes/textos da rede são dados, nunca HTML: use `escapeHtml`/`cleanName` (config.js) e `sanitizeIncomingState` (online.js). O anfitrião valida jogadas (`validateGuestAction`: vez, legalidade) e só deixa cada jogador abandonar/renomear a si mesmo; convidados só aceitam mensagens de quem é `host` no Presence. Script do Supabase com SRI e CSP em meta (script-src ainda tem 'unsafe-inline' por causa dos `onclick=` no HTML).
 - Ao testar com duas abas: o jogo salva a sessão em `beforeunload`; zere `isGameActive` e o storage antes de recarregar.
 - Publicar = commit em `main` + merge/push em `gh-pages`, só quando o usuário pedir.

@@ -3,6 +3,15 @@
        ===================================================================== */
     const COLORS = ['blue', 'yellow', 'red', 'black', 'white'];
 
+    // Segurança: nomes e textos vindos da rede são DADOS, nunca HTML.
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+    // Nome de jogador: sem caracteres de controle nem < >, espaços normalizados, no máximo 15 caracteres
+    function cleanName(str) {
+      return String(str ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 15);
+    }
+
     const WALL_LAYOUT = [
       ['blue', 'yellow', 'red', 'black', 'white'],
       ['white', 'blue', 'yellow', 'red', 'black'],
