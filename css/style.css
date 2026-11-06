@@ -1547,3 +1547,6 @@
     .tile.red::after    { background-image: var(--azulejo-red); }
     .tile.white::after  { background-image: var(--azulejo-white); }
     .tile.black::after  { background-image: var(--azulejo-black); }
+
+    /* ladrilhos de referência da parede (ainda vazios): só a corzinha de fundo, SEM desenho */
+    .wall-cell:not(.filled)::after { display: none !important; }
