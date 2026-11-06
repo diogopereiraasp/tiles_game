@@ -12,17 +12,21 @@
   <meta name="theme-color" content="#39414a">
   <!-- Segurança: só carrega scripts do próprio site e do jsDelivr (com SRI); conexões só ao Supabase do jogo; sem plugins/forms/base.
        'unsafe-inline' em script-src ainda é necessário porque o HTML usa onclick="..." (ver CLAUDE.md). -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://cbhjtbjrbtkelpsmqsly.supabase.co wss://cbhjtbjrbtkelpsmqsly.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://cbhjtbjrbtkelpsmqsly.supabase.co wss://cbhjtbjrbtkelpsmqsly.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
   <!-- Supabase (Auth + Histórico + Ranking) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
+    integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
+    crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="css/style.css?v=202611062041">
 </head>
 
 <body>
 
   <header>
     <div class="header-left">
-      <span class="header-title-text" style="font-weight: 800; color: #fff; font-size: 13px; letter-spacing: 1px;">AZUL</span>
+      <span class="header-title-text"
+        style="font-weight: 800; color: #fff; font-size: 13px; letter-spacing: 1px;">AZUL</span>
       <div id="p2pStatus" class="status-badge" style="display:none;">
         <span id="p2pDot" class="status-dot"></span>
         <span id="p2pLabel">Offline</span>
@@ -36,10 +40,13 @@
         <span><span data-icon="chat"></span> Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
       </button>
-      <button id="fxMotifBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleMotifs()" title="Desenhos de azulejo nas peças (ligar/desligar)" aria-label="Desenhos de azulejo nas peças" aria-pressed="true">
+      <button id="fxMotifBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleMotifs()"
+        title="Desenhos de azulejo nas peças (ligar/desligar)" aria-label="Desenhos de azulejo nas peças"
+        aria-pressed="true">
         <span data-icon="shapes"></span>
       </button>
-      <button id="fx3dBtn" class="btn-toggle fx-btn active" onclick="toggleFx3d()" title="Efeito 3D nas peças" aria-pressed="true">
+      <button id="fx3dBtn" class="btn-toggle fx-btn active" onclick="toggleFx3d()" title="Efeito 3D nas peças"
+        aria-pressed="true">
         <span data-icon="cube"></span> 3D
       </button>
       <button class="btn-toggle" onclick="exitToMainMenu()" style="color: var(--text-pri);">Sair da Partida</button>
@@ -134,7 +141,8 @@
       <div id="searchTimer" class="search-timer">0:00</div>
       <p id="searchSub" style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;"></p>
       <p id="searchEloLine" style="color: #cbd5e1; font-size: 12px; margin-bottom: 18px;"></p>
-      <button class="btn-toggle" style="width: 100%; padding: 11px; font-weight: 700;" onclick="cancelRankedSearch()">Cancelar</button>
+      <button class="btn-toggle" style="width: 100%; padding: 11px; font-weight: 700;"
+        onclick="cancelRankedSearch()">Cancelar</button>
     </div>
   </div>
 
@@ -146,14 +154,19 @@
       <!-- Sem login -->
       <div id="accOutBox">
         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-          <button class="btn-toggle active" id="authModeCreate" style="flex: 1; padding: 8px; font-weight: 600;" onclick="setAuthMode('create')">Criar conta</button>
-          <button class="btn-toggle" id="authModeLogin" style="flex: 1; padding: 8px; font-weight: 600;" onclick="setAuthMode('login')">Já tenho conta</button>
+          <button class="btn-toggle active" id="authModeCreate" style="flex: 1; padding: 8px; font-weight: 600;"
+            onclick="setAuthMode('create')">Criar conta</button>
+          <button class="btn-toggle" id="authModeLogin" style="flex: 1; padding: 8px; font-weight: 600;"
+            onclick="setAuthMode('login')">Já tenho conta</button>
         </div>
         <label class="acc-label" for="authUserInput">Nome de usuário</label>
-        <input type="text" id="authUserInput" class="modal-name-input" placeholder="ex.: Joao_21" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="15" oninput="onAuthUserInput()" style="width: 100%; margin: 0 0 4px;">
+        <input type="text" id="authUserInput" class="modal-name-input" placeholder="ex.: Joao_21"
+          autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="15" oninput="onAuthUserInput()"
+          style="width: 100%; margin: 0 0 4px;">
         <div id="authUserStatus" class="acc-hint" style="margin: 0 0 10px; min-height: 1.2em;"></div>
         <label class="acc-label" for="authPasswordInput">Senha (mínimo 8 caracteres)</label>
-        <input type="password" id="authPasswordInput" class="modal-name-input" placeholder="********" autocomplete="new-password" style="width: 100%; margin: 0 0 10px;">
+        <input type="password" id="authPasswordInput" class="modal-name-input" placeholder="********"
+          autocomplete="new-password" style="width: 100%; margin: 0 0 10px;">
         <button class="menu-primary" id="authSubmitBtn" style="padding: 11px;" onclick="submitAuthForm()">
           <span class="mp-title" style="font-size: 13px;">Criar conta</span>
         </button>
@@ -170,22 +183,30 @@
 
         <div class="acc-section">
           <label class="acc-label" for="accNameInput">Nome de usuário (único, aparece no jogo e no ranking)</label>
-          <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="ex.: Joao_21" autocapitalize="off" autocomplete="off" spellcheck="false" oninput="onUsernameInput()" style="width: 100%; margin: 0 0 4px;">
-          <div id="accNameStatus" class="acc-hint" style="margin: 0 0 10px; min-height: 1.2em;">3 a 15 letras, números ou _ (sem espaços).</div>
-          <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700;" onclick="saveProfileEdits()">Salvar nome</button>
+          <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="ex.: Joao_21"
+            autocapitalize="off" autocomplete="off" spellcheck="false" oninput="onUsernameInput()"
+            style="width: 100%; margin: 0 0 4px;">
+          <div id="accNameStatus" class="acc-hint" style="margin: 0 0 10px; min-height: 1.2em;">3 a 15 letras, números
+            ou _ (sem espaços).</div>
+          <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700;"
+            onclick="saveProfileEdits()">Salvar nome</button>
           <div id="accProfileMsg" class="acc-msg"></div>
         </div>
 
         <label class="acc-label" for="newPasswordInput">Trocar senha (mínimo 8 caracteres)</label>
         <div style="display: flex; gap: 6px; margin-bottom: 4px;">
-          <input type="password" id="newPasswordInput" class="modal-name-input" placeholder="nova senha" autocomplete="new-password" style="flex: 1; margin: 0;">
-          <button class="btn-toggle btn-online" style="padding: 8px 12px; font-weight: 600;" onclick="changePassword()">Trocar</button>
+          <input type="password" id="newPasswordInput" class="modal-name-input" placeholder="nova senha"
+            autocomplete="new-password" style="flex: 1; margin: 0;">
+          <button class="btn-toggle btn-online" style="padding: 8px 12px; font-weight: 600;"
+            onclick="changePassword()">Trocar</button>
         </div>
         <div id="accPasswordMsg" class="acc-msg" style="margin-bottom: 8px;"></div>
-        <button class="btn-toggle" style="width: 100%; padding: 10px; font-weight: 600;" onclick="signOutAccount()">Sair da conta</button>
+        <button class="btn-toggle" style="width: 100%; padding: 10px; font-weight: 600;" onclick="signOutAccount()">Sair
+          da conta</button>
       </div>
 
-      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 10px; font-weight: 600;" onclick="closeAccountModal()">Fechar</button>
+      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 10px; font-weight: 600;"
+        onclick="closeAccountModal()">Fechar</button>
     </div>
   </div>
 
@@ -194,12 +215,16 @@
     <div class="modal-box" style="max-width: 440px;">
       <h2><span data-icon="trophy"></span> Ranking</h2>
       <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-        <button class="btn-toggle active" id="lbTabOnline" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('online')">Ranking Elo</button>
-        <button class="btn-toggle" id="lbTabHistory" style="flex: 1; padding: 8px; font-weight: 600;" onclick="switchLeaderboardTab('history')">Minhas Partidas</button>
+        <button class="btn-toggle active" id="lbTabOnline" style="flex: 1; padding: 8px; font-weight: 600;"
+          onclick="switchLeaderboardTab('online')">Ranking Elo</button>
+        <button class="btn-toggle" id="lbTabHistory" style="flex: 1; padding: 8px; font-weight: 600;"
+          onclick="switchLeaderboardTab('history')">Minhas Partidas</button>
       </div>
       <div id="leaderboardContent" class="lb-content">Carregando...</div>
-      <div class="acc-hint" style="text-align:center;">Todos começam com 0 Elo. Vencer online sobe, perder desce. Treino vs Bot não altera o Elo.</div>
-      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 14px; font-weight: 600;" onclick="closeLeaderboardModal()">Fechar</button>
+      <div class="acc-hint" style="text-align:center;">Todos começam com 0 Elo. Vencer online sobe, perder desce. Treino
+        vs Bot não altera o Elo.</div>
+      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 14px; font-weight: 600;"
+        onclick="closeLeaderboardModal()">Fechar</button>
     </div>
   </div>
 
@@ -238,7 +263,8 @@
 
         <label class="adv-option">
           <input type="checkbox" id="advModeLocal">
-          <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Sem cores marcadas na parede: cada um escolhe a coluna de suas peças.</small></span>
+          <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Sem cores marcadas na parede: cada um escolhe a
+              coluna de suas peças.</small></span>
         </label>
 
         <button class="btn-toggle btn-online"
@@ -272,7 +298,8 @@
 
       <label class="adv-option">
         <input type="checkbox" id="advModeBot">
-        <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Sem cores marcadas na parede: você escolhe a coluna de cada peça.</small></span>
+        <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Sem cores marcadas na parede: você escolhe a coluna
+            de cada peça.</small></span>
       </label>
 
       <button class="btn-toggle btn-online"
@@ -290,21 +317,25 @@
   <div id="multiplayerModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 380px;">
       <h2>Multiplayer Online (P2P)</h2>
-      <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 14px;">Jogue com 2, 3 ou 4 amigos no mesmo link, sem servidor próprio!</p>
+      <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 14px;">Jogue com 2, 3 ou 4 amigos no mesmo link,
+        sem servidor próprio!</p>
 
       <div style="margin-bottom: 14px; text-align: left;">
         <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 4px;">Seu nome de usuário:</div>
-        <input type="text" id="onlineMyNameInput" class="modal-name-input" placeholder="Seu nome de usuário" maxlength="15"
-          value="Jogador 1">
-        <div id="onlineNameHint" style="font-size: 10px; color: #94a3b8; margin-top: 4px; display: none;">Em partidas online você joga com seu nome de usuário. Para mudar, abra Minha Conta no menu.</div>
+        <input type="text" id="onlineMyNameInput" class="modal-name-input" placeholder="Seu nome de usuário"
+          maxlength="15" value="Jogador 1">
+        <div id="onlineNameHint" style="font-size: 10px; color: #94a3b8; margin-top: 4px; display: none;">Em partidas
+          online você joga com seu nome de usuário. Para mudar, abra Minha Conta no menu.</div>
       </div>
 
       <!-- Duas opções no topo para alternar o conteúdo -->
       <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
-        <button class="btn-toggle active" id="tabCreateBtn" style="flex: 1; padding: 10px 8px; font-weight: 700; font-size: 12px;" onclick="switchOnlineTab('create')">
+        <button class="btn-toggle active" id="tabCreateBtn"
+          style="flex: 1; padding: 10px 8px; font-weight: 700; font-size: 12px;" onclick="switchOnlineTab('create')">
           Criar Sala
         </button>
-        <button class="btn-toggle" id="tabJoinBtn" style="flex: 1; padding: 10px 8px; font-weight: 700; font-size: 12px;" onclick="switchOnlineTab('join')">
+        <button class="btn-toggle" id="tabJoinBtn"
+          style="flex: 1; padding: 10px 8px; font-weight: 700; font-size: 12px;" onclick="switchOnlineTab('join')">
           Entrar em uma Sala
         </button>
       </div>
@@ -312,14 +343,19 @@
       <!-- Conteúdo 1: Criar Sala -->
       <div id="onlineTabCreate">
         <div style="margin-bottom: 16px;">
-          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Escolha a quantidade de jogadores:</div>
+          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Escolha a
+            quantidade de jogadores:</div>
           <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
-            <button class="btn-toggle active" id="host2pBtn" style="flex: 1;" onclick="selectHostPCount(2)">2 Jogadores</button>
-            <button class="btn-toggle" id="host3pBtn" style="flex: 1;" onclick="selectHostPCount(3)">3 Jogadores</button>
-            <button class="btn-toggle" id="host4pBtn" style="flex: 1;" onclick="selectHostPCount(4)">4 Jogadores</button>
+            <button class="btn-toggle active" id="host2pBtn" style="flex: 1;" onclick="selectHostPCount(2)">2
+              Jogadores</button>
+            <button class="btn-toggle" id="host3pBtn" style="flex: 1;" onclick="selectHostPCount(3)">3
+              Jogadores</button>
+            <button class="btn-toggle" id="host4pBtn" style="flex: 1;" onclick="selectHostPCount(4)">4
+              Jogadores</button>
           </div>
 
-          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Tempo por jogador (ganha +15 s a cada jogada, até o limite):</div>
+          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Tempo por jogador
+            (ganha +15 s a cada jogada, até o limite):</div>
           <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
             <button class="btn-toggle active" id="roomTime3" style="flex: 1;" onclick="selectRoomTime(3)">3 min</button>
             <button class="btn-toggle" id="roomTime5" style="flex: 1;" onclick="selectRoomTime(5)">5 min</button>
@@ -328,10 +364,12 @@
 
           <label class="adv-option">
             <input type="checkbox" id="advModeRoom">
-            <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Cada jogador escolhe a coluna de suas peças na parede. Vale só para esta sala de amigos.</small></span>
+            <span><strong>Modo avançado</strong> (tabuleiro cinza)<small> Cada jogador escolhe a coluna de suas peças na
+                parede. Vale só para esta sala de amigos.</small></span>
           </label>
 
-          <button class="btn-toggle btn-online" style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-bottom: 8px;"
+          <button class="btn-toggle btn-online"
+            style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-bottom: 8px;"
             onclick="p2pCreateRoom()">
             + Criar Nova Sala (Ser o Host)
           </button>
@@ -341,8 +379,10 @@
             <div>
               <span id="myRoomCode" class="invite-code-display">----</span>
             </div>
-            <button class="btn-toggle" style="width: 100%; margin-top: 6px;" onclick="copyInviteLink()">Copiar Link de Convite</button>
-            <div id="waitGuestText" style="font-size: 11px; color: var(--accent-yellow); margin-top: 8px;">Aguardando jogadores: 1 / 2 conectados</div>
+            <button class="btn-toggle" style="width: 100%; margin-top: 6px;" onclick="copyInviteLink()">Copiar Link de
+              Convite</button>
+            <div id="waitGuestText" style="font-size: 11px; color: var(--accent-yellow); margin-top: 8px;">Aguardando
+              jogadores: 1 / 2 conectados</div>
           </div>
         </div>
       </div>
@@ -350,10 +390,13 @@
       <!-- Conteúdo 2: Entrar em uma Sala -->
       <div id="onlineTabJoin" style="display: none;">
         <div style="margin-bottom: 16px; text-align: left;">
-          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">Digite o código de 4 dígitos da sala:</div>
+          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px;">Digite o código de 4 dígitos da
+            sala:</div>
           <input type="text" id="roomCodeInput" class="modal-input" placeholder="EX: A7K9" maxlength="4"
             style="text-align: center; font-size: 18px; letter-spacing: 4px; font-weight: 800; text-transform: uppercase;">
-          <button class="btn-toggle btn-online" style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-top: 4px;" onclick="p2pJoinRoom()">
+          <button class="btn-toggle btn-online"
+            style="width: 100%; padding: 12px; font-size: 12px; font-weight: 700; margin-top: 4px;"
+            onclick="p2pJoinRoom()">
             Entrar na Sala
           </button>
         </div>
@@ -369,7 +412,9 @@
   <!-- Modo avançado: dica enquanto alguém escolhe a coluna da peça na parede -->
   <div id="wallChoiceHint" class="wall-hint" style="display: none;" role="status">
     <span id="wallChoiceSwatch" class="tile"></span>
-    <div><strong id="wallChoiceName"></strong><div id="wallChoiceText"></div></div>
+    <div><strong id="wallChoiceName"></strong>
+      <div id="wallChoiceText"></div>
+    </div>
   </div>
 
   <!-- Alerta grande de nova mensagem do chat (aparece por cima de tudo, some sozinho; toque para abrir o chat) -->
@@ -395,7 +440,8 @@
         <span style="font-weight: 700; color: #fff; font-size: 12px; letter-spacing: 0.5px;">Chat da Partida</span>
       </div>
       <div style="display: flex; align-items: center; gap: 4px;">
-        <button class="chat-btn-icon" onclick="toggleChatWindow()" title="Fechar Chat"><span data-icon="x"></span></button>
+        <button class="chat-btn-icon" onclick="toggleChatWindow()" title="Fechar Chat"><span
+            data-icon="x"></span></button>
       </div>
     </div>
     <div id="chatMessages" class="chat-messages">
@@ -414,16 +460,16 @@
     </form>
   </div>
 
-  <script src="js/config.js"></script>
-  <script src="js/chat.js"></script>
-  <script src="js/online-state.js"></script>
-  <script src="js/account.js"></script>
-  <script src="js/online.js"></script>
-  <script src="js/matchmaking.js"></script>
-  <script src="js/game-setup.js"></script>
-  <script src="js/bot.js"></script>
-  <script src="js/turns.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/config.js?v=202611062041"></script>
+  <script src="js/chat.js?v=202611062041"></script>
+  <script src="js/online-state.js?v=202611062041"></script>
+  <script src="js/account.js?v=202611062041"></script>
+  <script src="js/online.js?v=202611062041"></script>
+  <script src="js/matchmaking.js?v=202611062041"></script>
+  <script src="js/game-setup.js?v=202611062041"></script>
+  <script src="js/bot.js?v=202611062041"></script>
+  <script src="js/turns.js?v=202611062041"></script>
+  <script src="js/ui.js?v=202611062041"></script>
 </body>
 
 </html>
