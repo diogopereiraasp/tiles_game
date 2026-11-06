@@ -2,7 +2,6 @@
       if (broadcast && !canPlayerAct()) return;
       if (!factories[fIdx] || !factories[fIdx].includes(color)) return;
       const count = factories[fIdx].filter(c => c === color).length;
-      flyPickedTiles('f', fIdx, color, turn);
       selected = { source: 'f', fIdx, color, count };
       stagedMove = null; // Reinicia destino prévio ao mudar seleção
       renderAll();
@@ -16,7 +15,6 @@
       if (broadcast && !canPlayerAct()) return;
       const count = center.filter(c => c === color).length;
       if (count === 0) return;
-      flyPickedTiles('c', null, color, turn);
       selected = { source: 'c', color, count };
       stagedMove = null;
       renderAll();
