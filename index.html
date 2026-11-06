@@ -2126,8 +2126,21 @@
         return;
       }
 
+      const peerConfig = {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' }
+          ]
+        }
+      };
+
       // Cria peer com ID específico da sala (ex: azul-A7K9) ou aleatório se omitido
-      peer = preferredId ? new Peer(preferredId) : new Peer();
+      peer = preferredId ? new Peer(preferredId, peerConfig) : new Peer(peerConfig);
 
       peer.on('open', (id) => {
         console.log('PeerJS online ID:', id);
@@ -2296,7 +2309,7 @@
 
       initPeerJS(null, (myId) => {
         updateP2PBadge('waiting', 'Conectando...');
-        clientHostConn = peer.connect(targetPeerId);
+        clientHostConn = peer.connect(targetPeerId, { reliable: true });
         isHost = false;
         setupClientConnection();
       });
