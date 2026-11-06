@@ -12,6 +12,7 @@
     let authProfile = null;
     let matchRecorded = false;
     let leaderboardTab = 'online';
+    let settledOnce = false;
 
     function escapeHtml(str) {
       return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -80,6 +81,10 @@
         if (error) { console.warn('Login anônimo falhou:', error.message); return null; }
         authUser = data.user;
       }
+      if (!settledOnce) {
+        settledOnce = true;
+        try { await sb.rpc('settle_my_ranked_matches'); } catch (e) { }
+      }
       await loadProfile();
       renderAuthBar();
       return authUser;
@@ -127,7 +132,7 @@
       sb.auth.onAuthStateChange((_event, session) => {
         authUser = session ? session.user : null;
         // fora do callback para não travar o cliente
-        setTimeout(async () => { await loadProfile(); renderAuthBar(); shareMyUid(); }, 0);
+        setTimeout(async () => { await loadProfile(); renderAuthBar(); }, 0);
       });
       ensureSignedIn();
     } else {
@@ -140,7 +145,8 @@
 
       let myIdx;
       let mode;
-      if (isP2P) { mode = 'online'; myIdx = myP2PIndex; }
+      const rankedId = rankedMatchId; // captura antes de qualquer await (a saída da partida zera a variável)
+      if (isP2P) { mode = rankedId ? 'online' : 'friends'; myIdx = myP2PIndex; }
       else if (isBotMode) { mode = 'bot'; myIdx = 0; }
       else return; // Pass & Play: não dá para saber qual jogador é o dono da conta
       if (myIdx === null || myIdx === undefined || !players[myIdx]) return;
@@ -170,6 +176,22 @@
           if (!nameErr) authProfile = { ...(authProfile || {}), id: user.id, display_name: gameName };
         }
 
+        // Partida ranqueada: o resultado vai para o servidor, que só dá Elo se os DOIS lados relatarem o mesmo
+        if (mode === 'online') {
+          const opp = players.find(p => p.id !== me.id) || { score: 0 };
+          const report = {
+            my_score: Math.max(0, me.score | 0),
+            opp_score: Math.max(0, opp.score | 0),
+            end_reason: endReason,
+            loser: endReason === 'normal' ? null : (abandonedIndex === me.id ? 'me' : 'opp'),
+            moves: movesPlayed
+          };
+          const { data: rdata, error: rerr } = await sb.rpc('report_ranked_result', { p_match_id: rankedId, p_report: report });
+          if (rerr) { console.warn('Erro ao relatar partida ranqueada:', rerr.message); matchRecorded = false; return; }
+          handleRankedResult(Array.isArray(rdata) ? rdata[0] : rdata, rankedId, 0);
+          return;
+        }
+
         const { data, error } = await sb.rpc('record_match', {
           p_mode: mode,
           p_player_count: players.length,
@@ -179,7 +201,6 @@
           p_end_reason: endReason,
           p_bot_difficulty: mode === 'bot' ? String(botDifficulty) : null,
           p_opponents: players.filter(p => p.id !== me.id).map(p => ({
-            uid: (mode === 'online' && p.uid) ? p.uid : null,
             name: p.name,
             score: p.score,
             placement: placeOf(p.id)
@@ -200,30 +221,53 @@
       }
     }
 
-    function showEloChange(diff, newElo) {
+    function showResultBanner(html, kind) {
       const desc = document.getElementById('winnerDesc');
       if (!desc) return;
-      const old = document.getElementById('eloChangeBanner');
-      if (old) old.remove();
-      const tier = getEloTier(newElo);
-      const el = document.createElement('div');
-      el.id = 'eloChangeBanner';
-      el.style.cssText = `margin-top:14px;padding:10px;border-radius:8px;font-weight:700;font-size:14px;text-align:center;background:${diff > 0 ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)'};color:${diff > 0 ? '#4ade80' : '#f87171'};`;
-      el.innerHTML = `${diff > 0 ? '▲ +' : '▼ '}${diff} Elo <span style="color:#94a3b8;font-weight:600;">→ ${newElo} · <span class="${tier.cls}">${tier.name}</span></span>`;
-      desc.appendChild(el);
+      let el = document.getElementById('eloChangeBanner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'eloChangeBanner';
+        desc.appendChild(el);
+      } else if (!desc.contains(el)) {
+        desc.appendChild(el);
+      }
+      const colors = { up: ['rgba(74,222,128,0.1)', '#4ade80'], down: ['rgba(248,113,113,0.1)', '#f87171'], info: ['rgba(148,163,184,0.1)', '#cbd5e1'] };
+      const [bg, fg] = colors[kind] || colors.info;
+      el.style.cssText = `margin-top:14px;padding:10px;border-radius:8px;font-weight:700;font-size:14px;text-align:center;background:${bg};color:${fg};`;
+      el.innerHTML = html;
     }
 
-    // Envia o id da conta deste jogador para o host (necessário para o Elo do oponente)
-    function shareMyUid() {
-      if (!isP2P || !authUser || !players || myP2PIndex === null || !players[myP2PIndex]) return;
-      if (players[myP2PIndex].uid === authUser.id) return;
-      players[myP2PIndex].uid = authUser.id;
-      if (isHost) {
-        broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
-      } else if (clientHostConn && clientHostConn.open) {
-        try { clientHostConn.send({ type: 'SET_PLAYER_UID', playerIndex: myP2PIndex, uid: authUser.id }); } catch (e) { }
+    function showEloChange(diff, newElo) {
+      const tier = getEloTier(newElo);
+      showResultBanner(`${diff > 0 ? '▲ +' : diff < 0 ? '▼ ' : ''}${diff} Elo <span style="color:#94a3b8;font-weight:600;">→ ${newElo} · <span class="${tier.cls}">${tier.name}</span></span>`, diff > 0 ? 'up' : diff < 0 ? 'down' : 'info');
+    }
+
+    // Resposta do servidor para uma partida ranqueada: done | pending | disputed | void
+    function handleRankedResult(row, matchId, attempt) {
+      if (!row) return;
+      if (row.r_status === 'done' && typeof row.r_elo_after === 'number') {
+        const diff = row.r_elo_after - row.r_elo_before;
+        authProfile = { ...(authProfile || {}), elo: row.r_elo_after };
+        showEloChange(diff, row.r_elo_after);
+        renderAuthBar();
+      } else if (row.r_status === 'pending') {
+        showResultBanner('⏳ Confirmando o resultado com o oponente...', 'info');
+        if (attempt < 20) {
+          setTimeout(async () => {
+            const { data, error } = await sb.rpc('get_ranked_result', { p_match_id: matchId });
+            if (!error) handleRankedResult(Array.isArray(data) ? data[0] : data, matchId, attempt + 1);
+          }, 5000);
+        } else {
+          showResultBanner('O resultado será confirmado quando o oponente reconectar.', 'info');
+        }
+      } else if (row.r_status === 'disputed') {
+        showResultBanner('Resultado divergente entre os jogadores: partida sem Elo.', 'info');
+      } else if (row.r_status === 'void') {
+        showResultBanner('Partida curta demais ou repetida demais contra o mesmo oponente: sem Elo.', 'info');
       }
     }
+
 
     function openLeaderboardModal() {
       document.getElementById('leaderboardModal').style.display = 'flex';
@@ -265,7 +309,7 @@
               <span class="lb-pos ${m.won ? 'lb-win' : 'lb-loss'}">${m.won ? 'V' : 'D'}</span>
               <div style="min-width:0;">
                 <div class="lb-name">vs ${opp || '—'}</div>
-                <div class="lb-sub">${m.mode === 'online' ? 'Online' : 'Treino vs Bot'} · ${m.placement}º de ${m.player_count}${reasonLabel[m.end_reason] || ''} · ${date}</div>
+                <div class="lb-sub">${m.mode === 'online' ? 'Ranqueada' : m.mode === 'friends' ? 'Amigos' : 'Treino vs Bot'} · ${m.placement}º de ${m.player_count}${reasonLabel[m.end_reason] || ''} · ${date}</div>
               </div>
               <span class="lb-stat">${m.score} pts${typeof m.elo_after === 'number' && typeof m.elo_before === 'number'
                 ? `<div class="lb-sub ${m.elo_after >= m.elo_before ? 'lb-win' : 'lb-loss'}">${m.elo_after >= m.elo_before ? '+' : ''}${m.elo_after - m.elo_before} Elo</div>` : ''}</span>

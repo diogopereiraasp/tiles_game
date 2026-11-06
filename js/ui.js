@@ -349,6 +349,9 @@
           myP2PIndex = session.myP2PIndex;
           currentRoomCode = session.currentRoomCode;
           targetOnlinePlayers = session.targetOnlinePlayers || session.playerCount || 2;
+          rankedMatchId = session.rankedMatchId || null;
+          hostEpoch = session.hostEpoch || 0;
+          movesPlayed = session.movesPlayed || 0;
           isBotMode = false;
 
           // Atualiza URL com o código da sala

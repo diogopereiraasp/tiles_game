@@ -14,5 +14,10 @@
     let clientHostConn = null;
     let guestDisconnectTimers = {};
     let hostDisconnectTimer = null;
+    let rankedMatchId = null;   // id da partida ranqueada no servidor (null = sala de amigos, sem Elo)
+    let hostEpoch = 0;          // sobe 1 a cada troca de anfitrião (o maior vence em caso de conflito)
+    let movesPlayed = 0;        // jogadas confirmadas (o servidor exige um mínimo para validar vitória por abandono)
+    let hostMigrationTimer = null;
+    const HOST_MIGRATION_DELAY_MS = 10000; // sem anfitrião por 10s => um convidado assume a sala
     const DISCONNECT_GRACE_PERIOD_MS = 300000; // 5min de tolerância para tela bloqueada / oscilação de sinal
 

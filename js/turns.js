@@ -93,6 +93,7 @@
         broadcastP2P({ type: 'ACTION', action: { type: 'CONFIRM_MOVE' } });
       }
 
+      movesPlayed++;
       if (isP2P && typeof p.clock === 'number') {
         p.clock = Math.min(CLOCK_MAX_MS, p.clock + CLOCK_INCREMENT_MS);
       }

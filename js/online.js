@@ -270,7 +270,7 @@
         (this._handlers[evt] || []).forEach(fn => { try { fn(arg); } catch (e) { console.error(e); } });
       }
       send(data) {
-        if (!rtRoom || !this.peer) return;
+        if (!rtRoom || rtRoom.destroyed || !this.peer) return;
         // O Realtime não garante ordem: numeramos por destinatário para reordenar na chegada
         const seq = (rtRoom.seqTo.get(this.peer) || 0) + 1;
         rtRoom.seqTo.set(this.peer, seq);
@@ -295,6 +295,15 @@
     }
 
     // role: 'host' | 'guest'. opts.fresh = sala nova (host verifica colisão de código / guest avisa se não achar o host)
+    // Metadados anunciados no Presence (usados para eleger novo anfitrião)
+    function rtTrackPresence() {
+      if (!rtRoom || rtRoom.destroyed) return Promise.resolve('none');
+      const room = rtRoom;
+      return room.channel.track({ id: room.myId, role: room.role, idx: myP2PIndex, epoch: hostEpoch });
+    }
+
+    // role: 'host' | 'guest' (pode mudar durante a partida: migração de anfitrião)
+    // opts.fresh = sala nova; opts.fixedCode = código vindo do matchmaking; opts.ranked = partida ranqueada
     function initRealtimeRoom(roomCode, role, onReady, opts = {}) {
       if (!sb) {
         alert('Não foi possível conectar ao servidor do jogo. Verifique sua internet e tente novamente.');
@@ -312,10 +321,13 @@
       rtRoom = room;
 
       const readPresence = () => {
-        const present = new Map(); // id -> role
-        Object.values(channel.presenceState()).forEach(metas => metas.forEach(m => { if (m && m.id) present.set(m.id, m.role); }));
+        const present = new Map(); // id -> { role, idx, epoch }
+        Object.values(channel.presenceState()).forEach(metas => metas.forEach(m => {
+          if (m && m.id) present.set(m.id, { role: m.role, idx: m.idx, epoch: m.epoch || 0 });
+        }));
         return present;
       };
+      room.readPresence = readPresence;
       const clearMissing = (key) => {
         if (room.missing.has(key)) { clearTimeout(room.missing.get(key)); room.missing.delete(key); }
       };
@@ -326,11 +338,11 @@
           room.missing.delete(key);
           if (room.destroyed) return;
           const present = readPresence();
-          if (role === 'host') {
+          if (room.role === 'host') {
             const conn = room.conns.get(key);
             if (conn && conn.open && !present.has(key)) { conn.open = false; conn._emit('close'); }
           } else {
-            const hostThere = [...present.values()].includes('host');
+            const hostThere = [...present.values()].some(m => m.role === 'host');
             if (!hostThere && clientHostConn && clientHostConn.open) { clientHostConn.open = false; clientHostConn._emit('close'); }
           }
         }, 4000));
@@ -340,15 +352,22 @@
         if (room.destroyed) return;
         const present = readPresence();
 
-        if (role === 'host') {
-          // Código em uso por outro host: gera outro (só em sala nova)
-          if (room.firstSync && opts.fresh) {
-            const otherHost = [...present.entries()].some(([id, r]) => r === 'host' && id !== myId);
+        if (room.role === 'host') {
+          // Código em uso por outro host: gera outro (só em sala nova de amigos)
+          if (room.firstSync && opts.fresh && !opts.fixedCode) {
+            const otherHost = [...present.entries()].some(([id, m]) => m.role === 'host' && id !== myId);
             if (otherHost) {
               destroyRealtimeRoom();
               p2pCreateRoom();
               return;
             }
+          }
+          // Outro anfitrião mais "novo" assumiu enquanto eu estava fora: viro convidado e ressincronizo
+          const rival = [...present.entries()].filter(([id, m]) => m.role === 'host' && id !== myId)
+            .sort((x, y) => (y[1].epoch - x[1].epoch) || (x[0] < y[0] ? -1 : 1))[0];
+          if (rival && isGameActive && (rival[1].epoch > hostEpoch || (rival[1].epoch === hostEpoch && rival[0] < myId))) {
+            demoteToGuest();
+            return;
           }
           // Convidados que sumiram do Presence => conexão fechada
           room.conns.forEach((conn, id) => {
@@ -356,12 +375,14 @@
             else clearMissing(id);
           });
         } else {
-          const hostEntry = [...present.entries()].find(([, r]) => r === 'host');
+          const hostEntry = [...present.entries()].filter(([, m]) => m.role === 'host')
+            .sort((x, y) => (y[1].epoch - x[1].epoch) || (x[0] < y[0] ? -1 : 1))[0];
           const conn = clientHostConn;
           if (hostEntry) clearMissing('host');
           if (hostEntry && conn) {
             room.hostId = hostEntry[0];
             clearTimeout(room.notFoundTimer);
+            if (hostMigrationTimer) { clearTimeout(hostMigrationTimer); hostMigrationTimer = null; }
             if (!conn.open || conn.peer !== hostEntry[0]) {
               conn.peer = hostEntry[0];
               conn.open = true;
@@ -412,8 +433,8 @@
 
       const handleRtMessage = (payload) => {
         if (room.destroyed) return;
-        clearMissing(role === 'host' ? payload.from : 'host');
-        if (role === 'host') {
+        clearMissing(room.role === 'host' ? payload.from : 'host');
+        if (room.role === 'host') {
           let conn = room.conns.get(payload.from);
           if (!conn || !conn.open) {
             conn = new RtConn(payload.from);
@@ -430,7 +451,7 @@
 
       channel.on('broadcast', { event: 'ctl' }, ({ payload }) => {
         if (room.destroyed || !payload || payload.to !== myId || payload.ctl !== 'close') return;
-        const conn = role === 'host' ? room.conns.get(payload.from) : clientHostConn;
+        const conn = room.role === 'host' ? room.conns.get(payload.from) : clientHostConn;
         if (conn && conn.open) { conn.open = false; conn._emit('close'); }
       });
 
@@ -438,18 +459,18 @@
         if (room.destroyed) return;
         if (status === 'SUBSCRIBED') {
           // Também roda em toda reconexão automática: reanuncia presença
-          try { await channel.track({ id: myId, role }); } catch (e) { console.warn('track falhou', e); }
+          try { await rtTrackPresence(); } catch (e) { console.warn('track falhou', e); }
           if (room.readyFired || opts.rejoin) {
             // Reconexão: mensagens podem ter se perdido enquanto estávamos fora -> ressincroniza
-            if (role === 'guest' && clientHostConn) {
+            if (room.role === 'guest' && clientHostConn) {
               clientHostConn.open = false; // o próximo 'sync' do Presence reemite 'open' => REQUEST_SYNC
-            } else if (role === 'host' && isGameActive && !hasMatchEndedByAbandon) {
+            } else if (room.role === 'host' && isGameActive && !hasMatchEndedByAbandon) {
               setTimeout(() => { if (!room.destroyed) broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() }); }, 800);
             }
           }
           if (!room.readyFired) {
             room.readyFired = true;
-            if (role === 'guest' && opts.fresh) {
+            if (room.role === 'guest' && opts.fresh && !opts.ranked) {
               room.notFoundTimer = setTimeout(() => {
                 if (room.destroyed || (clientHostConn && clientHostConn.open)) return;
                 alert('Sala não encontrada. Confira o código e se o criador da sala ainda está com ela aberta.');
@@ -466,14 +487,93 @@
       });
     }
 
-    function p2pCreateRoom() {
+    // ── Migração de anfitrião ──
+    // Todos os jogadores já têm o estado completo da partida. Se o anfitrião some (tela bloqueada,
+    // sem sinal), o convidado de MENOR índice presente assume a sala e a partida continua para os outros.
+    function scheduleHostMigration() {
+      if (isHost || !isP2P) return;
+      if (hostMigrationTimer) clearTimeout(hostMigrationTimer);
+      hostMigrationTimer = setTimeout(() => { hostMigrationTimer = null; tryPromoteToHost(); }, HOST_MIGRATION_DELAY_MS);
+    }
+
+    async function tryPromoteToHost() {
+      const room = rtRoom;
+      if (!room || room.destroyed || room.role !== 'guest' || isHost) return;
+      if (!isGameActive || hasMatchEndedByAbandon) return;
+      if (clientHostConn && clientHostConn.open) return;
+
+      // Só assume quem comprovadamente está conectado ao servidor
+      let alive = false;
+      try {
+        if (room.channel.state === 'joined') {
+          alive = (await Promise.race([rtTrackPresence(), new Promise(r => setTimeout(() => r('timeout'), 4000))])) === 'ok';
+        }
+      } catch (e) { }
+      if (!alive) { scheduleHostMigration(); return; }
+
+      await new Promise(r => setTimeout(r, 1500)); // deixa o Presence assentar
+      if (room.destroyed || rtRoom !== room || room.role !== 'guest' || (clientHostConn && clientHostConn.open)) return;
+
+      const present = room.readPresence();
+      if ([...present.values()].some(m => m.role === 'host')) return; // o anfitrião voltou ou outro já assumiu
+      const idxs = [...present.values()].filter(m => m.role === 'guest' && typeof m.idx === 'number').map(m => m.idx);
+      if (!idxs.includes(myP2PIndex)) idxs.push(myP2PIndex);
+      if (Math.min(...idxs) !== myP2PIndex) { scheduleHostMigration(); return; } // outro tem prioridade; reavalia depois
+
+      // Assume a sala
+      room.role = 'host';
+      isHost = true;
+      hostEpoch = (hostEpoch || 0) + 1;
+      targetOnlinePlayers = playerCount || targetOnlinePlayers;
+      if (hostDisconnectTimer) { clearTimeout(hostDisconnectTimer); hostDisconnectTimer = null; }
+      if (clientHostConn) clientHostConn.open = false;
+      clientHostConn = null;
+      hostGuestConnections = [];
+      room.conns.clear();
+      rtTrackPresence();
+      appendChatSystemMessage('O anfitrião caiu. Você assumiu a sala para a partida continuar.');
+      const myName = (players && players[myP2PIndex] && players[myP2PIndex].name) || 'Você';
+      updateP2PBadge('online', `${myName} (Anfitrião - ${targetOnlinePlayers}P)`);
+      startGuestDisconnectTimer(0); // o antigo anfitrião tem a mesma tolerância de qualquer jogador
+      saveSessionToStorage();
+    }
+
+    function startGuestDisconnectTimer(idx) {
+      if (guestDisconnectTimers[idx]) clearTimeout(guestDisconnectTimers[idx]);
+      guestDisconnectTimers[idx] = setTimeout(() => {
+        if (isGameActive && !hasMatchEndedByAbandon) {
+          const leavingName = (players && players[idx] && players[idx].name) ? players[idx].name : `Jogador ${idx + 1}`;
+          handlePlayerAbandoned(idx, leavingName);
+          if (isHost) broadcastP2P({ type: 'PLAYER_ABANDONED', playerIndex: idx, playerName: leavingName });
+        }
+      }, DISCONNECT_GRACE_PERIOD_MS);
+    }
+
+    function demoteToGuest() {
+      const room = rtRoom;
+      if (!room || room.role !== 'host') return;
+      room.role = 'guest';
+      isHost = false;
+      room.conns.forEach(c => { c.open = false; });
+      room.conns.clear();
+      hostGuestConnections = [];
+      Object.values(guestDisconnectTimers).forEach(t => clearTimeout(t));
+      guestDisconnectTimers = {};
+      clientHostConn = new RtConn(null);
+      setupClientConnection();
+      appendChatSystemMessage('Outro jogador assumiu a sala enquanto você estava fora. Sincronizando...');
+      updateP2PBadge('waiting', 'Sincronizando com o novo anfitrião...');
+      rtTrackPresence();
+    }
+
+    function p2pCreateRoom(fixedCode = null, opts = {}) {
       savePlayerNamesToStorage();
       const roomInfo = document.getElementById('hostRoomInfo');
       const roomCodeEl = document.getElementById('myRoomCode');
       roomCodeEl.textContent = '----';
       roomInfo.style.display = 'block';
 
-      const shortCode = generate4DigitCode();
+      const shortCode = fixedCode || generate4DigitCode();
 
       initRealtimeRoom(shortCode, 'host', () => {
         currentRoomCode = shortCode;
@@ -482,6 +582,7 @@
         isP2P = true;
         myP2PIndex = 0;
         hostGuestConnections = [];
+        rtTrackPresence();
 
         playerCount = targetOnlinePlayers;
         const myNameInput = document.getElementById('onlineMyNameInput');
@@ -496,7 +597,7 @@
         updateHostWaitingUI();
         updateP2PBadge('waiting', hostName);
         saveSessionToStorage();
-      }, { fresh: true });
+      }, { fresh: true, fixedCode: !!fixedCode, ranked: !!opts.ranked });
     }
 
     function updateHostWaitingUI() {
@@ -592,9 +693,9 @@
       });
     }
 
-    function p2pJoinRoom() {
+    function p2pJoinRoom(codeOverride = null, opts = {}) {
       savePlayerNamesToStorage();
-      let code = document.getElementById('roomCodeInput').value.trim();
+      let code = codeOverride || document.getElementById('roomCodeInput').value.trim();
       if (!code) {
         alert('Digite o código de 4 dígitos da sala.');
         return;
@@ -605,7 +706,7 @@
       updateP2PBadge('waiting', 'Conectando...');
       clientHostConn = new RtConn(null);
       setupClientConnection();
-      initRealtimeRoom(currentRoomCode, 'guest', null, { fresh: true });
+      initRealtimeRoom(currentRoomCode, 'guest', null, { fresh: true, ranked: !!opts.ranked });
     }
 
     function setupClientConnection() {
@@ -638,6 +739,7 @@
           updateP2PBadge('waiting', 'Reconectando ao Host...');
           // Tenta reconectar imediatamente caso o socket tenha caído
           attemptGuestReconnect();
+          scheduleHostMigration();
           if (!hostDisconnectTimer) {
             hostDisconnectTimer = setTimeout(() => {
               if (isGameActive && !hasMatchEndedByAbandon && (!clientHostConn || !clientHostConn.open)) {
@@ -681,7 +783,7 @@
         let ok = false;
         if (room.channel.state === 'joined') {
           const res = await Promise.race([
-            room.channel.track({ id: room.myId, role: room.role }),
+            rtTrackPresence(),
             new Promise(r => setTimeout(() => r('timeout'), 5000))
           ]);
           ok = res === 'ok';
@@ -710,7 +812,7 @@
           }
         });
       } else if (msg.type === 'REQUEST_SYNC') {
-        const idx = (typeof msg.requestedIndex === 'number' && msg.requestedIndex > 0)
+        const idx = (typeof msg.requestedIndex === 'number' && msg.requestedIndex >= 0 && msg.requestedIndex !== myP2PIndex)
           ? msg.requestedIndex
           : (senderConn.assignedIndex || (hostGuestConnections.indexOf(senderConn) + 1));
         senderConn.assignedIndex = idx;
@@ -754,12 +856,6 @@
           document.getElementById('mainMenuModal').style.display = 'none';
           updateChatVisibility();
         }
-      } else if (msg.type === 'SET_PLAYER_UID') {
-        if (typeof msg.playerIndex === 'number' && players && players[msg.playerIndex] && typeof msg.uid === 'string') {
-          players[msg.playerIndex].uid = msg.uid;
-          broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
-          saveSessionToStorage();
-        }
       } else if (msg.type === 'SET_PLAYER_NAME') {
         if (typeof msg.playerIndex === 'number' && players && players[msg.playerIndex]) {
           players[msg.playerIndex].name = msg.name;
@@ -796,6 +892,7 @@
         const myNameInput = document.getElementById('onlineMyNameInput');
         const myName = (myNameInput && myNameInput.value.trim()) || `P${myP2PIndex + 1}`;
         updateP2PBadge('waiting', `${myName} (Conectado à sala ${currentRoomCode})`);
+        rtTrackPresence(); // anuncia meu índice (usado na eleição de novo anfitrião)
       } else if (msg.type === 'ROOM_FULL') {
         alert('Esta sala já atingiu o número máximo de jogadores.');
       } else if (msg.type === 'SYNC_STATE') {
@@ -809,7 +906,6 @@
         updateP2PBadge('online', `${myName} (${playerCount}P)`);
         updateChatVisibility();
         saveSessionToStorage();
-        shareMyUid();
       } else if (msg.type === 'ACTION') {
         executeGameAction(msg.action, false);
       } else if (msg.type === 'CHAT') {
@@ -867,10 +963,6 @@
     }
 
     function getFullGameState() {
-      // Inclui o id da conta deste jogador no estado (usado no cálculo de Elo)
-      if (isP2P && authUser && myP2PIndex !== null && players && players[myP2PIndex]) {
-        players[myP2PIndex].uid = authUser.id;
-      }
       return {
         playerCount,
         players,
@@ -883,7 +975,9 @@
         nextStartPlayer,
         starterTileInCenter,
         selected,
-        stagedMove
+        stagedMove,
+        hostEpoch,
+        movesPlayed
       };
     }
 
@@ -909,6 +1003,9 @@
           isBotMode,
           botDifficulty,
           playerCount,
+          rankedMatchId,
+          hostEpoch,
+          movesPlayed,
           gameState: getFullGameState()
         };
         sessionStorage.setItem('azul_saved_session', JSON.stringify(session));
@@ -938,6 +1035,8 @@
       starterTileInCenter = state.starterTileInCenter;
       selected = state.selected;
       stagedMove = state.stagedMove || null;
+      hostEpoch = Math.max(hostEpoch || 0, state.hostEpoch || 0);
+      movesPlayed = state.movesPlayed || 0;
       updateHeaderPlayerButtons(playerCount);
       renderAll();
       saveSessionToStorage();
@@ -1139,6 +1238,10 @@
 
       clearSavedSession();
       hasMatchEndedByAbandon = false;
+      rankedMatchId = null;
+      hostEpoch = 0;
+      movesPlayed = 0;
+      if (hostMigrationTimer) { clearTimeout(hostMigrationTimer); hostMigrationTimer = null; }
 
       if (isP2P) {
         // Aguarda 100ms para envio da mensagem pelo socket antes de fechar conexões

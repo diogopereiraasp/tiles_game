@@ -44,6 +44,7 @@
     function initGame(names = null) {
       hasMatchEndedByAbandon = false;
       matchRecorded = false;
+      movesPlayed = 0;
       const endTitle = document.querySelector('#endModal h2');
       if (endTitle) endTitle.textContent = 'Fim de Jogo';
 

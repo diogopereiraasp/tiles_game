@@ -5,7 +5,7 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 
 ## Mapa dos arquivos
 `index.html` só tem a estrutura (modais, tabuleiro). Os scripts são clássicos e compartilham o escopo global;
-**a ordem das tags `<script>` importa** (config → chat → online-state → account → online → game-setup → bot → turns → ui).
+**a ordem das tags `<script>` importa** (config → chat → online-state → account → online → matchmaking → game-setup → bot → turns → ui).
 
 | Arquivo | Conteúdo |
 |---|---|
@@ -14,7 +14,8 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 | `js/chat.js` | Chat da partida online |
 | `js/online-state.js` | Variáveis de estado do online (host/convidado) |
 | `js/account.js` | Supabase: login convidado/e-mail, perfil, Elo, ranking, `recordMatchResult` |
-| `js/online.js` | Relógio de ação, sala via Supabase Realtime (`RtConn`), mensagens host↔convidado, abandono, menus de sala |
+| `js/online.js` | Relógio de ação, sala via Supabase Realtime (`RtConn`), migração de anfitrião, mensagens host↔convidado, abandono, menus de sala |
+| `js/matchmaking.js` | Fila de Partida Ranqueada (`find_ranked_match`), busca e entrada na sala |
 | `js/game-setup.js` | Sacola, `initGame`, rodadas |
 | `js/bot.js` | IA dos bots (fácil/médio/difícil) |
 | `js/turns.js` | Jogadas, pontuação de rodada, bônus finais, `endGame` |
@@ -23,7 +24,10 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 
 ## Regras importantes
 - **Nunca** colocar no código a `secret key` (`sb_secret_…`) nem a senha do banco do Supabase. Só URL e chave publicável (`sb_publishable_…`).
-- Elo é calculado no servidor (`record_match`); o cliente não pode escrever em `profiles.elo` nem inserir em `matches`.
+- Só **Partida Ranqueada** (fila no servidor) vale Elo. Sala com código = "amigos" (histórico, sem Elo); bot = treino.
+- Elo é calculado no servidor. O cliente não escreve em `profiles.elo` nem insere em `matches`. Resultado ranqueado: os DOIS jogadores chamam `report_ranked_result`; só vale se os relatos baterem (senão `disputed`). Se um só relatou, vale após 60s e com >= 10 jogadas; máx. 5 partidas por par a cada 24h.
+- Migração de anfitrião: todos têm o estado completo; se o anfitrião some 10s, o convidado de menor índice presente assume (`hostEpoch` +1). O antigo, ao voltar, vê o `epoch` maior no Presence e vira convidado.
+- Testar SQL localmente: Postgres 12 em /Library/PostgreSQL/12/bin com stub de `auth.uid()` e roles `anon`/`authenticated`; o schema roda 2x sem erro.
 - Online: o **host** é a autoridade (estado, relógio, derrota por tempo). Mensagens do Realtime não têm ordem garantida — `RtConn.send` numera e o receptor reordena.
 - Relógio: 5 min iniciais, +30 s por jogada confirmada, teto 5 min; tolerância de desconexão 5 min.
 - Elo começa em 0 (piso 0). Níveis: Bronze <100, Prata ≥100, Ouro ≥300, Platina ≥600, Diamante ≥1000.

@@ -87,12 +87,16 @@
         </div>
       </button>
 
-      <button class="menu-primary" onclick="chooseOnlineMode()">
-        <span class="mp-title">Jogar Online</span>
-        <span class="mp-sub">Partida contra amigos · vale Elo</span>
+      <button class="menu-primary" onclick="startRankedSearch()">
+        <span class="mp-title">⚔ Partida Ranqueada</span>
+        <span class="mp-sub">Oponente com Elo parecido · vale Elo</span>
       </button>
 
-      <div class="menu-row">
+      <div class="menu-grid">
+        <button class="menu-secondary" onclick="chooseOnlineMode()">
+          <span class="ms-icon">🧑‍🤝‍🧑</span>
+          <span>Jogar com amigos</span>
+        </button>
         <button class="menu-secondary" onclick="openBotModal()">
           <span class="ms-icon">🤖</span>
           <span>Treinar vs Bot</span>
@@ -101,9 +105,23 @@
           <span class="ms-icon">👥</span>
           <span>Mesmo aparelho</span>
         </button>
+        <button class="menu-secondary" onclick="openLeaderboardModal()">
+          <span class="ms-icon">🏆</span>
+          <span>Ranking</span>
+        </button>
       </div>
+    </div>
+  </div>
 
-      <button class="menu-ranking" onclick="openLeaderboardModal()">🏆 Ranking</button>
+  <!-- Modal Procurando Oponente (partida ranqueada) -->
+  <div id="searchModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 340px;">
+      <div class="search-spinner"></div>
+      <h2 id="searchTitle" style="margin-bottom: 6px;">Procurando oponente...</h2>
+      <div id="searchTimer" class="search-timer">0:00</div>
+      <p id="searchSub" style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;"></p>
+      <p id="searchEloLine" style="color: #cbd5e1; font-size: 12px; margin-bottom: 18px;"></p>
+      <button class="btn-toggle" style="width: 100%; padding: 11px; font-weight: 700;" onclick="cancelRankedSearch()">Cancelar</button>
     </div>
   </div>
 
@@ -334,6 +352,7 @@
   <script src="js/online-state.js"></script>
   <script src="js/account.js"></script>
   <script src="js/online.js"></script>
+  <script src="js/matchmaking.js"></script>
   <script src="js/game-setup.js"></script>
   <script src="js/bot.js"></script>
   <script src="js/turns.js"></script>

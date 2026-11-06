@@ -13,11 +13,6 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists elo int not null default 0;
 alter table public.profiles alter column elo set default 0;
 
--- Migração: Elo agora começa em 0. Quem ainda não jogou nenhuma partida valendo Elo volta para 0.
-update public.profiles p set elo = 0
-where p.elo = 1000
-  and not exists (select 1 from public.matches m where m.user_id = p.id and m.elo_after is not null);
-
 alter table public.profiles enable row level security;
 
 -- O cliente só pode alterar o próprio nome. Elo é alterado apenas pela função record_match.
@@ -81,6 +76,11 @@ create table if not exists public.matches (
 alter table public.matches add column if not exists elo_before int;
 alter table public.matches add column if not exists elo_after int;
 
+-- Migração: Elo agora começa em 0. Quem ainda não jogou nenhuma partida valendo Elo volta para 0.
+update public.profiles p set elo = 0
+where p.elo = 1000
+  and not exists (select 1 from public.matches m where m.user_id = p.id and m.elo_after is not null);
+
 create index if not exists matches_user_created_idx on public.matches (user_id, created_at desc);
 create index if not exists matches_mode_idx on public.matches (mode);
 
@@ -90,13 +90,18 @@ drop policy if exists "matches_select_own" on public.matches;
 create policy "matches_select_own" on public.matches
   for select using (auth.uid() = user_id);
 
--- Inserção só pela função record_match (calcula o Elo no servidor)
+-- Inserção só por funções do servidor (record_match para bot/amigos; _settle_ranked para ranqueadas)
 drop policy if exists "matches_insert_own" on public.matches;
 revoke insert, update, delete on public.matches from anon, authenticated;
 
--- ───────────────────────── Registro de partida + Elo ─────────────────────────
--- p_opponents: [{ "uid": "<uuid ou null>", "name": "...", "score": 0, "placement": 1 }]
--- Elo só muda em partidas online contra contas reais. K = 32, dividido entre os oponentes.
+-- 'friends' = sala com código entre amigos (histórico, sem Elo)
+alter table public.matches drop constraint if exists matches_mode_check;
+alter table public.matches add constraint matches_mode_check
+  check (mode in ('online', 'bot', 'local', 'friends'));
+
+-- ───────────────────────── Registro de partida SEM Elo (bot / amigos) ─────────────────────────
+-- Partidas valendo Elo ('online') NÃO passam por aqui: só por report_ranked_result.
+drop function if exists public.record_match(text, int, int, int, boolean, text, text, jsonb);
 create or replace function public.record_match(
   p_mode text,
   p_player_count int,
@@ -114,68 +119,366 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_elo int;
-  v_delta numeric := 0;
-  v_rated int := 0;
-  v_k numeric := 32;
-  v_opp jsonb;
-  v_opp_uid uuid;
-  v_opp_elo int;
-  v_opp_place int;
-  v_s numeric;
-  v_e numeric;
-  v_new int;
 begin
   if v_uid is null then
     raise exception 'not authenticated';
   end if;
+  if p_mode not in ('bot', 'friends') then
+    raise exception 'mode not allowed (ranked results go through report_ranked_result)';
+  end if;
 
   insert into public.profiles (id) values (v_uid) on conflict (id) do nothing;
-  select p.elo into v_elo from public.profiles p where p.id = v_uid for update;
-
-  if p_mode = 'online' then
-    for v_opp in select * from jsonb_array_elements(coalesce(p_opponents, '[]'::jsonb)) loop
-      begin
-        v_opp_uid := nullif(v_opp ->> 'uid', '')::uuid;
-      exception when others then
-        v_opp_uid := null;
-      end;
-      continue when v_opp_uid is null or v_opp_uid = v_uid;
-      select p.elo into v_opp_elo from public.profiles p where p.id = v_opp_uid;
-      continue when v_opp_elo is null;
-
-      v_opp_place := coalesce((v_opp ->> 'placement')::int, p_player_count);
-      v_s := case when p_placement < v_opp_place then 1
-                  when p_placement = v_opp_place then 0.5
-                  else 0 end;
-      v_e := 1 / (1 + power(10, (v_opp_elo - v_elo) / 400.0));
-      v_delta := v_delta + (v_s - v_e);
-      v_rated := v_rated + 1;
-    end loop;
-  end if;
-
-  if v_rated > 0 then
-    v_new := greatest(0, round(v_elo + v_k * v_delta / v_rated)::int);
-    update public.profiles set elo = v_new where id = v_uid;
-  else
-    v_new := v_elo;
-  end if;
+  select p.elo into v_elo from public.profiles p where p.id = v_uid;
 
   insert into public.matches (
-    user_id, mode, player_count, score, placement, won, end_reason,
-    bot_difficulty, opponents, elo_before, elo_after
+    user_id, mode, player_count, score, placement, won, end_reason, bot_difficulty, opponents
   ) values (
     v_uid, p_mode, p_player_count, p_score, p_placement, p_won, p_end_reason,
-    p_bot_difficulty, coalesce(p_opponents, '[]'::jsonb),
-    case when v_rated > 0 then v_elo end,
-    case when v_rated > 0 then v_new end
+    p_bot_difficulty, coalesce(p_opponents, '[]'::jsonb)
   );
 
-  return query select v_elo, v_new;
+  return query select v_elo, v_elo;
 end;
 $$;
 
 revoke execute on function public.record_match(text, int, int, int, boolean, text, text, jsonb) from public, anon;
 grant execute on function public.record_match(text, int, int, int, boolean, text, text, jsonb) to authenticated;
+
+-- ───────────────────────── Fila e partidas ranqueadas ─────────────────────────
+create table if not exists public.queue (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  elo int not null,
+  match_id uuid,
+  room_code text,
+  role text,
+  created_at timestamptz not null default now(),
+  seen_at timestamptz not null default now()
+);
+
+create table if not exists public.ranked_matches (
+  id uuid primary key default gen_random_uuid(),
+  room_code text not null,
+  host_id uuid not null references public.profiles (id) on delete cascade,
+  guest_id uuid not null references public.profiles (id) on delete cascade,
+  host_report jsonb,
+  guest_report jsonb,
+  host_reported_at timestamptz,
+  guest_reported_at timestamptz,
+  status text not null default 'pending' check (status in ('pending', 'done', 'disputed', 'void')),
+  host_elo_before int,
+  host_elo_after int,
+  guest_elo_before int,
+  guest_elo_after int,
+  created_at timestamptz not null default now(),
+  settled_at timestamptz
+);
+
+create index if not exists ranked_matches_host_idx on public.ranked_matches (host_id, created_at desc);
+create index if not exists ranked_matches_guest_idx on public.ranked_matches (guest_id, created_at desc);
+
+-- Sem policies: ninguém acessa estas tabelas direto; só as funções abaixo (security definer)
+alter table public.queue enable row level security;
+alter table public.ranked_matches enable row level security;
+revoke all on public.queue from anon, authenticated;
+revoke all on public.ranked_matches from anon, authenticated;
+
+-- Procura oponente. O cliente chama a cada ~2s: serve de "heartbeat" e de consulta do resultado.
+-- Janela de Elo: ±100 e cresce 50 a cada 10s de espera.
+drop function if exists public.find_ranked_match();
+create or replace function public.find_ranked_match()
+returns table (r_status text, r_room_code text, r_role text, r_match_id uuid, r_wait int)
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_me public.queue;
+  v_opp public.queue;
+  v_elo int;
+  v_host uuid;
+  v_guest uuid;
+  v_code text;
+  v_mid uuid;
+  v_chars constant text := '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  i int;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+
+  perform pg_advisory_xact_lock(hashtext('azul_ranked_queue'));
+  delete from public.queue q where q.match_id is null and q.seen_at < now() - interval '12 seconds';
+  delete from public.queue q where q.match_id is not null and q.seen_at < now() - interval '3 minutes';
+
+  select * into v_me from public.queue q where q.user_id = v_uid;
+  if found and v_me.match_id is not null then
+    return query select 'matched'::text, v_me.room_code, v_me.role, v_me.match_id, 0;
+    return;
+  end if;
+
+  if not found then
+    insert into public.profiles (id) values (v_uid) on conflict (id) do nothing;
+    select p.elo into v_elo from public.profiles p where p.id = v_uid;
+    insert into public.queue (user_id, elo) values (v_uid, coalesce(v_elo, 0)) returning * into v_me;
+  else
+    update public.queue q set seen_at = now() where q.user_id = v_uid returning * into v_me;
+  end if;
+
+  select * into v_opp from public.queue q
+  where q.user_id <> v_uid
+    and q.match_id is null
+    and abs(q.elo - v_me.elo) <= 100 + 50 * floor(
+      greatest(extract(epoch from (now() - q.created_at)), extract(epoch from (now() - v_me.created_at))) / 10)
+  order by abs(q.elo - v_me.elo), q.created_at
+  limit 1;
+
+  if found then
+    if v_opp.created_at <= v_me.created_at then
+      v_host := v_opp.user_id; v_guest := v_uid;
+    else
+      v_host := v_uid; v_guest := v_opp.user_id;
+    end if;
+
+    v_code := '';
+    for i in 1..6 loop
+      v_code := v_code || substr(v_chars, 1 + floor(random() * 32)::int, 1);
+    end loop;
+
+    insert into public.ranked_matches (room_code, host_id, guest_id)
+    values (v_code, v_host, v_guest) returning id into v_mid;
+
+    update public.queue q
+    set match_id = v_mid, room_code = v_code,
+        role = case when q.user_id = v_host then 'host' else 'guest' end,
+        seen_at = now()
+    where q.user_id in (v_host, v_guest);
+
+    return query select 'matched'::text, v_code,
+      (case when v_uid = v_host then 'host' else 'guest' end)::text, v_mid, 0;
+    return;
+  end if;
+
+  return query select 'waiting'::text, null::text, null::text, null::uuid,
+    floor(extract(epoch from (now() - v_me.created_at)))::int;
+end;
+$$;
+
+create or replace function public.cancel_ranked_search()
+returns void
+language sql
+security definer set search_path = public
+as $$
+  delete from public.queue q where q.user_id = auth.uid() and q.match_id is null;
+$$;
+
+-- Liquida uma partida ranqueada. Regras anti-fraude:
+--  * Os DOIS jogadores enviam o resultado; só vale Elo se os relatos baterem (placar / quem perdeu).
+--  * Relatos que divergem => 'disputed' (ninguém muda de Elo).
+--  * Se só UM relatou e o outro sumiu: vale após 60s, mas só com >= 10 jogadas feitas.
+--  * Máximo de 5 partidas valendo Elo entre o mesmo par de jogadores por 24h.
+create or replace function public._settle_ranked(p_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  m public.ranked_matches;
+  hr jsonb; gr jsonb;
+  v_ok boolean := true;
+  v_status text := 'done';
+  v_s numeric;              -- resultado do ANFITRIÃO: 1 vitória, 0.5 empate, 0 derrota
+  v_reason text;
+  v_hs int; v_gs int;       -- placares (visão do anfitrião)
+  v_he int; v_ge int;       -- Elo atual
+  v_ne_h int; v_ne_g int;
+  v_exp numeric;
+  v_k constant numeric := 32;
+  v_pair int;
+  v_age interval;
+  v_moves int;
+  v_apply boolean := true;
+  v_names text[];
+begin
+  select * into m from public.ranked_matches r where r.id = p_id for update;
+  if not found or m.status <> 'pending' then return; end if;
+
+  hr := m.host_report; gr := m.guest_report;
+  if hr is null and gr is null then return; end if;
+
+  if hr is not null and gr is not null then
+    v_reason := hr ->> 'end_reason';
+    if v_reason is distinct from (gr ->> 'end_reason') then
+      v_ok := false;
+    elsif v_reason = 'normal' then
+      v_ok := (hr ->> 'my_score')::int = (gr ->> 'opp_score')::int
+          and (hr ->> 'opp_score')::int = (gr ->> 'my_score')::int;
+    else
+      v_ok := (hr ->> 'loser' = 'me' and gr ->> 'loser' = 'opp')
+           or (hr ->> 'loser' = 'opp' and gr ->> 'loser' = 'me');
+    end if;
+    v_moves := least((hr ->> 'moves')::int, (gr ->> 'moves')::int);
+    v_hs := (hr ->> 'my_score')::int; v_gs := (hr ->> 'opp_score')::int;
+    if v_ok then
+      if v_reason = 'normal' then
+        v_s := case when v_hs > v_gs then 1 when v_hs = v_gs then 0.5 else 0 end;
+      else
+        v_s := case when hr ->> 'loser' = 'me' then 0 else 1 end;
+      end if;
+    end if;
+  else
+    -- Só um relatório: espera 60s pelo outro
+    v_age := now() - coalesce(m.host_reported_at, m.guest_reported_at);
+    if v_age < interval '60 seconds' then return; end if;
+    declare r jsonb := coalesce(hr, gr); host_side boolean := hr is not null; begin
+      v_reason := r ->> 'end_reason';
+      v_moves := (r ->> 'moves')::int;
+      v_hs := case when host_side then (r ->> 'my_score')::int else (r ->> 'opp_score')::int end;
+      v_gs := case when host_side then (r ->> 'opp_score')::int else (r ->> 'my_score')::int end;
+      if v_reason = 'normal' then
+        v_s := case when v_hs > v_gs then 1 when v_hs = v_gs then 0.5 else 0 end;
+      else
+        -- Relato de quem reportou: 'me' perdeu / 'opp' perdeu
+        v_s := case when (r ->> 'loser' = 'me') = host_side then 0 else 1 end;
+      end if;
+    end;
+  end if;
+
+  if not v_ok then
+    v_status := 'disputed'; v_apply := false;
+  elsif coalesce(v_moves, 0) < 10 then
+    v_status := 'void'; v_apply := false;
+  else
+    select count(*) into v_pair from public.ranked_matches r
+    where r.status = 'done' and r.settled_at > now() - interval '24 hours'
+      and ((r.host_id = m.host_id and r.guest_id = m.guest_id) or (r.host_id = m.guest_id and r.guest_id = m.host_id));
+    if v_pair >= 5 then v_status := 'void'; v_apply := false; end if;
+  end if;
+
+  select p.elo into v_he from public.profiles p where p.id = m.host_id for update;
+  select p.elo into v_ge from public.profiles p where p.id = m.guest_id for update;
+  v_ne_h := v_he; v_ne_g := v_ge;
+
+  if v_apply then
+    v_exp := 1 / (1 + power(10, (v_ge - v_he) / 400.0));
+    v_ne_h := greatest(0, round(v_he + v_k * (v_s - v_exp))::int);
+    v_ne_g := greatest(0, round(v_ge + v_k * ((1 - v_s) - (1 - v_exp)))::int);
+    update public.profiles set elo = v_ne_h where id = m.host_id;
+    update public.profiles set elo = v_ne_g where id = m.guest_id;
+  end if;
+
+  select array[(select p.display_name from public.profiles p where p.id = m.host_id),
+               (select p.display_name from public.profiles p where p.id = m.guest_id)] into v_names;
+
+  insert into public.matches (user_id, mode, player_count, score, placement, won, end_reason, opponents, elo_before, elo_after)
+  values (m.host_id, 'online', 2, least(greatest(coalesce(v_hs, 0), 0), 300),
+          case when v_s is null or v_s >= 0.5 then 1 else 2 end,
+          coalesce(v_s = 1, false), coalesce(v_reason, 'normal'),
+          jsonb_build_array(jsonb_build_object('name', v_names[2], 'score', coalesce(v_gs, 0))),
+          case when v_apply then v_he end, case when v_apply then v_ne_h end),
+         (m.guest_id, 'online', 2, least(greatest(coalesce(v_gs, 0), 0), 300),
+          case when v_s is null or v_s <= 0.5 then 1 else 2 end,
+          coalesce(v_s = 0, false), coalesce(v_reason, 'normal'),
+          jsonb_build_array(jsonb_build_object('name', v_names[1], 'score', coalesce(v_hs, 0))),
+          case when v_apply then v_ge end, case when v_apply then v_ne_g end);
+
+  update public.ranked_matches r set
+    status = v_status, settled_at = now(),
+    host_elo_before = case when v_apply then v_he end, host_elo_after = case when v_apply then v_ne_h end,
+    guest_elo_before = case when v_apply then v_ge end, guest_elo_after = case when v_apply then v_ne_g end
+  where r.id = p_id;
+end;
+$$;
+
+revoke execute on function public._settle_ranked(uuid) from public, anon, authenticated;
+
+drop function if exists public.report_ranked_result(uuid, jsonb);
+-- p_report: { my_score, opp_score, end_reason: normal|timeout|abandon, loser: me|opp|null, moves }
+create or replace function public.report_ranked_result(p_match_id uuid, p_report jsonb)
+returns table (r_status text, r_elo_before int, r_elo_after int)
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  m public.ranked_matches;
+  v_is_host boolean;
+  v_rep jsonb;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+  select * into m from public.ranked_matches r where r.id = p_match_id;
+  if not found or (v_uid <> m.host_id and v_uid <> m.guest_id) then raise exception 'not your match'; end if;
+  v_is_host := (v_uid = m.host_id);
+
+  v_rep := jsonb_build_object(
+    'my_score', least(greatest(coalesce((p_report ->> 'my_score')::int, 0), 0), 400),
+    'opp_score', least(greatest(coalesce((p_report ->> 'opp_score')::int, 0), 0), 400),
+    'end_reason', case when p_report ->> 'end_reason' in ('normal', 'timeout', 'abandon') then p_report ->> 'end_reason' else 'normal' end,
+    'loser', case when p_report ->> 'loser' in ('me', 'opp') then p_report ->> 'loser' end,
+    'moves', least(greatest(coalesce((p_report ->> 'moves')::int, 0), 0), 1000)
+  );
+
+  if v_is_host and m.host_report is null then
+    update public.ranked_matches r set host_report = v_rep, host_reported_at = now() where r.id = p_match_id;
+  elsif not v_is_host and m.guest_report is null then
+    update public.ranked_matches r set guest_report = v_rep, guest_reported_at = now() where r.id = p_match_id;
+  end if;
+
+  perform public._settle_ranked(p_match_id);
+  return query select * from public.get_ranked_result(p_match_id);
+end;
+$$;
+
+drop function if exists public.get_ranked_result(uuid);
+create or replace function public.get_ranked_result(p_match_id uuid)
+returns table (r_status text, r_elo_before int, r_elo_after int)
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  m public.ranked_matches;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+  select * into m from public.ranked_matches r where r.id = p_match_id;
+  if not found or (v_uid <> m.host_id and v_uid <> m.guest_id) then raise exception 'not your match'; end if;
+  perform public._settle_ranked(p_match_id);
+  select * into m from public.ranked_matches r where r.id = p_match_id;
+  return query select m.status,
+    case when v_uid = m.host_id then m.host_elo_before else m.guest_elo_before end,
+    case when v_uid = m.host_id then m.host_elo_after else m.guest_elo_after end;
+end;
+$$;
+
+-- Liquida partidas pendentes do usuário (ex.: o adversário sumiu e quem ganhou fechou a página)
+create or replace function public.settle_my_ranked_matches()
+returns int
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  r record;
+  n int := 0;
+begin
+  if v_uid is null then return 0; end if;
+  for r in select id from public.ranked_matches
+           where status = 'pending' and (host_id = v_uid or guest_id = v_uid)
+             and created_at > now() - interval '2 days' loop
+    perform public._settle_ranked(r.id);
+    n := n + 1;
+  end loop;
+  return n;
+end;
+$$;
+
+grant execute on function public.find_ranked_match() to authenticated;
+grant execute on function public.cancel_ranked_search() to authenticated;
+grant execute on function public.report_ranked_result(uuid, jsonb) to authenticated;
+grant execute on function public.get_ranked_result(uuid) to authenticated;
+grant execute on function public.settle_my_ranked_matches() to authenticated;
+revoke execute on function public.find_ranked_match() from public, anon;
+revoke execute on function public.cancel_ranked_search() from public, anon;
+revoke execute on function public.report_ranked_result(uuid, jsonb) from public, anon;
+revoke execute on function public.get_ranked_result(uuid) from public, anon;
+revoke execute on function public.settle_my_ranked_matches() from public, anon;
 
 -- ───────────────────────── Ranking ─────────────────────────
 drop function if exists public.get_leaderboard(text, int);
