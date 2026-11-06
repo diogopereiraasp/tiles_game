@@ -148,6 +148,7 @@
     }
 
     function startConfiguredLocalGame() {
+      advancedMode = !!(document.getElementById('advModeLocal') || {}).checked;
       savePlayerNamesToStorage();
       const modal = document.getElementById('localModal');
       if (modal) modal.style.display = 'none';
@@ -195,6 +196,7 @@
     }
 
     function startConfiguredBotGame() {
+      advancedMode = !!(document.getElementById('advModeBot') || {}).checked;
       const modal = document.getElementById('botModal');
       if (modal) modal.style.display = 'none';
       chooseBotMode(botDifficulty);
@@ -212,7 +214,7 @@
       playerCount = 2;
       updateChatVisibility();
       const diffLabel = getBotDifficultyLabel(botDifficulty);
-      updateP2PBadge('offline', `vs Bot (${diffLabel})`);
+      updateP2PBadge('offline', `vs Bot (${diffLabel})${advancedMode ? ' · Avançado' : ''}`);
       initGame(['Você', 'Bot']);
       saveSessionToStorage();
     }
@@ -225,7 +227,7 @@
       myP2PIndex = null;
       playerCount = count;
       updateChatVisibility();
-      updateP2PBadge('offline', `Local (${count}P)`);
+      updateP2PBadge('offline', `Local (${count}P)${advancedMode ? ' · Avançado' : ''}`);
       initGame(customNames);
       saveSessionToStorage();
     }
@@ -572,6 +574,7 @@
     }
 
     function p2pCreateRoom(fixedCode = null, opts = {}) {
+      advancedMode = false; // online (ranqueada e amigos) usa sempre as regras normais
       savePlayerNamesToStorage();
       const roomInfo = document.getElementById('hostRoomInfo');
       const roomCodeEl = document.getElementById('myRoomCode');
@@ -920,7 +923,7 @@
           const p = players[turn];
           const row = p.pattern[a.rIdx];
           if (row.count > 0 && row.color !== selected.color) return false;
-          return !p.wall[a.rIdx][WALL_LAYOUT[a.rIdx].indexOf(selected.color)];
+          return validCols(p, a.rIdx, selected.color).length > 0;
         }
         case 'STAGE_FLOOR': return !!selected;
         case 'CONFIRM_MOVE': return !!selected && !!stagedMove;
@@ -1026,7 +1029,8 @@
         selected,
         stagedMove,
         hostEpoch,
-        movesPlayed
+        movesPlayed,
+        advancedMode
       };
     }
 
@@ -1077,6 +1081,7 @@
       const tiles = arr => (Array.isArray(arr) ? arr.filter(tile).slice(0, 120) : []);
       const out = { ...st };
       out.playerCount = num(st.playerCount, 2, 2, 4);
+      out.advancedMode = !!st.advancedMode;
       out.players = (Array.isArray(st.players) ? st.players : []).slice(0, 4).map((p, i) => {
         const q = { ...p, id: i, name: cleanName(p.name), score: num(p.score, 0, 0, 1000), clock: num(p.clock, CLOCK_INITIAL_MS, 0, CLOCK_MAX_MS) };
         ['boardScore', 'lineBonus', 'colBonus', 'colorBonus', 'finalBonus'].forEach(k => { if (p[k] !== undefined) q[k] = num(p[k], 0, 0, 1000); });
@@ -1086,6 +1091,7 @@
           return { size: r + 1, count: num(row.count, 0, 0, r + 1), color: COLORS.includes(row.color) ? row.color : null };
         });
         q.wall = Array.from({ length: 5 }, (_, r) => Array.from({ length: 5 }, (_, c) => !!(p.wall && p.wall[r] && p.wall[r][c])));
+        q.wallColors = Array.from({ length: 5 }, (_, r) => Array.from({ length: 5 }, (_, c) => (p.wallColors && p.wallColors[r] && COLORS.includes(p.wallColors[r][c])) ? p.wallColors[r][c] : null));
         delete q.uid;
         return q;
       });
@@ -1108,6 +1114,7 @@
 
     function applyFullGameState(state) {
       state = sanitizeIncomingState(state);
+      advancedMode = !!state.advancedMode;
       playerCount = state.playerCount;
       players = state.players;
       players.forEach(p => { if (typeof p.clock !== 'number') p.clock = CLOCK_INITIAL_MS; });

@@ -236,6 +236,11 @@
             value="Jogador 4" style="display: none;">
         </div>
 
+        <label class="adv-option">
+          <input type="checkbox" id="advModeLocal">
+          <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Sem cores marcadas na parede: cada um escolhe a coluna de suas peças.</small></span>
+        </label>
+
         <button class="btn-toggle btn-online"
           style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.5px;"
           onclick="startConfiguredLocalGame()">
@@ -264,6 +269,11 @@
         <button class="btn-toggle active" id="botDiffCard_hard" style="flex: 1; padding: 12px 6px; font-weight: 600;"
           onclick="selectBotDifficulty('hard')">Difícil</button>
       </div>
+
+      <label class="adv-option">
+        <input type="checkbox" id="advModeBot">
+        <span><strong>Modo avançado</strong> (tabuleiro cinza)<small>Sem cores marcadas na parede: você escolhe a coluna de cada peça.</small></span>
+      </label>
 
       <button class="btn-toggle btn-online"
         style="width: 100%; padding: 13px; font-size: 13px; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.5px;"
@@ -342,6 +352,12 @@
         Voltar ao Menu Principal
       </button>
     </div>
+  </div>
+
+  <!-- Modo avançado: dica enquanto alguém escolhe a coluna da peça na parede -->
+  <div id="wallChoiceHint" class="wall-hint" style="display: none;" role="status">
+    <span id="wallChoiceSwatch" class="tile"></span>
+    <div><strong id="wallChoiceName"></strong><div id="wallChoiceText"></div></div>
   </div>
 
   <!-- Alerta grande de nova mensagem do chat (aparece por cima de tudo, some sozinho; toque para abrir o chat) -->

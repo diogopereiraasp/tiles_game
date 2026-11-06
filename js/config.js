@@ -48,6 +48,68 @@
       ['yellow', 'red', 'black', 'white', 'blue']
     ];
 
+    // MODO AVANÇADO (lado cinza do tabuleiro): a parede não tem cores marcadas. Ao pontuar uma linha completa,
+    // a pessoa escolhe a coluna da peça; a cor não pode repetir na mesma linha nem na mesma coluna.
+    let advancedMode = false;
+    const emptyWallColors = () => Array.from({ length: 5 }, () => Array(5).fill(null));
+
+    // Cor da peça que está na casa (modo normal: a cor fixa da parede)
+    function wallCellColor(p, r, c) {
+      if (!advancedMode) return WALL_LAYOUT[r][c];
+      return (p.wallColors && p.wallColors[r][c]) || null;
+    }
+
+    // Quantas peças dessa cor já estão na parede
+    function colorPlacedCount(p, color) {
+      let n = 0;
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+        if (p.wall[r][c] && wallCellColor(p, r, c) === color) n++;
+      }
+      return n;
+    }
+
+    // Colunas onde a cor pode entrar na linha r (modo normal: 0 ou 1 coluna)
+    function validCols(p, r, color) {
+      if (!advancedMode) {
+        const c = WALL_LAYOUT[r].indexOf(color);
+        return (c >= 0 && !p.wall[r][c]) ? [c] : [];
+      }
+      const wc = p.wallColors;
+      for (let c = 0; c < 5; c++) if (p.wall[r][c] && wc[r][c] === color) return []; // a cor já está na linha
+      const cols = [];
+      for (let c = 0; c < 5; c++) {
+        if (p.wall[r][c]) continue;
+        let clash = false;
+        for (let rr = 0; rr < 5; rr++) if (p.wall[rr][c] && wc[rr][c] === color) { clash = true; break; }
+        if (!clash) cols.push(c);
+      }
+      return cols;
+    }
+
+    // Melhor coluna para a peça (usada pelo bot e como coluna-alvo nas heurísticas): mais pontos agora,
+    // coluna e cor mais completas, leve preferência pelo centro
+    function bestWallCol(p, r, color, cols) {
+      let best = cols[0], bestScore = -Infinity;
+      cols.forEach(c => {
+        p.wall[r][c] = true; p.wallColors[r][c] = color;
+        const pts = calculateTileScore(p.wall, r, c);
+        let colFilled = 0;
+        for (let rr = 0; rr < 5; rr++) if (p.wall[rr][c]) colFilled++;
+        const colorN = colorPlacedCount(p, color);
+        p.wall[r][c] = false; p.wallColors[r][c] = null;
+        const sc = pts + colFilled * 0.9 + colorN * 0.7 - Math.abs(c - 2) * 0.15;
+        if (sc > bestScore) { bestScore = sc; best = c; }
+      });
+      return best;
+    }
+
+    // Coluna-alvo da cor na linha (modo normal: a fixa; avançado: a melhor válida, ou -1 se não houver)
+    function wallColFor(p, r, color) {
+      if (!advancedMode) return WALL_LAYOUT[r].indexOf(color);
+      const cols = validCols(p, r, color);
+      return cols.length ? bestWallCol(p, r, color, cols) : -1;
+    }
+
     const FLOOR_PENALTIES = [-1, -1, -2, -2, -2, -3, -3];
 
     let playerCount = 2;

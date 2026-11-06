@@ -18,8 +18,7 @@
 
     // Verifica se um jogador pode legalmente alocar uma cor em uma linha padrão
     function canPlayerPlaceInRow(p, color, r) {
-      const wallCol = WALL_LAYOUT[r].indexOf(color);
-      if (p.wall[r][wallCol]) return false;
+      if (validCols(p, r, color).length === 0) return false;
       const row = p.pattern[r];
       if (row.count > 0 && row.color !== color) return false;
       if (row.count >= row.size) return false;
@@ -57,8 +56,8 @@
         for (let r = 0; r < 5; r++) {
           for (let c = 0; c < 5; c++) {
             if (p.wall[r][c]) {
-              const color = WALL_LAYOUT[r][c];
-              remaining[color]--;
+              const color = wallCellColor(p, r, c);
+              if (color) remaining[color]--;
             }
           }
           if (p.pattern[r].count > 0 && p.pattern[r].color) {
@@ -106,12 +105,7 @@
       }
       // Cores (+10)
       COLORS.forEach(color => {
-        let full = true;
-        for (let r = 0; r < 5; r++) {
-          const c = WALL_LAYOUT[r].indexOf(color);
-          if (!p.wall[r][c]) { full = false; break; }
-        }
-        if (full) total += 10;
+        if (colorPlacedCount(p, color) === 5) total += 10;
       });
       return total;
     }
@@ -172,7 +166,7 @@
         const placed = Math.min(space, opt.count);
         const overflow = opt.count - placed;
         const willComplete = (row.count + placed === row.size);
-        const wallCol = WALL_LAYOUT[rIdx].indexOf(opt.color);
+        const wallCol = wallColFor(bot, rIdx, opt.color);
 
         if (willComplete) {
           const wallPts = calculateTileScore(bot.wall, rIdx, wallCol);
@@ -251,7 +245,7 @@
         const placed = Math.min(space, opt.count);
         const overflow = opt.count - placed;
         const willComplete = (row.count + placed === row.size);
-        const wallCol = WALL_LAYOUT[rIdx].indexOf(opt.color);
+        const wallCol = wallColFor(bot, rIdx, opt.color);
 
         // MACRO: Evitar extremidades (especialmente borda direita, col 4)
         if (wallCol === 4) {
@@ -267,8 +261,8 @@
         }
 
         // ALINHAMENTO DE LINHAS: Linhas 4 e 5 nunca desalinhadas; linha 3 alinhada se incompleta
-        const row4Col = (bot.pattern[3].count > 0) ? WALL_LAYOUT[3].indexOf(bot.pattern[3].color) : -1;
-        const row5Col = (bot.pattern[4].count > 0) ? WALL_LAYOUT[4].indexOf(bot.pattern[4].color) : -1;
+        const row4Col = (bot.pattern[3].count > 0) ? wallColFor(bot, 3, bot.pattern[3].color) : -1;
+        const row5Col = (bot.pattern[4].count > 0) ? wallColFor(bot, 4, bot.pattern[4].color) : -1;
 
         if (rIdx === 4 && row4Col !== -1 && !willComplete) {
           if (wallCol === row4Col) score += 7.5;
@@ -304,11 +298,7 @@
           else if (filledColCount === 3) score += 3.5;
 
           // Bônus de cor (+10)
-          let colorCountOnWall = 0;
-          for (let r = 0; r < 5; r++) {
-            const c = WALL_LAYOUT[r].indexOf(opt.color);
-            if (r === rIdx || bot.wall[r][c]) colorCountOnWall++;
-          }
+          const colorCountOnWall = colorPlacedCount(bot, opt.color) + 1;
           if (colorCountOnWall === 5) score += 18.0;
           else if (colorCountOnWall === 4) score += 5.0;
 
@@ -395,7 +385,7 @@
           if (canPlayerPlaceInRow(opp, opt.color, r)) {
             oppRowsWithColor++;
             const oppRow = opp.pattern[r];
-            const oppWallCol = WALL_LAYOUT[r].indexOf(opt.color);
+            const oppWallCol = wallColFor(opp, r, opt.color);
             const oppNeeded = oppRow.size - oppRow.count;
 
             if (oppRow.count > 0 && opt.count >= oppNeeded) {
@@ -545,11 +535,7 @@
       const candidates = [];
       options.forEach(opt => {
         for (let r = 0; r < 5; r++) {
-          const row = bot.pattern[r];
-          const colorMatch = (row.count === 0 || row.color === opt.color);
-          const wallCol = WALL_LAYOUT[r].indexOf(opt.color);
-          const wallOccupied = bot.wall[r][wallCol];
-          if (!wallOccupied && colorMatch && row.count < row.size) {
+          if (canPlayerPlaceInRow(bot, opt.color, r)) {
             candidates.push({ opt, target: 'row', rIdx: r });
           }
         }
@@ -571,6 +557,7 @@
           ...p,
           pattern: p.pattern.map(r => ({ ...r })),
           wall: p.wall.map(r => r.slice()),
+          wallColors: p.wallColors ? p.wallColors.map(r => r.slice()) : p.wallColors,
           floor: p.floor.slice()
         })),
         factories: factories.map(f => f.slice()),

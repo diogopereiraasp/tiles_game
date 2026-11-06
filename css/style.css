@@ -1560,3 +1560,16 @@
     .fx-btn.fx-icon .ic { width: 15px; height: 15px; }
     /* desenhos desligados: some o motivo de azulejo das peças */
     body:not(.motifs) .tile::after { display: none !important; }
+
+    /* ── Modo avançado (tabuleiro cinza) ── */
+    .tile.gray { background: linear-gradient(145deg, #7a8792 0%, #56626c 100%); border: 1px solid #93a1ad; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.4); }
+    .wall-cell.tile.gray:not(.filled) { opacity: 0.5; }
+    .wall-cell.choosable { opacity: 1 !important; filter: none !important; cursor: pointer; outline: 2px solid var(--accent-active); outline-offset: 1px; animation: wall-choose 1s ease-in-out infinite; }
+    @keyframes wall-choose { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.6); } 50% { transform: scale(1.07); box-shadow: 0 0 10px 3px rgba(56, 189, 248, 0.55); } }
+    .wall-hint { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 350; width: min(92vw, 460px); display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--bg-header); border: 2px solid var(--accent-active); border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--text-pri); }
+    .wall-hint strong { color: #fff; font-size: 13px; }
+    .wall-hint .tile { flex-shrink: 0; cursor: default; }
+    .adv-option { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; margin-bottom: 12px; text-align: left; border: 1px dashed var(--border-focus); border-radius: 10px; cursor: pointer; color: var(--text-pri); font-size: 12px; }
+    .adv-option input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent-active); flex-shrink: 0; }
+    .adv-option strong { color: #fff; }
+    .adv-option small { display: block; margin-top: 2px; font-size: 10px; color: var(--text-mid); }

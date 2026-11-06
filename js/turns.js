@@ -33,8 +33,7 @@
         const p = players[turn];
         const row = p.pattern[rIdx];
         if (row.count > 0 && row.color !== selected.color) return;
-        const wallCol = WALL_LAYOUT[rIdx].indexOf(selected.color);
-        if (p.wall[rIdx][wallCol]) return;
+        if (validCols(p, rIdx, selected.color).length === 0) return;
         stagedMove = { target: 'row', rIdx };
       } else if (target === 'floor') {
         stagedMove = { target: 'floor' };
@@ -149,6 +148,47 @@
     // Pontuação e Parede com Animação Passo a Passo
     let isScoringAnimationActive = false;
 
+    // ── Modo avançado: escolha da coluna ao pontuar ──
+    let wallChoice = null;      // { playerId, r, cols, color, resolve } enquanto alguém escolhe
+    let autoWallChoice = false; // testes/bots: escolhe sozinho para todos
+
+    function chooseWallColumn(p, r, color) {
+      const cols = validCols(p, r, color);
+      if (cols.length === 0) return Promise.resolve(-1);
+      if (cols.length === 1) return Promise.resolve(cols[0]);
+      if (autoWallChoice || (isBotMode && p.id === 1)) return Promise.resolve(bestWallCol(p, r, color, cols));
+      return new Promise(resolve => {
+        wallChoice = { playerId: p.id, r, cols, color, resolve };
+        showWallChoiceHint(p, r, color);
+        renderBoards();
+      });
+    }
+
+    function pickWallColumn(playerId, r, c) {
+      if (!wallChoice || wallChoice.playerId !== playerId || wallChoice.r !== r || !wallChoice.cols.includes(c)) return;
+      const w = wallChoice;
+      wallChoice = null;
+      hideWallChoiceHint();
+      w.resolve(c);
+    }
+
+    const COLOR_LABEL_PT = { blue: 'azul', yellow: 'amarela', red: 'vermelha', black: 'preta', white: 'branca' };
+    function showWallChoiceHint(p, r, color) {
+      const box = document.getElementById('wallChoiceHint');
+      if (!box) return;
+      const nm = document.getElementById('wallChoiceName');
+      const tx = document.getElementById('wallChoiceText');
+      const sw = document.getElementById('wallChoiceSwatch');
+      if (nm) nm.textContent = p.name || `Jogador ${p.id + 1}`;
+      if (tx) tx.textContent = `Escolha a coluna da peça ${COLOR_LABEL_PT[color] || ''} na linha ${r + 1} (toque numa casa destacada).`;
+      if (sw) sw.className = `tile ${color}`;
+      box.style.display = 'flex';
+    }
+    function hideWallChoiceHint() {
+      const box = document.getElementById('wallChoiceHint');
+      if (box) box.style.display = 'none';
+    }
+
     async function scoreRound() {
       if (isScoringAnimationActive) return;
       isScoringAnimationActive = true;
@@ -166,9 +206,19 @@
           const row = p.pattern[r];
           if (row.count === row.size) {
             const color = row.color;
-            const c = WALL_LAYOUT[r].indexOf(color);
+            // modo avançado: a pessoa escolhe a coluna (o bot escolhe sozinho); modo normal: coluna fixa da cor
+            const c = advancedMode ? await chooseWallColumn(p, r, color) : WALL_LAYOUT[r].indexOf(color);
+            if (c < 0) {
+              // nenhuma coluna válida sobrou (raro): as peças da linha vão para o descarte, sem pontos
+              for (let i = 0; i < row.size; i++) discard.push(color);
+              row.count = 0;
+              row.color = null;
+              renderBoards();
+              continue;
+            }
 
             p.wall[r][c] = true;
+            if (p.wallColors) p.wallColors[r][c] = color;
             const ptsGained = calculateTileScore(p.wall, r, c);
             p.score += ptsGained;
 
@@ -365,15 +415,13 @@
         // 3. Todas as 5 peças de uma mesma cor (+10)
         for (let colorIdx = 0; colorIdx < COLORS.length; colorIdx++) {
           const clr = COLORS[colorIdx];
-          let full = true;
-          for (let r = 0; r < 5; r++) {
-            const c = WALL_LAYOUT[r].indexOf(clr);
-            if (!p.wall[r][c]) { full = false; break; }
-          }
+          const full = colorPlacedCount(p, clr) === 5;
           if (full) {
             const cells = [];
             for (let r = 0; r < 5; r++) {
-              cells.push({ r, c: WALL_LAYOUT[r].indexOf(clr) });
+              for (let c = 0; c < 5; c++) {
+                if (p.wall[r][c] && wallCellColor(p, r, c) === clr) cells.push({ r, c });
+              }
             }
 
             p.score += 10;

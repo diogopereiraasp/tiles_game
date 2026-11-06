@@ -76,6 +76,7 @@
             { size: 5, count: 0, color: null }
           ],
           wall: Array(5).fill(null).map(() => Array(5).fill(false)),
+          wallColors: emptyWallColors(), // modo avançado: cor de cada peça colocada
           floor: []
         });
       }

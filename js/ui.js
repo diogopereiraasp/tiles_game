@@ -199,11 +199,9 @@
 
           let canTarget = false;
           if (selected && isCurrentTurn && canPlayerAct()) {
-            const wallCol = WALL_LAYOUT[r].indexOf(selected.color);
-            const wallOccupied = p.wall[r][wallCol];
             const colorMatch = (row.count === 0 || row.color === selected.color);
             const hasSpace = row.count < row.size;
-            canTarget = !wallOccupied && colorMatch && hasSpace;
+            canTarget = validCols(p, r, selected.color).length > 0 && colorMatch && hasSpace;
           }
 
           const isStagedRow = isCurrentTurn && stagedMove && stagedMove.target === 'row' && stagedMove.rIdx === r;
@@ -256,11 +254,18 @@
         wallGrid.id = `wallGrid_${p.id}`;
         for (let r = 0; r < 5; r++) {
           for (let c = 0; c < 5; c++) {
-            const color = WALL_LAYOUT[r][c];
             const filled = p.wall[r][c];
+            // modo avançado: casa vazia é cinza (sem cor marcada); casa preenchida mostra a cor colocada
+            const color = advancedMode ? ((p.wallColors && p.wallColors[r][c]) || 'gray') : WALL_LAYOUT[r][c];
             const cell = document.createElement('div');
             cell.id = `wallCell_${p.id}_${r}_${c}`;
             cell.className = `wall-cell tile ${color} ${filled ? 'filled' : ''}`;
+            if (wallChoice && wallChoice.playerId === p.id && wallChoice.r === r && wallChoice.cols.includes(c)) {
+              // casa onde a peça pode entrar: mostra a cor que vai para lá e aceita o toque
+              cell.className = `wall-cell tile ${wallChoice.color} choosable`;
+              cell.title = 'Colocar a peça aqui';
+              cell.onclick = () => pickWallColumn(p.id, r, c);
+            }
             wallGrid.appendChild(cell);
           }
         }
@@ -392,7 +397,7 @@
           myP2PIndex = null;
           isBotMode = false;
           playerCount = session.playerCount || 2;
-          updateP2PBadge('offline', `Local (${playerCount}P)`);
+          updateP2PBadge('offline', `Local (${playerCount}P)${advancedMode ? ' · Avançado' : ''}`);
           applyFullGameState(session.gameState);
           return true;
         }
