@@ -315,6 +315,11 @@ create table if not exists public.ranked_matches (
   settled_at timestamptz
 );
 
+-- Última vez que cada jogador avisou que está na partida (ping_ranked_match). Serve para saber se o
+-- adversário realmente sumiu, sem depender de ele confirmar o resultado.
+alter table public.ranked_matches add column if not exists host_seen_at timestamptz;
+alter table public.ranked_matches add column if not exists guest_seen_at timestamptz;
+
 create index if not exists ranked_matches_host_idx on public.ranked_matches (host_id, created_at desc);
 create index if not exists ranked_matches_guest_idx on public.ranked_matches (guest_id, created_at desc);
 
@@ -415,7 +420,8 @@ $$;
 -- Liquida uma partida ranqueada. Regras anti-fraude:
 --  * Os DOIS jogadores enviam o resultado; só vale Elo se os relatos baterem (placar / quem perdeu).
 --  * Relatos que divergem => 'disputed' (ninguém muda de Elo).
---  * Se só UM relatou e o outro sumiu: vale após 60s, mas só com >= 10 jogadas feitas.
+--  * Se só UM relatou: saída/tempo esgotado vale na hora se o adversário está sem sinal de vida há 40s
+--    (>= 4 jogadas); fim normal espera 60s pelo outro lado (>= 10 jogadas).
 --  * Máximo de 5 partidas valendo Elo entre o mesmo par de jogadores por 24h.
 create or replace function public._settle_ranked(p_id uuid)
 returns void
@@ -472,9 +478,23 @@ begin
       end if;
     end if;
   else
-    -- Só um relatório: espera 60s pelo outro
+    -- Só um relatório (o outro lado não relatou).
     v_age := now() - coalesce(m.host_reported_at, m.guest_reported_at);
-    if v_age < interval '60 seconds' then return; end if;
+    v_reason := coalesce(hr, gr) ->> 'end_reason';
+    declare other_seen timestamptz := case when hr is not null then m.guest_seen_at else m.host_seen_at end;
+    begin
+      if v_reason in ('abandon', 'timeout') then
+        -- Saída/tempo esgotado: se o adversário sumiu (sem sinal de vida há 40s) a vitória vale AGORA.
+        -- Se ele ainda manda sinal de vida, espera ele relatar. Sem nenhum sinal registrado: espera 60s.
+        if other_seen is not null then
+          if now() - other_seen < interval '40 seconds' then return; end if;
+        elsif v_age < interval '60 seconds' then
+          return;
+        end if;
+      elsif v_age < interval '60 seconds' then
+        return;  -- fim normal: o outro lado costuma relatar em segundos
+      end if;
+    end;
     declare r jsonb := coalesce(hr, gr); host_side boolean := hr is not null; begin
       v_reason := r ->> 'end_reason';
       v_moves := (r ->> 'moves')::int;
@@ -496,7 +516,7 @@ begin
 
   if not v_ok then
     v_status := 'disputed'; v_apply := false;
-  elsif coalesce(v_moves, 0) < 10 then
+  elsif coalesce(v_moves, 0) < (case when v_reason = 'normal' then 10 else 4 end) then
     v_status := 'void'; v_apply := false;
   else
     select count(*) into v_pair from public.ranked_matches r
@@ -582,6 +602,24 @@ begin
 end;
 $$;
 
+-- Sinal de vida: o cliente chama a cada ~20s durante a partida ranqueada
+create or replace function public.ping_ranked_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+  perform public.require_real_user();
+  update public.ranked_matches r set
+    host_seen_at = case when r.host_id = v_uid then now() else r.host_seen_at end,
+    guest_seen_at = case when r.guest_id = v_uid then now() else r.guest_seen_at end
+  where r.id = p_match_id and r.status = 'pending' and (r.host_id = v_uid or r.guest_id = v_uid);
+end;
+$$;
+
 drop function if exists public.get_ranked_result(uuid);
 create or replace function public.get_ranked_result(p_match_id uuid)
 returns table (r_status text, r_elo_before int, r_elo_after int)
@@ -629,6 +667,8 @@ grant execute on function public.find_ranked_match() to authenticated;
 grant execute on function public.cancel_ranked_search() to authenticated;
 grant execute on function public.report_ranked_result(uuid, jsonb) to authenticated;
 grant execute on function public.get_ranked_result(uuid) to authenticated;
+grant execute on function public.ping_ranked_match(uuid) to authenticated;
+revoke execute on function public.ping_ranked_match(uuid) from public, anon;
 grant execute on function public.settle_my_ranked_matches() to authenticated;
 revoke execute on function public.find_ranked_match() from public, anon;
 revoke execute on function public.cancel_ranked_search() from public, anon;

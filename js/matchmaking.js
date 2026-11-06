@@ -10,6 +10,7 @@
     let mmStartedAt = 0;
     let mmHandshakeTimer = null;
     const MM_POLL_MS = 2000;
+    const PING_RANKED_MS = 20000; // sinal de vida durante a partida ranqueada (o servidor usa para saber se o adversário sumiu)
     const MM_HANDSHAKE_TIMEOUT_MS = 45000; // tempo para o oponente aparecer na sala depois do pareamento
 
     async function startRankedSearch() {
@@ -88,6 +89,8 @@
       if (row.r_role === 'host') p2pCreateRoom(row.r_room_code, { ranked: true });
       else p2pJoinRoom(row.r_room_code, { ranked: true });
 
+      setTimeout(pingRankedMatch, 4000); // primeiro sinal logo que a partida começa
+
       // Se o oponente não aparecer na sala, desiste e volta ao menu
       clearTimeout(mmHandshakeTimer);
       mmHandshakeTimer = setTimeout(() => {
@@ -96,6 +99,13 @@
         abortRankedStart();
       }, MM_HANDSHAKE_TIMEOUT_MS);
     }
+
+    // Avisa o servidor que estou na partida (barato: uma chamada a cada 20s, fora do Realtime)
+    function pingRankedMatch() {
+      if (!sb || !authUser || !rankedMatchId || !isGameActive || hasMatchEndedByAbandon) return;
+      sb.rpc('ping_ranked_match', { p_match_id: rankedMatchId }).then(() => { }, () => { });
+    }
+    setInterval(pingRankedMatch, PING_RANKED_MS);
 
     function abortRankedStart() {
       clearTimeout(mmHandshakeTimer); mmHandshakeTimer = null;

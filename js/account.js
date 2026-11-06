@@ -347,7 +347,7 @@
           };
           const { data: rdata, error: rerr } = await sb.rpc('report_ranked_result', { p_match_id: rankedId, p_report: report });
           if (rerr) { console.warn('Erro ao relatar partida ranqueada:', rerr.message); matchRecorded = false; return; }
-          handleRankedResult(Array.isArray(rdata) ? rdata[0] : rdata, rankedId, 0);
+          handleRankedResult(Array.isArray(rdata) ? rdata[0] : rdata, rankedId, 0, endReason);
           return;
         }
 
@@ -407,7 +407,7 @@
     }
 
     // Resposta do servidor para uma partida ranqueada: done | pending | disputed | void
-    function handleRankedResult(row, matchId, attempt) {
+    function handleRankedResult(row, matchId, attempt, endReason) {
       if (!row) return;
       if (row.r_status === 'done' && typeof row.r_elo_after === 'number') {
         const diff = row.r_elo_after - row.r_elo_before;
@@ -415,19 +415,21 @@
         showEloChange(diff, row.r_elo_after);
         renderAuthBar();
       } else if (row.r_status === 'pending') {
-        showResultBanner(icon('clock') + ' Confirmando o resultado com o oponente...', 'info');
-        if (attempt < 20) {
+        // Saída/tempo esgotado: o servidor liquida assim que confirma que o adversário sumiu (poucos segundos)
+        const left = endReason === 'abandon' || endReason === 'timeout';
+        showResultBanner(icon('clock') + (left ? ' Validando o resultado: o oponente saiu...' : ' Confirmando o resultado com o oponente...'), 'info');
+        if (attempt < 30) {
           setTimeout(async () => {
             const { data, error } = await sb.rpc('get_ranked_result', { p_match_id: matchId });
-            if (!error) handleRankedResult(Array.isArray(data) ? data[0] : data, matchId, attempt + 1);
-          }, 5000);
+            if (!error) handleRankedResult(Array.isArray(data) ? data[0] : data, matchId, attempt + 1, endReason);
+          }, left ? 3000 : 5000);
         } else {
-          showResultBanner('O resultado será confirmado quando o oponente reconectar.', 'info');
+          showResultBanner('O resultado será confirmado em instantes. Você pode jogar de novo.', 'info');
         }
       } else if (row.r_status === 'disputed') {
         showResultBanner('Resultado divergente entre os jogadores: partida sem Elo.', 'info');
       } else if (row.r_status === 'void') {
-        showResultBanner('Partida curta demais ou repetida demais contra o mesmo oponente: sem Elo.', 'info');
+        showResultBanner('Partida curta demais (poucas jogadas) ou repetida demais contra o mesmo oponente: sem Elo.', 'info');
       }
     }
 
