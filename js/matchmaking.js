@@ -20,9 +20,9 @@
       // Primeira vez com o nome padrão: convida a escolher nome/avatar antes de entrar no ranking
       let prompted = false;
       try { prompted = !!localStorage.getItem('azul_name_prompted'); } catch (e) { }
-      if (authProfile && authProfile.display_name === 'Jogador' && !prompted) {
+      if (authProfile && isDefaultUsername(authProfile.display_name) && !prompted) {
         try { localStorage.setItem('azul_name_prompted', '1'); } catch (e) { }
-        openAccountModal('Escolha um nome e um avatar para aparecer no ranking. Depois toque em Partida Ranqueada de novo.');
+        openAccountModal('Escolha seu nome de usuário (único) e um avatar para aparecer no ranking. Depois toque em Partida Ranqueada de novo.');
         return;
       }
 
@@ -90,7 +90,7 @@
       document.getElementById('searchSub').textContent = 'Entrando na partida...';
 
       const nameInput = document.getElementById('onlineMyNameInput');
-      const myName = (authProfile && authProfile.display_name) || 'Jogador';
+      const myName = (authProfile && authProfile.display_name) || 'jogador';
       if (nameInput) nameInput.value = myName;
 
       setTimeout(() => { document.getElementById('searchModal').style.display = 'none'; }, 600);

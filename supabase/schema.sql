@@ -5,7 +5,7 @@
 -- ───────────────────────── Perfis ─────────────────────────
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
-  display_name text not null default 'Jogador',
+  display_name text not null,
   elo int not null default 0,
   created_at timestamptz not null default now()
 );
@@ -14,13 +14,112 @@ alter table public.profiles add column if not exists elo int not null default 0;
 alter table public.profiles alter column elo set default 0;
 alter table public.profiles add column if not exists avatar text;
 
--- Nome: 1 a 15 caracteres. Avatar: um emoji curto. (not valid = não reprova linhas antigas)
-do $$ begin
-  alter table public.profiles add constraint profiles_name_len check (char_length(display_name) between 1 and 15) not valid;
-exception when duplicate_object then null; end $$;
-do $$ begin
-  alter table public.profiles add constraint profiles_avatar_len check (avatar is null or char_length(avatar) <= 8) not valid;
-exception when duplicate_object then null; end $$;
+-- ───────── Nome de usuário: único (sem diferenciar maiúsculas), 3 a 15 letras/números/_ ─────────
+alter table public.profiles add column if not exists email_norm text;
+
+create or replace function public.reserved_username(p text)
+returns boolean language sql immutable as $$
+  select lower(p) in ('admin', 'administrador', 'azul', 'bot', 'suporte', 'moderador', 'sistema', 'jogador', 'voce');
+$$;
+
+-- Usuário gerado automaticamente para contas novas (jogador + 8 dígitos, cabe em 15 caracteres)
+create or replace function public.gen_username()
+returns text language plpgsql as $$
+declare u text;
+begin
+  loop
+    u := 'jogador' || lpad(floor(random() * 100000000)::bigint::text, 8, '0');
+    exit when not exists (select 1 from public.profiles p where lower(p.display_name) = u);
+  end loop;
+  return u;
+end;
+$$;
+
+alter table public.profiles alter column display_name set default public.gen_username();
+
+-- Migração: nomes antigos viram usuários válidos e únicos
+update public.profiles set display_name =
+  case when length(regexp_replace(display_name, '[^A-Za-z0-9_]', '', 'g')) >= 3
+            and not public.reserved_username(regexp_replace(display_name, '[^A-Za-z0-9_]', '', 'g'))
+       then left(regexp_replace(display_name, '[^A-Za-z0-9_]', '', 'g'), 15)
+       else public.gen_username() end
+where display_name !~ '^[A-Za-z0-9_]{3,15}$' or public.reserved_username(display_name);
+
+do $$
+declare i int := 0;
+begin
+  -- duplicados (ignorando maiúsculas): o mais antigo fica com o nome, os outros ganham um novo
+  while i < 5 and exists (select 1 from public.profiles group by lower(display_name) having count(*) > 1) loop
+    update public.profiles p set display_name = public.gen_username()
+    from (select id, row_number() over (partition by lower(display_name) order by created_at, id) rn from public.profiles) d
+    where d.id = p.id and d.rn > 1;
+    i := i + 1;
+  end loop;
+end $$;
+
+alter table public.profiles drop constraint if exists profiles_name_len;
+alter table public.profiles drop constraint if exists profiles_username_fmt;
+alter table public.profiles add constraint profiles_username_fmt
+  check (display_name ~ '^[A-Za-z0-9_]{3,15}$' and not public.reserved_username(display_name));
+create unique index if not exists profiles_username_key on public.profiles (lower(display_name));
+
+-- Avatar: só uma das chaves de ícone do jogo (sem emoji). Remove avatares antigos fora do padrão.
+update public.profiles set avatar = null
+where avatar is not null
+  and avatar not in ('star','zap','flame','crown','rocket','dice','target','moon','leaf','heart','diamond','shield','sun','anchor','music','mountain');
+alter table public.profiles drop constraint if exists profiles_avatar_len;
+alter table public.profiles drop constraint if exists profiles_avatar_key;
+alter table public.profiles add constraint profiles_avatar_key check (
+  avatar is null or avatar in ('star','zap','flame','crown','rocket','dice','target','moon','leaf','heart','diamond','shield','sun','anchor','music','mountain'));
+
+-- ───────── 1 e-mail = 1 conta ─────────
+-- O Supabase já impede o mesmo e-mail em duas contas. Aqui impedimos também apelidos do mesmo e-mail:
+-- fulano+teste@x.com == fulano@x.com, e no Gmail os pontos não contam (f.ulano@gmail.com == fulano@gmail.com).
+create or replace function public.normalize_email(p text)
+returns text language sql immutable as $$
+  select case
+    when p is null or position('@' in p) = 0 then null
+    when split_part(lower(trim(p)), '@', 2) in ('gmail.com', 'googlemail.com')
+      then replace(split_part(split_part(lower(trim(p)), '@', 1), '+', 1), '.', '') || '@gmail.com'
+    else split_part(split_part(lower(trim(p)), '@', 1), '+', 1) || '@' || split_part(lower(trim(p)), '@', 2)
+  end;
+$$;
+
+update public.profiles p set email_norm = public.normalize_email(u.email)
+from auth.users u
+where u.id = p.id and u.email is not null and p.email_norm is distinct from public.normalize_email(u.email);
+
+create unique index if not exists profiles_email_norm_key on public.profiles (email_norm) where email_norm is not null;
+
+create or replace function public.sync_email_norm()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update public.profiles set email_norm = public.normalize_email(new.email) where id = new.id;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_email_changed on auth.users;
+create trigger on_auth_user_email_changed
+  after update of email on auth.users
+  for each row when (new.email is distinct from old.email)
+  execute function public.sync_email_norm();
+
+-- Disponibilidade de nome de usuário (usado pela tela de perfil enquanto a pessoa digita)
+create or replace function public.is_username_available(p_name text)
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select coalesce(p_name ~ '^[A-Za-z0-9_]{3,15}$', false)
+    and not public.reserved_username(p_name)
+    and not exists (select 1 from public.profiles p where lower(p.display_name) = lower(p_name) and p.id is distinct from auth.uid());
+$$;
+grant execute on function public.is_username_available(text) to anon, authenticated;
 
 alter table public.profiles enable row level security;
 
@@ -44,16 +143,17 @@ returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  v_name text;
 begin
-  insert into public.profiles (id, display_name)
-  values (
-    new.id,
-    coalesce(
-      nullif(left(new.raw_user_meta_data ->> 'full_name', 15), ''),
-      nullif(left(new.raw_user_meta_data ->> 'name', 15), ''),
-      'Jogador'
-    )
-  )
+  v_name := left(regexp_replace(coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', ''), '[^A-Za-z0-9_]', '', 'g'), 15);
+  if length(v_name) < 3 or public.reserved_username(v_name)
+     or exists (select 1 from public.profiles p where lower(p.display_name) = lower(v_name)) then
+    v_name := public.gen_username();
+  end if;
+
+  insert into public.profiles (id, display_name, email_norm)
+  values (new.id, v_name, public.normalize_email(new.email))
   on conflict (id) do nothing;
   return new;
 end;

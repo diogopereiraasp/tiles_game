@@ -1173,6 +1173,7 @@
       document.getElementById('mainMenuModal').style.display = 'none';
       document.getElementById('multiplayerModal').style.display = 'flex';
       switchOnlineTab(initialTab);
+      applyProfileNameToInputs(); // online: o nome é o usuário (único)
     }
 
     function closeMultiplayerModal() {

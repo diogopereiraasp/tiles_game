@@ -141,8 +141,9 @@
       </div>
 
       <div class="acc-section">
-        <label class="acc-label" for="accNameInput">Seu nome no jogo e no ranking</label>
-        <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="Seu nome" style="width: 100%; margin: 0 0 12px;">
+        <label class="acc-label" for="accNameInput">Nome de usuário (único, aparece no jogo e no ranking)</label>
+        <input type="text" id="accNameInput" class="modal-name-input" maxlength="15" placeholder="ex.: Diogo_21" autocapitalize="off" autocomplete="off" spellcheck="false" oninput="onUsernameInput()" style="width: 100%; margin: 0 0 4px;">
+        <div id="accNameStatus" class="acc-hint" style="margin: 0 0 12px; min-height: 1.2em;">3 a 15 letras, números ou _ (sem espaços).</div>
         <div class="acc-label">Avatar (toque de novo para remover)</div>
         <div id="avatarGrid" class="avatar-grid"></div>
         <button class="btn-toggle btn-online" style="width: 100%; padding: 10px; font-weight: 700; margin-top: 10px;" onclick="saveProfileEdits()">Salvar perfil</button>
@@ -266,9 +267,10 @@
       <p style="color: var(--text-pri); font-size: 11px; margin-bottom: 14px;">Jogue com 2, 3 ou 4 amigos no mesmo link, sem servidor próprio!</p>
 
       <div style="margin-bottom: 14px; text-align: left;">
-        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 4px;">Seu Nome de Jogador:</div>
-        <input type="text" id="onlineMyNameInput" class="modal-name-input" placeholder="Seu nome no jogo" maxlength="15"
+        <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 4px;">Seu nome de usuário:</div>
+        <input type="text" id="onlineMyNameInput" class="modal-name-input" placeholder="Seu nome de usuário" maxlength="15"
           value="Jogador 1">
+        <div id="onlineNameHint" style="font-size: 10px; color: #94a3b8; margin-top: 4px; display: none;">Em partidas online você joga com seu nome de usuário. Para mudar, abra Minha Conta no menu.</div>
       </div>
 
       <!-- Duas opções no topo para alternar o conteúdo -->

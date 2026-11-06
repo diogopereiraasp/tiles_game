@@ -73,22 +73,58 @@
       renderAvatarGrid();
     }
 
-    // Nome do perfil vira o nome padrão nos campos de nome do jogo (salas de amigos)
+    const USERNAME_RE = /^[A-Za-z0-9_]{3,15}$/;
+    const RESERVED_USERNAMES = ['admin', 'administrador', 'azul', 'bot', 'suporte', 'moderador', 'sistema', 'jogador', 'voce'];
+    const isDefaultUsername = (n) => /^jogador\d{8}$/i.test(n || '');
+
+    // Em partidas online o nome do jogador é sempre o nome de usuário (único): o campo fica travado
     function applyProfileNameToInputs() {
       const name = authProfile && authProfile.display_name;
-      if (!name || name === 'Jogador') return;
       const inp = document.getElementById('onlineMyNameInput');
-      if (inp && (!inp.value.trim() || /^Jogador \d$/.test(inp.value.trim()))) inp.value = name;
+      if (!inp || !name) return;
+      inp.value = name;
+      inp.readOnly = true;
+      const hint = document.getElementById('onlineNameHint');
+      if (hint) hint.style.display = 'block';
+    }
+
+    let usernameCheckTimer = null;
+    let usernameCheckSeq = 0;
+    // Verifica enquanto digita se o nome é válido e está livre
+    function onUsernameInput() {
+      const status = document.getElementById('accNameStatus');
+      const name = document.getElementById('accNameInput').value.trim();
+      clearTimeout(usernameCheckTimer);
+      if (!name) { status.textContent = '3 a 15 letras, números ou _ (sem espaços).'; status.style.color = ''; return; }
+      if (!USERNAME_RE.test(name)) { status.textContent = 'Use 3 a 15 letras, números ou _ (sem espaços ou acentos).'; status.style.color = '#f87171'; return; }
+      if (RESERVED_USERNAMES.includes(name.toLowerCase())) { status.textContent = 'Esse nome é reservado.'; status.style.color = '#f87171'; return; }
+      if (authProfile && authProfile.display_name === name) { status.textContent = 'Este é o seu nome atual.'; status.style.color = ''; return; }
+      status.textContent = 'Verificando...'; status.style.color = '';
+      const seq = ++usernameCheckSeq;
+      usernameCheckTimer = setTimeout(async () => {
+        if (!sb) return;
+        const { data, error } = await sb.rpc('is_username_available', { p_name: name });
+        if (seq !== usernameCheckSeq) return;
+        if (error) { status.textContent = ''; return; }
+        status.innerHTML = data ? icon('check') + ' Disponível' : icon('x') + ' Já está em uso';
+        status.style.color = data ? '#4ade80' : '#f87171';
+      }, 400);
     }
 
     async function saveProfileEdits() {
       const msg = document.getElementById('accProfileMsg');
       if (!sb || !authUser) { msg.textContent = 'Sem conexão com o servidor.'; return; }
-      const name = document.getElementById('accNameInput').value.replace(/\s+/g, ' ').trim();
-      if (name.length < 2 || name.length > 15) { msg.textContent = 'O nome precisa ter de 2 a 15 caracteres.'; return; }
+      const name = document.getElementById('accNameInput').value.trim();
+      if (!USERNAME_RE.test(name)) { msg.textContent = 'O usuário precisa ter de 3 a 15 letras, números ou _ (sem espaços ou acentos).'; return; }
+      if (RESERVED_USERNAMES.includes(name.toLowerCase())) { msg.textContent = 'Esse nome é reservado. Escolha outro.'; return; }
       msg.textContent = 'Salvando...';
       const { error } = await sb.from('profiles').update({ display_name: name, avatar: selectedAvatar || null }).eq('id', authUser.id);
-      if (error) { msg.textContent = 'Não foi possível salvar: ' + error.message; return; }
+      if (error) {
+        msg.textContent = error.code === '23505' ? 'Esse nome de usuário já está em uso. Escolha outro.'
+          : error.code === '23514' ? 'Nome de usuário inválido ou reservado.'
+          : 'Não foi possível salvar: ' + error.message;
+        return;
+      }
       authProfile = { ...(authProfile || {}), id: authUser.id, display_name: name, avatar: selectedAvatar || null };
       renderAuthBar();
       msg.innerHTML = icon('check') + ' Perfil salvo!';
@@ -98,6 +134,7 @@
       document.getElementById('authEmailMsg').textContent = '';
       document.getElementById('accProfileMsg').textContent = hint || '';
       document.getElementById('accNameInput').value = (authProfile && authProfile.display_name) || '';
+      onUsernameInput();
       selectedAvatar = (authProfile && AVATAR_KEYS.includes(authProfile.avatar)) ? authProfile.avatar : '';
       renderAvatarGrid();
       document.getElementById('accountModal').style.display = 'flex';
@@ -128,6 +165,24 @@
       return authUser;
     }
 
+    function friendlyAuthError(m) {
+      if (/database error|already|registered|unique|duplicate/i.test(m || '')) return 'Esse e-mail (ou uma variação dele, como com +algo ou pontos no Gmail) já está vinculado a outra conta.';
+      if (/rate limit|too many|security purposes/i.test(m || '')) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
+      return 'Erro: ' + m;
+    }
+
+    // Link do e-mail que falhou (ex.: e-mail já usado por outra conta): avisa e limpa o endereço
+    function showAuthRedirectError() {
+      try {
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, '') || window.location.search.replace(/^\?/, ''));
+        const desc = params.get('error_description');
+        if (!desc) return;
+        history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(() => alert(friendlyAuthError(desc.replace(/\+/g, ' '))), 500);
+      } catch (e) { }
+    }
+    showAuthRedirectError();
+
     async function submitEmailLogin() {
       if (!sb) return;
       const input = document.getElementById('authEmailInput');
@@ -144,17 +199,17 @@
           msg.textContent = `Link enviado para ${email}. Abra o e-mail e clique no link para salvar sua conta.`;
           return;
         }
-        // E-mail já tem conta (ex.: outro aparelho): faz login nela
+        // E-mail já tem conta (ex.: outro aparelho): o link ENTRA nessa conta (1 e-mail = 1 usuário)
         if (!/already|registered|exists/i.test(error.message)) {
-          msg.textContent = 'Erro: ' + error.message;
+          msg.textContent = friendlyAuthError(error.message);
           return;
         }
       }
 
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo } });
       msg.textContent = error
-        ? 'Erro: ' + error.message
-        : `Link enviado para ${email}. Abra o e-mail neste aparelho e clique no link para entrar.`;
+        ? friendlyAuthError(error.message)
+        : `Link enviado para ${email}. Esse e-mail já tem conta: clique no link para entrar nela (o progresso desta conta de convidado não é transferido).`;
     }
 
     async function signOutAccount() {

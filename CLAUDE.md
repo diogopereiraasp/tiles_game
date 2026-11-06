@@ -30,6 +30,7 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 - Testar SQL localmente: Postgres 12 em /Library/PostgreSQL/12/bin com stub de `auth.uid()` e roles `anon`/`authenticated`; o schema roda 2x sem erro.
 - Online: o **host** é a autoridade (estado, relógio, derrota por tempo). Mensagens do Realtime não têm ordem garantida — `RtConn.send` numera e o receptor reordena.
 - Relógio: 5 min iniciais, +30 s por jogada confirmada, teto 5 min; tolerância de desconexão 5 min.
+- `profiles.display_name` é o **nome de usuário**: único sem diferenciar maiúsculas, 3 a 15 letras/números/_, nomes reservados bloqueados (constraint + índice único no banco, `is_username_available` para a tela). Contas novas recebem `jogador########`. Em partidas online o nome do jogador é sempre o usuário (campo travado). 1 e-mail = 1 conta: o Supabase já barra e-mail repetido; o schema também barra variações (`+tag`, pontos do Gmail) via `email_norm`.
 - Nome e avatar vêm do perfil (`profiles.display_name`/`avatar`, editados em Minha Conta); o jogo não sobrescreve o nome do perfil.
 - Desempate (regra oficial): pontos iguais => mais linhas horizontais completas (`completedRows`); persistindo, vitória dividida (empate no Elo). Os relatos ranqueados incluem `my_rows`/`opp_rows` e o servidor confere.
 - Elo começa em 0 (piso 0). Níveis: Bronze <100, Prata ≥100, Ouro ≥300, Platina ≥600, Diamante ≥1000.
