@@ -1087,6 +1087,7 @@
 
         const session = {
           mode,
+          savedAt: Date.now(),
           isGameActive,
           isP2P,
           isHost,

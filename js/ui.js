@@ -364,12 +364,22 @@
       });
     }
 
+    const SESSION_MAX_AGE_ONLINE_MS = 10 * 60 * 1000;
+    const SESSION_MAX_AGE_OFFLINE_MS = 12 * 60 * 60 * 1000;
+
     function restoreSessionFromStorage() {
       try {
         const raw = sessionStorage.getItem('azul_saved_session') || localStorage.getItem('azul_saved_session');
         if (!raw) return false;
         const session = JSON.parse(raw);
         if (!session || !session.gameState || !session.isGameActive) {
+          clearSavedSession();
+          return false;
+        }
+        // Sessão velha não volta: online (sala já morreu / tolerância esgotada) 10 min; bot e mesmo aparelho 12 h.
+        // Sem carimbo (salvo por versão antiga) conta como velha.
+        const maxAge = session.mode === 'online' ? SESSION_MAX_AGE_ONLINE_MS : SESSION_MAX_AGE_OFFLINE_MS;
+        if (!Number.isFinite(session.savedAt) || Date.now() - session.savedAt > maxAge || session.savedAt > Date.now() + 60000) {
           clearSavedSession();
           return false;
         }
