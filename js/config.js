@@ -16,6 +16,7 @@
       phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
       volume: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>',
       'volume-off': '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/>',
+      sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
       help: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5"/><path d="M12 17.5h.01"/>',
       trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-1.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98 1.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
       check: '<polyline points="20 6 9 17 4 12"/>',
@@ -37,6 +38,46 @@
     function hydrateIcons(root = document) {
       root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); });
     }
+
+    // ── Avisos do próprio jogo (no lugar de alert/confirm/prompt do navegador, que travam a tela e quebram o visual) ──
+    let gameToastTimer = null;
+    function gameToast(text, ms = 3500) {
+      let el = document.getElementById('gameToast');
+      if (!el) { el = document.createElement('div'); el.id = 'gameToast'; el.className = 'game-toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+      el.textContent = String(text);
+      el.style.display = 'block';
+      clearTimeout(gameToastTimer);
+      gameToastTimer = setTimeout(() => { el.style.display = 'none'; }, ms);
+    }
+
+    // Caixa de diálogo simples. opts: { title, text, inputValue (campo só leitura para copiar), buttons: [{label, primary, onClick}] }
+    function gameDialog(opts) {
+      let ov = document.getElementById('gameDialog');
+      if (ov) ov.remove();
+      ov = document.createElement('div');
+      ov.id = 'gameDialog'; ov.className = 'modal-overlay'; ov.style.display = 'flex'; ov.style.zIndex = '600';
+      ov.setAttribute('role', 'alertdialog');
+      const box = document.createElement('div'); box.className = 'modal-box'; box.style.maxWidth = '340px';
+      if (opts.title) { const h = document.createElement('h2'); h.textContent = opts.title; box.appendChild(h); }
+      const p = document.createElement('p'); p.style.cssText = 'margin-bottom: 14px; line-height: 1.45;'; p.textContent = opts.text || ''; box.appendChild(p);
+      if (opts.inputValue !== undefined) {
+        const inp = document.createElement('input'); inp.type = 'text'; inp.readOnly = true; inp.value = opts.inputValue;
+        inp.style.cssText = 'width: 100%; margin-bottom: 14px; box-sizing: border-box;';
+        inp.addEventListener('focus', () => inp.select());
+        box.appendChild(inp); setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) { } }, 0);
+      }
+      const row = document.createElement('div'); row.style.cssText = 'display: flex; gap: 10px;';
+      (opts.buttons || [{ label: 'OK', primary: true }]).forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-toggle' + (b.primary ? ' active' : ''); btn.style.cssText = 'flex: 1; padding: 10px; font-weight: 700;'; btn.textContent = b.label;
+        btn.addEventListener('click', () => { ov.remove(); if (b.onClick) b.onClick(); });
+        row.appendChild(btn);
+      });
+      box.appendChild(row); ov.appendChild(box); document.body.appendChild(ov);
+    }
+    const gameAlert = (text, title) => gameDialog({ title, text });
+    const gameConfirm = (text, onYes, yesLabel = 'Sim', noLabel = 'Cancelar') =>
+      gameDialog({ text, buttons: [{ label: noLabel }, { label: yesLabel, primary: true, onClick: onYes }] });
 
     // Nome de jogador: sem caracteres de controle nem < >, espaços normalizados, no máximo 15 caracteres
     function cleanName(str) {

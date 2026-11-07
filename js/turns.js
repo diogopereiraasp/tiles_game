@@ -63,12 +63,23 @@
     }
 
     // BGA Confirm: efetiva o movimento escolhido e encerra o turno
+    let placedGlow = null; // { pid, rIdx (-1 = chão), start }
+    const PLACED_GLOW_MS = 900;
+    // atraso negativo para a animação continuar de onde parou quando a tela é redesenhada
+    function placedGlowDelay(pid, rIdx) {
+      if (!placedGlow || placedGlow.pid !== pid || placedGlow.rIdx !== rIdx) return null;
+      const el = Date.now() - placedGlow.start;
+      return el < PLACED_GLOW_MS ? -el : null;
+    }
+
     function confirmMove(broadcast = true) {
       if (broadcast && !canPlayerAct()) return;
       if (!selected || !stagedMove) return;
 
       const p = players[turn];
       commitDraft();
+      // brilho sutil onde as peças acabaram de assentar (usado pelo desenho em ui.js; some em ~0,9 s)
+      placedGlow = { pid: p.id, rIdx: stagedMove.target === 'row' ? stagedMove.rIdx : -1, start: Date.now() };
 
       if (stagedMove.target === 'row') {
         const rIdx = stagedMove.rIdx;

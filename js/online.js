@@ -311,7 +311,7 @@
     // opts.fresh = sala nova; opts.fixedCode = código vindo do matchmaking; opts.ranked = partida ranqueada
     function initRealtimeRoom(roomCode, role, onReady, opts = {}) {
       if (!sb) {
-        alert('Não foi possível conectar ao servidor do jogo. Verifique sua internet e tente novamente.');
+        gameAlert('Não foi possível conectar ao servidor do jogo. Verifique sua internet e tente novamente.');
         updateP2PBadge('offline', 'Sem conexão');
         return;
       }
@@ -482,7 +482,7 @@
             if (room.role === 'guest' && opts.fresh && !opts.ranked) {
               room.notFoundTimer = setTimeout(() => {
                 if (room.destroyed || (clientHostConn && clientHostConn.open)) return;
-                alert('Sala não encontrada. Confira o código e se o criador da sala ainda está com ela aberta.');
+                gameAlert('Sala não encontrada. Confira o código e se o criador da sala ainda está com ela aberta.');
                 updateP2PBadge('offline', 'Sala não encontrada');
                 destroyRealtimeRoom();
               }, 8000);
@@ -714,7 +714,7 @@
       savePlayerNamesToStorage();
       let code = codeOverride || document.getElementById('roomCodeInput').value.trim();
       if (!code) {
-        alert('Digite o código de 4 dígitos da sala.');
+        gameToast('Digite o código de 4 dígitos da sala.');
         return;
       }
 
@@ -968,7 +968,7 @@
         updateP2PBadge('waiting', `${myName} (Conectado à sala ${currentRoomCode})`);
         rtTrackPresence(); // anuncia meu índice (usado na eleição de novo anfitrião)
       } else if (msg.type === 'ROOM_FULL') {
-        alert('Esta sala já atingiu o número máximo de jogadores.');
+        gameAlert('Esta sala já atingiu o número máximo de jogadores.');
       } else if (msg.type === 'SYNC_STATE') {
         // Revanche: já tinha acabado e chega um estado de partida nova (menos jogadas) => reabre a partida
         if (matchFinished && msg.state && Number.isFinite(Number(msg.state.movesPlayed)) && Number(msg.state.movesPlayed) < movesPlayed) {
@@ -1226,9 +1226,9 @@
       if (!currentRoomCode) return;
       const url = `${window.location.origin}${window.location.pathname}?sala=${currentRoomCode}`;
       navigator.clipboard.writeText(url).then(() => {
-        alert('Link copiado para a área de transferência! Envie para seus amigos entrarem.');
+        gameToast('Link copiado! Envie para seus amigos entrarem.');
       }).catch(() => {
-        prompt('Copie o link abaixo:', url);
+        gameDialog({ title: 'Copie o link', text: 'Envie este link para seus amigos entrarem na sala:', inputValue: url });
       });
     }
 
@@ -1544,13 +1544,15 @@
     function restartLocalGame() {
       if (isP2P) {
         if (!isHost) {
-          alert('Apenas o Host (P1) pode reiniciar a partida online.');
+          gameToast('Apenas o anfitrião pode reiniciar a partida online.');
           return;
         }
-        if (!confirm('Deseja reiniciar a partida para todos os jogadores?')) return;
-        initGame();
-        randomizeOnlineStarter();
-        broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+        gameConfirm('Deseja reiniciar a partida para todos os jogadores?', () => {
+          initGame(players ? players.map(p => p.name) : null);
+          isGameActive = true;
+          randomizeOnlineStarter();
+          broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+        }, 'Reiniciar');
       } else if (isBotMode) {
         // Reiniciar no meio da partida conta como derrota (senão dava para fugir de perder Elo)
         if (isGameActive && !matchFinished && !hasMatchEndedByAbandon && movesPlayed >= 4) recordMatchResult('abandon', 0);

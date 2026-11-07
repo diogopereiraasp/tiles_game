@@ -51,7 +51,7 @@
 
     function changePlayerCount(n) {
       if (isP2P) {
-        alert('Em partidas online P2P, a quantidade de jogadores é definida pelo Host ao criar a sala.');
+        gameToast('Em partidas online, a quantidade de jogadores é definida pelo anfitrião ao criar a sala.');
         return;
       }
       isBotMode = false;

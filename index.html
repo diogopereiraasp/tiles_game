@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611070041">
+  <link rel="stylesheet" href="css/style.css?v=202611070055">
 </head>
 
 <body>
@@ -41,19 +41,26 @@
         <span><span data-icon="chat"></span> Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
       </button>
-      <button id="soundBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleSound()"
-        title="Som de &quot;sua vez&quot; (ligar/desligar)" aria-label="Som de sua vez" aria-pressed="true">
-        <span id="soundIcon" data-icon="volume"></span>
-      </button>
-      <button id="fxMotifBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleMotifs()"
-        title="Desenhos de azulejo nas peças (ligar/desligar)" aria-label="Desenhos de azulejo nas peças"
-        aria-pressed="true">
-        <span data-icon="shapes"></span>
-      </button>
-      <button id="fx3dBtn" class="btn-toggle fx-btn active" onclick="toggleFx3d()" title="Efeito 3D nas peças"
-        aria-pressed="true">
-        <span data-icon="cube"></span> 3D
-      </button>
+      <div class="opt-wrap">
+        <button id="optionsBtn" class="btn-toggle fx-btn" onclick="toggleOptionsMenu(event)" aria-haspopup="true" aria-expanded="false"
+          aria-controls="optionsMenu" title="Opções de aparência e som">
+          <span data-icon="sliders"></span> Opções
+        </button>
+        <div id="optionsMenu" class="opt-menu" style="display: none;" role="menu">
+          <button id="soundBtn" class="btn-toggle opt-row active" onclick="toggleSound()" role="menuitemcheckbox"
+            title="Som e vibração de &quot;sua vez&quot;" aria-label="Som e vibração de sua vez" aria-pressed="true">
+            <span id="soundIcon" data-icon="volume"></span><span class="opt-label">Som e vibração de "sua vez"</span>
+          </button>
+          <button id="fxMotifBtn" class="btn-toggle opt-row active" onclick="toggleMotifs()" role="menuitemcheckbox"
+            title="Desenhos de azulejo nas peças" aria-label="Desenhos de azulejo nas peças" aria-pressed="true">
+            <span data-icon="shapes"></span><span class="opt-label">Desenhos de azulejo nas peças</span>
+          </button>
+          <button id="fx3dBtn" class="btn-toggle opt-row active" onclick="toggleFx3d()" role="menuitemcheckbox"
+            title="Efeito 3D nas peças" aria-label="Efeito 3D nas peças" aria-pressed="true">
+            <span data-icon="cube"></span><span class="opt-label">Efeito 3D nas peças</span>
+          </button>
+        </div>
+      </div>
       <button class="btn-toggle" onclick="exitToMainMenu()" style="color: var(--text-pri);">Sair da Partida</button>
     </div>
   </header>
@@ -440,6 +447,9 @@
   </div>
 
   <!-- Alerta grande de nova mensagem do chat (aparece por cima de tudo, some sozinho; toque para abrir o chat) -->
+  <!-- Faixa "Sua vez" (aparece alguns segundos quando passa a ser a sua vez; não bloqueia toques) -->
+  <div id="turnBanner" class="turn-banner" style="display: none;" role="status">Sua vez</div>
+
   <!-- Aviso de rede (anfitrião/jogador sem sinal, sala migrou): fica embaixo, não bloqueia toques -->
   <div id="netNotice" class="net-notice" style="display: none;" role="status"></div>
 
@@ -485,16 +495,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611070041"></script>
-  <script src="js/chat.js?v=202611070041"></script>
-  <script src="js/online-state.js?v=202611070041"></script>
-  <script src="js/account.js?v=202611070041"></script>
-  <script src="js/online.js?v=202611070041"></script>
-  <script src="js/matchmaking.js?v=202611070041"></script>
-  <script src="js/game-setup.js?v=202611070041"></script>
-  <script src="js/bot.js?v=202611070041"></script>
-  <script src="js/turns.js?v=202611070041"></script>
-  <script src="js/ui.js?v=202611070041"></script>
+  <script src="js/config.js?v=202611070055"></script>
+  <script src="js/chat.js?v=202611070055"></script>
+  <script src="js/online-state.js?v=202611070055"></script>
+  <script src="js/account.js?v=202611070055"></script>
+  <script src="js/online.js?v=202611070055"></script>
+  <script src="js/matchmaking.js?v=202611070055"></script>
+  <script src="js/game-setup.js?v=202611070055"></script>
+  <script src="js/bot.js?v=202611070055"></script>
+  <script src="js/turns.js?v=202611070055"></script>
+  <script src="js/ui.js?v=202611070055"></script>
 </body>
 
 </html>

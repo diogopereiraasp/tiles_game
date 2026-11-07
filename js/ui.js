@@ -65,9 +65,47 @@
         });
       } catch (e) { /* som é opcional */ }
     }
+    // Menu "Opções" do cabeçalho (som, azulejos, 3D): abre/fecha; fecha ao tocar fora ou com Esc
+    function setOptionsMenu(open) {
+      const m = document.getElementById('optionsMenu'), b = document.getElementById('optionsBtn');
+      if (!m || !b) return;
+      m.style.display = open ? 'flex' : 'none';
+      b.setAttribute('aria-expanded', String(open));
+      b.classList.toggle('active', open);
+    }
+    function toggleOptionsMenu(ev) {
+      if (ev) ev.stopPropagation();
+      const m = document.getElementById('optionsMenu');
+      setOptionsMenu(!m || m.style.display === 'none');
+    }
+    document.addEventListener('click', (e) => {
+      const wrap = document.querySelector('.opt-wrap');
+      if (wrap && !wrap.contains(e.target)) setOptionsMenu(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOptionsMenu(false); });
+
+    // Faixa "Sua vez": some sozinha; não bloqueia toques
+    let turnBannerTimer = null;
+    function showTurnBanner() {
+      const el = document.getElementById('turnBanner');
+      if (!el) return;
+      el.style.display = 'block';
+      el.classList.remove('turn-banner-in'); void el.offsetWidth; el.classList.add('turn-banner-in'); // reinicia a animação
+      clearTimeout(turnBannerTimer);
+      turnBannerTimer = setTimeout(() => { el.style.display = 'none'; }, 2200);
+    }
+    function vibrateTurn() {
+      if (!soundOn) return;
+      try { if (navigator.vibrate) navigator.vibrate([70, 50, 70]); } catch (e) { }
+    }
+
     function checkTurnPing() {
       const mine = (isBotMode || isP2P) && !isScoringAnimationActive && canPlayerAct();
-      if (mine && !wasMyTurn) playTurnPing();
+      if (mine && !wasMyTurn) {
+        playTurnPing();     // som (se ligado)
+        showTurnBanner();   // faixa "Sua vez"
+        vibrateTurn();      // vibração no celular (se o som/vibração estiver ligado)
+      }
       wasMyTurn = mine;
     }
 
@@ -278,6 +316,8 @@
             if (actualFilled && row.color) {
               const t = document.createElement('div');
               t.className = `tile ${row.color}`;
+              const gd = placedGlowDelay(p.id, r);
+              if (gd !== null) { t.classList.add('just-placed'); t.style.animationDelay = gd + 'ms'; }
               rowDiv.appendChild(t);
             } else if (previewFilled && previewColor) {
               const t = document.createElement('div');
@@ -363,6 +403,8 @@
           if (actualItem) {
             slot.className = `floor-slot occupied tile ${actualItem === 'starter' ? 'starter' : actualItem}`;
             slot.textContent = actualItem === 'starter' ? '1º' : '';
+            const gdf = placedGlowDelay(p.id, -1);
+            if (gdf !== null) { slot.classList.add('just-placed'); slot.style.animationDelay = gdf + 'ms'; }
           } else if (isPreviewSlot) {
             const previewItem = previewFloorItems[previewIdx];
             slot.className = `floor-slot occupied tile preview-ghost ${previewItem === 'starter' ? 'starter' : previewItem}`;

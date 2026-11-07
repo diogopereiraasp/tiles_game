@@ -14,7 +14,7 @@
     const MM_HANDSHAKE_TIMEOUT_MS = 45000; // tempo para o oponente aparecer na sala depois do pareamento
 
     async function startRankedSearch() {
-      if (!sb) { alert('Não foi possível conectar ao servidor. Verifique sua internet.'); return; }
+      if (!sb) { gameAlert('Não foi possível conectar ao servidor. Verifique sua internet.'); return; }
       if (!requireLogin('Entre ou crie sua conta para jogar partidas ranqueadas.', startRankedSearch)) return;
 
       document.getElementById('mainMenuModal').style.display = 'none';
@@ -95,7 +95,7 @@
       clearTimeout(mmHandshakeTimer);
       mmHandshakeTimer = setTimeout(() => {
         if (isGameActive) return;
-        alert('Seu oponente não conseguiu entrar na partida. Tente procurar outra.');
+        gameAlert('Seu oponente não conseguiu entrar na partida. Tente procurar outra.');
         abortRankedStart();
       }, MM_HANDSHAKE_TIMEOUT_MS);
     }
