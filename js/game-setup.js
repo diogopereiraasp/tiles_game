@@ -43,6 +43,7 @@
 
     function initGame(names = null) {
       hasMatchEndedByAbandon = false;
+      matchFinished = false;
       matchRecorded = false;
       movesPlayed = 0;
       const endTitle = document.querySelector('#endModal h2');

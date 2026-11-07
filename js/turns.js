@@ -613,6 +613,7 @@
         ${tiedOnScore ? `<div style="margin-top:10px;font-size:11px;color:#94a3b8;">Empate em pontos: desempate por linhas horizontais completas${rankOf[0] === rankOf[1] ? ' (persistiu o empate: vitória dividida)' : ''}.</div>` : ''}
       `;
       modal.style.display = 'flex';
+      matchFinished = true;
       recordMatchResult('normal');
       saveSessionToStorage();
     }

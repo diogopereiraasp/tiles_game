@@ -133,6 +133,7 @@
     let botTurnTimer = null;
     let isGameActive = false;
     let hasMatchEndedByAbandon = false;
+    let matchFinished = false; // partida terminou normalmente (sair/jogar novamente depois disso não é abandono)
 
     function getBotDifficultyLabel(diff) {
       if (diff === 'easy') return 'Fácil';

@@ -1250,7 +1250,7 @@
     }
 
     function handlePlayerAbandoned(abandonedIndex, abandonedName, reason) {
-      if (!isGameActive || hasMatchEndedByAbandon) return;
+      if (!isGameActive || hasMatchEndedByAbandon || matchFinished) return;
       recordMatchResult(reason === 'timeout' ? 'timeout' : 'abandon', abandonedIndex);
       hasMatchEndedByAbandon = true;
       isGameActive = false;
@@ -1340,13 +1340,13 @@
       closeConfirmExitModal();
 
       // Saída voluntária de partida online em andamento conta como derrota
-      if (isP2P && isGameActive && !hasMatchEndedByAbandon && myP2PIndex !== null) {
+      if (isP2P && isGameActive && !hasMatchEndedByAbandon && !matchFinished && myP2PIndex !== null) {
         recordMatchResult('abandon', myP2PIndex);
       }
       matchRecorded = false;
 
       // Notifica os outros jogadores que este jogador abandonou a partida
-      if (isP2P && isGameActive) {
+      if (isP2P && isGameActive && !matchFinished) {
         const myName = (myP2PIndex !== null && players && players[myP2PIndex] && players[myP2PIndex].name)
           ? players[myP2PIndex].name
           : (isHost ? 'Host' : `Jogador ${(myP2PIndex !== null ? myP2PIndex : 0) + 1}`);
