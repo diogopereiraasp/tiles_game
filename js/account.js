@@ -439,6 +439,9 @@
       switchLeaderboardTab(leaderboardTab);
     }
 
+    function openHowToModal() { document.getElementById('howToModal').style.display = 'flex'; }
+    function closeHowToModal() { document.getElementById('howToModal').style.display = 'none'; }
+
     function closeLeaderboardModal() {
       document.getElementById('leaderboardModal').style.display = 'none';
     }

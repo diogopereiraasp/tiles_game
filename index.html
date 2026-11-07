@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611062239">
+  <link rel="stylesheet" href="css/style.css?v=202611062241">
 </head>
 
 <body>
@@ -129,6 +129,10 @@
           <span class="ms-icon" data-icon="trophy"></span>
           <span>Ranking</span>
         </button>
+        <button class="menu-secondary" onclick="openHowToModal()">
+          <span class="ms-icon" data-icon="help"></span>
+          <span>Como jogar</span>
+        </button>
       </div>
     </div>
   </div>
@@ -211,6 +215,23 @@
   </div>
 
   <!-- Modal Ranking & Histórico -->
+  <div id="howToModal" class="modal-overlay">
+    <div class="modal-box howto-box">
+      <h2>Como jogar</h2>
+      <div class="howto-body">
+        <p><strong>Objetivo:</strong> fazer mais pontos montando a parede de azulejos.</p>
+        <p><strong>Sua vez:</strong> pegue todas as peças de uma cor de uma fábrica (as outras vão ao centro) ou do centro. Quem pega primeiro do centro leva a peça roxa de 1º jogador e perde 1 ponto.</p>
+        <p><strong>Colocar:</strong> ponha as peças numa linha da esquerda, de uma só cor. O que não couber cai no chão e tira pontos (-1, -1, -2, -2, -2, -3, -3).</p>
+        <p><strong>Fim da rodada:</strong> cada linha cheia manda 1 peça para a parede e pontua pelas peças vizinhas. A cor não repete na linha nem na coluna.</p>
+        <p><strong>Fim do jogo:</strong> quando alguém completa uma linha da parede. Bônus: linha +2, coluna +7, cor completa +10. Desempate: mais linhas completas.</p>
+        <p><strong>Modo avançado:</strong> a parede começa cinza e você escolhe a coluna de cada peça.</p>
+        <p><strong>Ranqueada:</strong> vale Elo e cada jogador tem 5 min no relógio (+15 s por jogada).</p>
+      </div>
+      <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 12px; font-weight: 600;"
+        onclick="closeHowToModal()">Fechar</button>
+    </div>
+  </div>
+
   <div id="leaderboardModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 440px;">
       <h2><span data-icon="trophy"></span> Ranking</h2>
@@ -354,14 +375,6 @@
               Jogadores</button>
           </div>
 
-          <div style="font-size: 11px; color: var(--text-mid); margin-bottom: 6px; text-align: left;">Tempo por jogador
-            (ganha +15 s a cada jogada, até o limite):</div>
-          <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
-            <button class="btn-toggle active" id="roomTime3" style="flex: 1;" onclick="selectRoomTime(3)">3 min</button>
-            <button class="btn-toggle" id="roomTime5" style="flex: 1;" onclick="selectRoomTime(5)">5 min</button>
-            <button class="btn-toggle" id="roomTime10" style="flex: 1;" onclick="selectRoomTime(10)">10 min</button>
-          </div>
-
           <label class="adv-option">
             <input type="checkbox" id="advModeRoom">
             <span><strong>Modo avançado</strong> (tabuleiro cinza)<small> Cada jogador escolhe a coluna de suas peças na
@@ -460,16 +473,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611062239"></script>
-  <script src="js/chat.js?v=202611062239"></script>
-  <script src="js/online-state.js?v=202611062239"></script>
-  <script src="js/account.js?v=202611062239"></script>
-  <script src="js/online.js?v=202611062239"></script>
-  <script src="js/matchmaking.js?v=202611062239"></script>
-  <script src="js/game-setup.js?v=202611062239"></script>
-  <script src="js/bot.js?v=202611062239"></script>
-  <script src="js/turns.js?v=202611062239"></script>
-  <script src="js/ui.js?v=202611062239"></script>
+  <script src="js/config.js?v=202611062241"></script>
+  <script src="js/chat.js?v=202611062241"></script>
+  <script src="js/online-state.js?v=202611062241"></script>
+  <script src="js/account.js?v=202611062241"></script>
+  <script src="js/online.js?v=202611062241"></script>
+  <script src="js/matchmaking.js?v=202611062241"></script>
+  <script src="js/game-setup.js?v=202611062241"></script>
+  <script src="js/bot.js?v=202611062241"></script>
+  <script src="js/turns.js?v=202611062241"></script>
+  <script src="js/ui.js?v=202611062241"></script>
 </body>
 
 </html>

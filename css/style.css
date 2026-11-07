@@ -1588,3 +1588,9 @@
 .chat-alert-icon .ic { width: 15px; height: 15px; }
 .chat-alert-name { font-size: 10px; margin-bottom: 1px; }
 .chat-alert-text { font-size: 13px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Como jogar */
+.howto-box { max-width: 440px; max-height: 90vh; overflow-y: auto; text-align: left; }
+.howto-body p { font-size: 13px; line-height: 1.45; color: var(--text-mid); margin: 0 0 9px; }
+.howto-body strong { color: var(--text-pri); }
+.menu-grid .menu-secondary:last-child:nth-child(odd) { grid-column: 1 / -1; }

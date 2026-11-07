@@ -93,7 +93,7 @@
       }
 
       movesPlayed++;
-      if (isP2P && typeof p.clock === 'number') {
+      if (isP2P && clockEnabled && typeof p.clock === 'number') {
         p.clock = Math.min(CLOCK_MAX_MS, p.clock + CLOCK_INCREMENT_MS);
       }
       finishTurn();
