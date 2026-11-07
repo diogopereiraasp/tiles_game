@@ -541,6 +541,7 @@
       room.conns.clear();
       rtTrackPresence();
       appendChatSystemMessage('O anfitrião caiu. Você assumiu a sala para a partida continuar.');
+      showNetNotice('O anfitrião caiu. Você assumiu a sala e a partida continua.', 'ok', 6000);
       const myName = (players && players[myP2PIndex] && players[myP2PIndex].name) || 'Você';
       updateP2PBadge('online', `${myName} (Anfitrião - ${targetOnlinePlayers}P)`);
       startGuestDisconnectTimer(0); // o antigo anfitrião tem a mesma tolerância de qualquer jogador
@@ -572,6 +573,7 @@
       clientHostConn = new RtConn(null);
       setupClientConnection();
       appendChatSystemMessage('Outro jogador assumiu a sala enquanto você estava fora. Sincronizando...');
+      showNetNotice('Outro jogador assumiu a sala. Sincronizando...', 'warn', 8000);
       updateP2PBadge('waiting', 'Sincronizando com o novo anfitrião...');
       rtTrackPresence();
     }
@@ -694,6 +696,7 @@
             ? players[assignedIdx].name
             : `Jogador ${assignedIdx + 1}`;
           updateP2PBadge('waiting', `Aguardando ${guestName}...`);
+          showNetNotice(`${guestName} está sem sinal. Aguardando a volta (até 5 min).`, 'warn', 20000);
           if (guestDisconnectTimers[assignedIdx]) clearTimeout(guestDisconnectTimers[assignedIdx]);
           guestDisconnectTimers[assignedIdx] = setTimeout(() => {
             if (isGameActive && !hasMatchEndedByAbandon) {
@@ -727,6 +730,7 @@
       const onClientOpen = () => {
         isP2P = true;
         console.log('Conectado ao Host com sucesso!');
+        hideNetNotice();
         if (hostDisconnectTimer) {
           clearTimeout(hostDisconnectTimer);
           hostDisconnectTimer = null;
@@ -736,6 +740,7 @@
           || (myP2PIndex !== null && players && players[myP2PIndex] && players[myP2PIndex].name)
           || null;
         clientHostConn.send({ type: 'REQUEST_SYNC', requestedIndex: myP2PIndex, playerName: myName });
+        if (typeof resendPendingWallPick === 'function') resendPendingWallPick(); // modo avançado: o pedido pode ter ido ao anfitrião que caiu
       };
 
       if (clientHostConn.open) {
@@ -751,6 +756,7 @@
       clientHostConn.on('close', () => {
         if (isGameActive && !hasMatchEndedByAbandon) {
           updateP2PBadge('waiting', 'Reconectando ao Host...');
+          showNetNotice('Sem sinal do anfitrião. Reconectando... Se não voltar em instantes, outro jogador assume a sala.');
           // Tenta reconectar imediatamente caso o socket tenha caído
           attemptGuestReconnect();
           scheduleHostMigration();
@@ -783,7 +789,7 @@
       try {
         if (sb && sb.realtime && !sb.realtime.isConnected()) sb.realtime.connect();
       } catch (e) { }
-      checkRealtimeHealth();
+      return checkRealtimeHealth();
     }
 
     // O canal pode parecer "joined" localmente mas estar morto no servidor (ex: após suspensão).
@@ -824,13 +830,21 @@
           try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
           return;
         }
+        // Versão: se o convidado não está alinhado (perdeu/duplicou mensagem), o estado do anfitrião prevalece
+        if (Number.isInteger(msg.ver) && msg.ver !== stateVer + 1) {
+          try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
+          return;
+        }
         executeGameAction(msg.action, false);
-        // Repassa para os outros convidados
+        // Repassa para os outros convidados, com a versão do anfitrião
+        const relay = { type: 'ACTION', action: msg.action, ver: stateVer };
         hostGuestConnections.forEach(c => {
           if (c !== senderConn && c.open) {
-            c.send(msg);
+            c.send(relay);
           }
         });
+      } else if (msg.type === 'RESYNC') {
+        try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
       } else if (msg.type === 'REQUEST_SYNC') {
         const idx = (Number.isInteger(msg.requestedIndex) && msg.requestedIndex >= 0 && msg.requestedIndex < targetOnlinePlayers && msg.requestedIndex !== myP2PIndex)
           ? msg.requestedIndex
@@ -866,6 +880,7 @@
           totalPlayers: targetOnlinePlayers,
           roomCode: currentRoomCode
         });
+        hideNetNotice(); // o jogador voltou
         const fullState = getFullGameState();
         senderConn.send({ type: 'SYNC_STATE', state: fullState });
         // Sincroniza nome para os outros participantes
@@ -955,6 +970,14 @@
       } else if (msg.type === 'ROOM_FULL') {
         alert('Esta sala já atingiu o número máximo de jogadores.');
       } else if (msg.type === 'SYNC_STATE') {
+        // Revanche: já tinha acabado e chega um estado de partida nova (menos jogadas) => reabre a partida
+        if (matchFinished && msg.state && Number.isFinite(Number(msg.state.movesPlayed)) && Number(msg.state.movesPlayed) < movesPlayed) {
+          matchFinished = false;
+          matchRecorded = false;
+          const em = document.getElementById('endModal');
+          if (em) { em.style.display = 'none'; const t = em.querySelector('h2'); if (t) t.textContent = 'Fim de Jogo'; }
+          updateEndModalButtons();
+        }
         isGameActive = true;
         applyFullGameState(msg.state);
         closeMultiplayerModal();
@@ -968,6 +991,10 @@
       } else if (msg.type === 'WALL_CHOICE') {
         receiveWallChoice(msg);
       } else if (msg.type === 'ACTION') {
+        if (Number.isInteger(msg.ver)) {
+          if (msg.ver <= stateVer) return; // duplicada/antiga
+          if (msg.ver > stateVer + 1) { requestResync(); return; } // pulou jogadas: perdemos mensagem
+        }
         executeGameAction(msg.action, false);
       } else if (msg.type === 'CHAT') {
         const isFromMe = (typeof msg.senderIndex === 'number' && myP2PIndex !== null && msg.senderIndex === myP2PIndex);
@@ -1009,9 +1036,25 @@
       }
 
       if (broadcast && isP2P) {
-        broadcastP2P({ type: 'ACTION', action });
+        sendAction(action);
+      } else {
+        stateVer++;
       }
       saveSessionToStorage();
+    }
+
+    // Envia uma jogada local a todos, numerada (stateVer avança junto em todos os aparelhos)
+    function sendAction(action) {
+      stateVer++;
+      broadcastP2P({ type: 'ACTION', action, ver: stateVer });
+    }
+
+    // Convidado detectou que perdeu jogadas: pede o estado completo ao anfitrião (no máx. 1x a cada 3 s)
+    function requestResync() {
+      const now = Date.now();
+      if (now - lastResyncAt < 3000 || isHost || !clientHostConn || !clientHostConn.open) return;
+      lastResyncAt = now;
+      try { clientHostConn.send({ type: 'RESYNC' }); } catch (e) { }
     }
 
     function updateHeaderPlayerButtons(count) {
@@ -1041,7 +1084,8 @@
         hostEpoch,
         movesPlayed,
         advancedMode,
-        clockEnabled
+        clockEnabled,
+        stateVer
       };
     }
 
@@ -1058,6 +1102,7 @@
 
         const session = {
           mode,
+          savedAt: Date.now(),
           isGameActive,
           isP2P,
           isHost,
@@ -1093,6 +1138,7 @@
       const out = { ...st };
       out.playerCount = num(st.playerCount, 2, 2, 4);
       out.advancedMode = !!st.advancedMode;
+      out.stateVer = num(st.stateVer, 0, 0, 1000000);
       out.clockEnabled = !!st.clockEnabled;
       const maxClock = CLOCK_MAX_MS;
       out.players = (Array.isArray(st.players) ? st.players : []).slice(0, 4).map((p, i) => {
@@ -1128,6 +1174,7 @@
     function applyFullGameState(state) {
       state = sanitizeIncomingState(state);
       advancedMode = !!state.advancedMode;
+      stateVer = state.stateVer;
       clockEnabled = !!state.clockEnabled;
       playerCount = state.playerCount;
       players = state.players;
@@ -1147,6 +1194,23 @@
       updateHeaderPlayerButtons(playerCount);
       renderAll();
       saveSessionToStorage();
+    }
+
+    // Aviso de rede visível (embaixo). ms = some sozinho depois desse tempo; sem ms fica até hideNetNotice().
+    let netNoticeTimer = null;
+    function showNetNotice(text, kind = 'warn', ms = 0) {
+      const el = document.getElementById('netNotice');
+      if (!el) return;
+      el.textContent = text;
+      el.classList.toggle('ok', kind === 'ok');
+      el.style.display = 'block';
+      clearTimeout(netNoticeTimer);
+      if (ms > 0) netNoticeTimer = setTimeout(hideNetNotice, ms);
+    }
+    function hideNetNotice() {
+      clearTimeout(netNoticeTimer);
+      const el = document.getElementById('netNotice');
+      if (el) el.style.display = 'none';
     }
 
     function updateP2PBadge(status, text) {
@@ -1245,6 +1309,7 @@
     function handlePlayerAbandoned(abandonedIndex, abandonedName, reason) {
       if (!isGameActive || hasMatchEndedByAbandon || matchFinished) return;
       recordMatchResult(reason === 'timeout' ? 'timeout' : 'abandon', abandonedIndex);
+      hideNetNotice();
       hasMatchEndedByAbandon = true;
       isGameActive = false;
       clearSavedSession();
@@ -1327,14 +1392,18 @@
 
       if (modal) modal.style.display = 'flex';
       updateP2PBadge('offline', 'Partida Finalizada');
+      updateEndModalButtons();
     }
 
     function confirmExitGame() {
       closeConfirmExitModal();
+      hideNetNotice();
 
       // Saída voluntária de partida online em andamento conta como derrota
       if (isP2P && isGameActive && !hasMatchEndedByAbandon && !matchFinished && myP2PIndex !== null) {
         recordMatchResult('abandon', myP2PIndex);
+      } else if (isBotMode && isGameActive && !hasMatchEndedByAbandon && !matchFinished && movesPlayed >= 4) {
+        recordMatchResult('abandon', 0); // sair no meio contra o bot conta como derrota
       }
       matchRecorded = false;
 
@@ -1408,11 +1477,55 @@
     }
 
     // Ao desbloquear a tela / voltar para a aba: garante o socket do Realtime ativo
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && isP2P && rtRoom) {
-        ensureRealtimeConnected();
+    // Também ao voltar a rede ('online') e ao restaurar a página do cache (pageshow). Convidado ainda conectado
+    // pede o estado completo: mensagens podem ter se perdido enquanto a tela estava bloqueada.
+    let lastReturnAt = 0;
+    async function onReturnToApp() {
+      if (!isP2P || !rtRoom || document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastReturnAt < 2000) return; // visibilitychange + pageshow/online podem vir juntos
+      lastReturnAt = now;
+      const room = rtRoom;
+      await ensureRealtimeConnected();
+      if (rtRoom !== room || room.destroyed) return;
+      if (!isHost && isGameActive && !hasMatchEndedByAbandon && clientHostConn && clientHostConn.open) {
+        lastResyncAt = 0; // pedido deliberado: ignora o limite de 3 s
+        requestResync();
       }
-    });
+    }
+    document.addEventListener('visibilitychange', onReturnToApp);
+    window.addEventListener('online', onReturnToApp);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) onReturnToApp(); });
+
+    // Fim normal numa sala de amigos: o anfitrião pode propor revanche na mesma sala; os convidados aguardam ou saem.
+    function updateEndModalButtons() {
+      const rematch = document.getElementById('rematchBtn');
+      const hint = document.getElementById('rematchHint');
+      const leave = document.getElementById('endLeaveBtn');
+      const friendsRoom = isP2P && !rankedMatchId && matchFinished; // revanche só após fim normal
+      if (rematch) rematch.style.display = (friendsRoom && isHost) ? 'block' : 'none';
+      if (hint) {
+        hint.style.display = (friendsRoom && !isHost) ? 'block' : 'none';
+        hint.textContent = 'O anfitrião pode iniciar uma revanche. Aguarde ou saia da sala.';
+      }
+      if (leave) leave.textContent = isP2P ? 'Sair da sala' : 'Jogar Novamente';
+    }
+
+    // Anfitrião: nova partida na mesma sala (mesmos jogadores e nomes), com quem começa sorteado
+    function startRematch() {
+      if (!isP2P || !isHost || rankedMatchId || !matchFinished) return;
+      const names = players ? players.map(p => p.name) : null;
+      const endModal = document.getElementById('endModal');
+      if (endModal) endModal.style.display = 'none';
+      const title = endModal ? endModal.querySelector('h2') : null;
+      if (title) title.textContent = 'Fim de Jogo';
+      initGame(names); // zera matchFinished/matchRecorded/stateVer
+      isGameActive = true;
+      randomizeOnlineStarter();
+      updateP2PBadge('online', `${(players[0] && players[0].name) || 'P1'} (Host - ${targetOnlinePlayers}P)${advancedMode ? ' · Avançado' : ''}`);
+      broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+      saveSessionToStorage();
+    }
 
     function restartLocalGame() {
       if (isP2P) {
@@ -1425,6 +1538,8 @@
         randomizeOnlineStarter();
         broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
       } else if (isBotMode) {
+        // Reiniciar no meio da partida conta como derrota (senão dava para fugir de perder Elo)
+        if (isGameActive && !matchFinished && !hasMatchEndedByAbandon && movesPlayed >= 4) recordMatchResult('abandon', 0);
         initGame(['Você', 'Bot']);
       } else {
         const names = players ? players.map(p => p.name) : null;

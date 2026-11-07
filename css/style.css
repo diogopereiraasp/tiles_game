@@ -1504,40 +1504,40 @@
     body.fx3d .tile.white  { --tile-edge: #8a97a8; }
     body.fx3d .tile.starter { --tile-edge: #3b0764; }
     body.fx3d .tile {
-      /* relevo: brilho no topo, sombra embaixo, "espessura" (borda inferior) e sombra projetada */
+      /* relevo: brilho no topo, sombra embaixo, "espessura" (borda inferior) e sombra projetada.
+         SEM desfoque (blur) nas sombras: o desfoque em centenas de peças custava ~100 ms por atualização no celular (medido) */
       box-shadow:
-        inset 0 2px 1px rgba(255, 255, 255, 0.40),
-        inset 0 -3px 2px rgba(0, 0, 0, 0.28),
+        inset 0 2px 0 rgba(255, 255, 255, 0.38),
+        inset 0 -3px 0 rgba(0, 0, 0, 0.22),
         0 3px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
-        0 6px 7px rgba(0, 0, 0, 0.38);
+        0 5px 0 rgba(0, 0, 0, 0.25);
       transform: translateY(-1px);
     }
     body.fx3d .factory-disc .tile:hover,
     body.fx3d .center-table-disc .tile:hover {
       transform: translateY(-3px);
       box-shadow:
-        inset 0 2px 1px rgba(255, 255, 255, 0.45),
-        inset 0 -3px 2px rgba(0, 0, 0, 0.28),
+        inset 0 2px 0 rgba(255, 255, 255, 0.42),
+        inset 0 -3px 0 rgba(0, 0, 0, 0.22),
         0 5px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
-        0 10px 10px rgba(0, 0, 0, 0.35);
+        0 8px 0 rgba(0, 0, 0, 0.22);
     }
     body.fx3d .tile:active { transform: translateY(2px); box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.3), 0 1px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)); }
 
     /* encaixes: a parede e as linhas viram "soquetes" rebaixados; a peça colocada assenta no encaixe */
-    body.fx3d .wall-grid { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45); }
-    body.fx3d .wall-cell:not(.filled) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.10); transform: none; }
+    body.fx3d .wall-grid { box-shadow: none; }
+    body.fx3d .wall-cell:not(.filled) { box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.10); transform: none; }
     body.fx3d .wall-cell.filled {
       /* peça encaixada na parede: relevo um pouco maior (altura, brilho e sombra), assentada no encaixe */
       transform: translateY(-1px);
       box-shadow:
-        inset 0 3px 1px rgba(255, 255, 255, 0.46),
-        inset 0 -4px 3px rgba(0, 0, 0, 0.30),
+        inset 0 3px 0 rgba(255, 255, 255, 0.40),
+        inset 0 -4px 0 rgba(0, 0, 0, 0.24),
         0 3px 0 var(--tile-edge, rgba(0, 0, 0, 0.5)),
-        0 6px 7px rgba(0, 0, 0, 0.40),
         0 0 0 2px rgba(0, 0, 0, 0.38);
     }
-    body.fx3d .wall-cell.filled::after { inset: 11%; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.30)); }
-    body.fx3d .slot-empty, body.fx3d .floor-slot:not(.occupied) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); border-style: solid; }
+    body.fx3d .wall-cell.filled::after { inset: 11%; }
+    body.fx3d .slot-empty, body.fx3d .floor-slot:not(.occupied) { box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.45); border-style: solid; }
 
     /* desenho leve de azulejo dentro de cada peça colorida (também nos ladrilhos de referência da parede) */
     .tile.blue, .tile.yellow, .tile.red, .tile.white, .tile.black { position: relative; }
@@ -1594,3 +1594,7 @@
 .howto-body p { font-size: 13px; line-height: 1.45; color: var(--text-mid); margin: 0 0 9px; }
 .howto-body strong { color: var(--text-pri); }
 .menu-grid .menu-secondary:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* Aviso de rede (queda de anfitrião/jogador) */
+.net-notice { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 350; width: min(92vw, 420px); padding: 9px 14px; background: var(--bg-header); border: 1.5px solid #f59e0b; border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); font-size: 12px; line-height: 1.35; color: var(--text-pri); text-align: center; pointer-events: none; }
+.net-notice.ok { border-color: #4ade80; }

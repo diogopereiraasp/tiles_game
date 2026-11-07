@@ -31,7 +31,23 @@
 
     // Ping leve quando passa a ser a sua vez (só contra bot e online)
     let audioCtx = null, wasMyTurn = false;
+    const SOUND_KEY = 'azul_sound_v1';
+    let soundOn = true;
+    try { if (localStorage.getItem(SOUND_KEY) === '0') soundOn = false; } catch (e) { }
+    function applySoundBtn() {
+      const b = document.getElementById('soundBtn');
+      const ic = document.getElementById('soundIcon');
+      if (b) { b.classList.toggle('active', soundOn); b.setAttribute('aria-pressed', String(soundOn)); }
+      if (ic) { ic.dataset.icon = soundOn ? 'volume' : 'volume-off'; ic.innerHTML = icon(ic.dataset.icon); }
+    }
+    function toggleSound() {
+      soundOn = !soundOn;
+      try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) { }
+      applySoundBtn();
+      if (soundOn) playTurnPing(); // prévia ao ligar
+    }
     function playTurnPing() {
+      if (!soundOn) return;
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
@@ -364,6 +380,9 @@
       });
     }
 
+    const SESSION_MAX_AGE_ONLINE_MS = 10 * 60 * 1000;
+    const SESSION_MAX_AGE_OFFLINE_MS = 12 * 60 * 60 * 1000;
+
     function restoreSessionFromStorage() {
       try {
         const raw = sessionStorage.getItem('azul_saved_session') || localStorage.getItem('azul_saved_session');
@@ -373,10 +392,22 @@
           clearSavedSession();
           return false;
         }
+        // Sessão velha não volta: online (sala já morreu / tolerância esgotada) 10 min; bot e mesmo aparelho 12 h.
+        // Sem carimbo (salvo por versão antiga) conta como velha.
+        const maxAge = session.mode === 'online' ? SESSION_MAX_AGE_ONLINE_MS : SESSION_MAX_AGE_OFFLINE_MS;
+        if (!Number.isFinite(session.savedAt) || Date.now() - session.savedAt > maxAge || session.savedAt > Date.now() + 60000) {
+          clearSavedSession();
+          return false;
+        }
 
         isGameActive = true;
         document.getElementById('mainMenuModal').style.display = 'none';
         updateChatVisibility();
+
+        if (session.mode === 'online' && (typeof session.currentRoomCode !== 'string' || !session.currentRoomCode)) {
+          clearSavedSession(); // sessão online sem código de sala não dá para retomar
+          return false;
+        }
 
         if (session.mode === 'online') {
           isP2P = true;
@@ -438,7 +469,16 @@
     }
 
     // Inicialização e checagem de parâmetros de URL (?sala=...)
+    // PWA: registra o service worker (rede primeiro; só em https ou localhost)
+    function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      const ok = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!ok) return;
+      navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker não registrado:', e && e.message));
+    }
+
     window.onload = () => {
+      registerServiceWorker();
       // 0. Carrega nomes de jogadores salvos no storage e inicializa listeners
       loadSavedPlayerNames();
       setupPlayerNameStorageListeners();
@@ -512,3 +552,4 @@
     })();
 
         hydrateIcons();
+        applySoundBtn();

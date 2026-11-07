@@ -9,6 +9,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="alternate icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#39414a">
   <!-- Segurança: só carrega scripts do próprio site e do jsDelivr (com SRI); conexões só ao Supabase do jogo; sem plugins/forms/base.
        'unsafe-inline' em script-src ainda é necessário porque o HTML usa onclick="..." (ver CLAUDE.md). -->
@@ -18,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611062242">
+  <link rel="stylesheet" href="css/style.css?v=202611062332">
 </head>
 
 <body>
@@ -39,6 +40,10 @@
         style="display: none; align-items: center; gap: 6px; position: relative;" title="Abrir Chat da Partida">
         <span><span data-icon="chat"></span> Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
+      </button>
+      <button id="soundBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleSound()"
+        title="Som de &quot;sua vez&quot; (ligar/desligar)" aria-label="Som de sua vez" aria-pressed="true">
+        <span id="soundIcon" data-icon="volume"></span>
       </button>
       <button id="fxMotifBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleMotifs()"
         title="Desenhos de azulejo nas peças (ligar/desligar)" aria-label="Desenhos de azulejo nas peças"
@@ -70,7 +75,10 @@
     <div class="modal-box">
       <h2>Fim de Jogo</h2>
       <p id="winnerDesc"></p>
-      <button class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar
+      <div id="rematchHint" class="acc-hint" style="display: none; text-align: center; margin-bottom: 8px;"></div>
+      <button id="rematchBtn" class="btn-toggle btn-online" style="display: none; width: 100%; padding: 10px; margin-bottom: 8px; font-weight: 700;"
+        onclick="startRematch()">Revanche (mesma sala)</button>
+      <button id="endLeaveBtn" class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar
         Novamente</button>
     </div>
   </div>
@@ -225,7 +233,7 @@
         <p><strong>Fim da rodada:</strong> cada linha cheia manda 1 peça para a parede e pontua pelas peças vizinhas. A cor não repete na linha nem na coluna.</p>
         <p><strong>Fim do jogo:</strong> quando alguém completa uma linha da parede. Bônus: linha +2, coluna +7, cor completa +10. Desempate: mais linhas completas.</p>
         <p><strong>Modo avançado:</strong> a parede começa cinza e você escolhe a coluna de cada peça.</p>
-        <p><strong>Ranqueada:</strong> vale Elo e cada jogador tem 5 min no relógio (+15 s por jogada).</p>
+        <p><strong>Ranqueada:</strong> vale Elo e cada jogador tem 5 min no relógio (+15 s por jogada). Contra o bot o Elo também muda, mas só até o teto do nível (Fácil 100, Médio 300, Difícil 600). Sair no meio conta como derrota.</p>
       </div>
       <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 12px; font-weight: 600;"
         onclick="closeHowToModal()">Entendi</button>
@@ -242,8 +250,8 @@
           onclick="switchLeaderboardTab('history')">Minhas Partidas</button>
       </div>
       <div id="leaderboardContent" class="lb-content">Carregando...</div>
-      <div class="acc-hint" style="text-align:center;">Todos começam com 0 Elo. Vencer online sobe, perder desce. Treino
-        vs Bot não altera o Elo.</div>
+      <div class="acc-hint" style="text-align:center;">Todos começam com 0 Elo. Vencer online sobe, perder desce. Contra o
+        bot o Elo só se move até o teto do nível (Fácil 100, Médio 300, Difícil 600); acima disso só a ranqueada vale.</div>
       <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 14px; font-weight: 600;"
         onclick="closeLeaderboardModal()">Fechar</button>
     </div>
@@ -431,6 +439,9 @@
   </div>
 
   <!-- Alerta grande de nova mensagem do chat (aparece por cima de tudo, some sozinho; toque para abrir o chat) -->
+  <!-- Aviso de rede (anfitrião/jogador sem sinal, sala migrou): fica embaixo, não bloqueia toques -->
+  <div id="netNotice" class="net-notice" style="display: none;" role="status"></div>
+
   <div id="chatAlert" class="chat-alert" style="display: none;" onclick="openChatFromAlert()" role="alert">
     <span class="chat-alert-icon" data-icon="chat"></span>
     <div class="chat-alert-body">
@@ -473,16 +484,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611062242"></script>
-  <script src="js/chat.js?v=202611062242"></script>
-  <script src="js/online-state.js?v=202611062242"></script>
-  <script src="js/account.js?v=202611062242"></script>
-  <script src="js/online.js?v=202611062242"></script>
-  <script src="js/matchmaking.js?v=202611062242"></script>
-  <script src="js/game-setup.js?v=202611062242"></script>
-  <script src="js/bot.js?v=202611062242"></script>
-  <script src="js/turns.js?v=202611062242"></script>
-  <script src="js/ui.js?v=202611062242"></script>
+  <script src="js/config.js?v=202611062332"></script>
+  <script src="js/chat.js?v=202611062332"></script>
+  <script src="js/online-state.js?v=202611062332"></script>
+  <script src="js/account.js?v=202611062332"></script>
+  <script src="js/online.js?v=202611062332"></script>
+  <script src="js/matchmaking.js?v=202611062332"></script>
+  <script src="js/game-setup.js?v=202611062332"></script>
+  <script src="js/bot.js?v=202611062332"></script>
+  <script src="js/turns.js?v=202611062332"></script>
+  <script src="js/ui.js?v=202611062332"></script>
 </body>
 
 </html>

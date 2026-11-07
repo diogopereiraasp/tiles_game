@@ -17,12 +17,31 @@
       return arr;
     }
 
+    // Online: todos os aparelhos precisam reembaralhar o descarte do MESMO jeito (senão as fábricas divergem).
+    // Sorteio determinístico (mulberry32) com semente igual em todos: rodada, jogadas e tamanho do descarte.
+    function seededShuffle(arr, seed) {
+      let t = seed >>> 0;
+      const rnd = () => {
+        t = (t + 0x6D2B79F5) >>> 0;
+        let x = Math.imul(t ^ (t >>> 15), 1 | t);
+        x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+      };
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     function drawTiles(n) {
       const drawn = [];
       for (let i = 0; i < n; i++) {
         if (bag.length === 0) {
           if (discard.length === 0) break;
-          bag = shuffle([...discard]);
+          bag = isP2P
+            ? seededShuffle([...discard], (round * 7919) + (stateVer * 104729) + discard.length)
+            : shuffle([...discard]);
           discard = [];
         }
         drawn.push(bag.pop());
@@ -43,6 +62,7 @@
 
     function initGame(names = null) {
       hasMatchEndedByAbandon = false;
+      stateVer = 0;
       matchFinished = false;
       matchRecorded = false;
       movesPlayed = 0;
