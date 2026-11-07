@@ -447,6 +447,8 @@
       const restored = restoreSessionFromStorage();
       if (restored) return;
 
+      showHowToIfFirstVisit();
+
       // 2. Se a URL tiver ?sala=XYZ e não tinha sessão restaurada, preenche o código e abre a tela para o jogador conferir o nome e entrar
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('sala') || urlParams.get('room');

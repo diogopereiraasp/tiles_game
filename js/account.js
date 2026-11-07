@@ -439,8 +439,18 @@
       switchLeaderboardTab(leaderboardTab);
     }
 
+    // "Como jogar": aparece sozinho na primeira visita; depois de "Entendi" fica salvo no navegador (e o botão do menu reabre)
+    const HOWTO_KEY = 'azul_howto_seen_v1';
     function openHowToModal() { document.getElementById('howToModal').style.display = 'flex'; }
-    function closeHowToModal() { document.getElementById('howToModal').style.display = 'none'; }
+    function closeHowToModal() {
+      document.getElementById('howToModal').style.display = 'none';
+      try { localStorage.setItem(HOWTO_KEY, '1'); } catch (e) { }
+    }
+    function showHowToIfFirstVisit() {
+      let seen = false;
+      try { seen = localStorage.getItem(HOWTO_KEY) === '1'; } catch (e) { }
+      if (!seen) openHowToModal();
+    }
 
     function closeLeaderboardModal() {
       document.getElementById('leaderboardModal').style.display = 'none';
