@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611062327">
+  <link rel="stylesheet" href="css/style.css?v=202611062328">
 </head>
 
 <body>
@@ -435,6 +435,9 @@
   </div>
 
   <!-- Alerta grande de nova mensagem do chat (aparece por cima de tudo, some sozinho; toque para abrir o chat) -->
+  <!-- Aviso de rede (anfitrião/jogador sem sinal, sala migrou): fica embaixo, não bloqueia toques -->
+  <div id="netNotice" class="net-notice" style="display: none;" role="status"></div>
+
   <div id="chatAlert" class="chat-alert" style="display: none;" onclick="openChatFromAlert()" role="alert">
     <span class="chat-alert-icon" data-icon="chat"></span>
     <div class="chat-alert-body">
@@ -477,16 +480,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611062327"></script>
-  <script src="js/chat.js?v=202611062327"></script>
-  <script src="js/online-state.js?v=202611062327"></script>
-  <script src="js/account.js?v=202611062327"></script>
-  <script src="js/online.js?v=202611062327"></script>
-  <script src="js/matchmaking.js?v=202611062327"></script>
-  <script src="js/game-setup.js?v=202611062327"></script>
-  <script src="js/bot.js?v=202611062327"></script>
-  <script src="js/turns.js?v=202611062327"></script>
-  <script src="js/ui.js?v=202611062327"></script>
+  <script src="js/config.js?v=202611062328"></script>
+  <script src="js/chat.js?v=202611062328"></script>
+  <script src="js/online-state.js?v=202611062328"></script>
+  <script src="js/account.js?v=202611062328"></script>
+  <script src="js/online.js?v=202611062328"></script>
+  <script src="js/matchmaking.js?v=202611062328"></script>
+  <script src="js/game-setup.js?v=202611062328"></script>
+  <script src="js/bot.js?v=202611062328"></script>
+  <script src="js/turns.js?v=202611062328"></script>
+  <script src="js/ui.js?v=202611062328"></script>
 </body>
 
 </html>

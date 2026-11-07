@@ -541,6 +541,7 @@
       room.conns.clear();
       rtTrackPresence();
       appendChatSystemMessage('O anfitrião caiu. Você assumiu a sala para a partida continuar.');
+      showNetNotice('O anfitrião caiu. Você assumiu a sala e a partida continua.', 'ok', 6000);
       const myName = (players && players[myP2PIndex] && players[myP2PIndex].name) || 'Você';
       updateP2PBadge('online', `${myName} (Anfitrião - ${targetOnlinePlayers}P)`);
       startGuestDisconnectTimer(0); // o antigo anfitrião tem a mesma tolerância de qualquer jogador
@@ -572,6 +573,7 @@
       clientHostConn = new RtConn(null);
       setupClientConnection();
       appendChatSystemMessage('Outro jogador assumiu a sala enquanto você estava fora. Sincronizando...');
+      showNetNotice('Outro jogador assumiu a sala. Sincronizando...', 'warn', 8000);
       updateP2PBadge('waiting', 'Sincronizando com o novo anfitrião...');
       rtTrackPresence();
     }
@@ -694,6 +696,7 @@
             ? players[assignedIdx].name
             : `Jogador ${assignedIdx + 1}`;
           updateP2PBadge('waiting', `Aguardando ${guestName}...`);
+          showNetNotice(`${guestName} está sem sinal. Aguardando a volta (até 5 min).`, 'warn', 20000);
           if (guestDisconnectTimers[assignedIdx]) clearTimeout(guestDisconnectTimers[assignedIdx]);
           guestDisconnectTimers[assignedIdx] = setTimeout(() => {
             if (isGameActive && !hasMatchEndedByAbandon) {
@@ -727,6 +730,7 @@
       const onClientOpen = () => {
         isP2P = true;
         console.log('Conectado ao Host com sucesso!');
+        hideNetNotice();
         if (hostDisconnectTimer) {
           clearTimeout(hostDisconnectTimer);
           hostDisconnectTimer = null;
@@ -752,6 +756,7 @@
       clientHostConn.on('close', () => {
         if (isGameActive && !hasMatchEndedByAbandon) {
           updateP2PBadge('waiting', 'Reconectando ao Host...');
+          showNetNotice('Sem sinal do anfitrião. Reconectando... Se não voltar em instantes, outro jogador assume a sala.');
           // Tenta reconectar imediatamente caso o socket tenha caído
           attemptGuestReconnect();
           scheduleHostMigration();
@@ -875,6 +880,7 @@
           totalPlayers: targetOnlinePlayers,
           roomCode: currentRoomCode
         });
+        hideNetNotice(); // o jogador voltou
         const fullState = getFullGameState();
         senderConn.send({ type: 'SYNC_STATE', state: fullState });
         // Sincroniza nome para os outros participantes
@@ -1182,6 +1188,23 @@
       saveSessionToStorage();
     }
 
+    // Aviso de rede visível (embaixo). ms = some sozinho depois desse tempo; sem ms fica até hideNetNotice().
+    let netNoticeTimer = null;
+    function showNetNotice(text, kind = 'warn', ms = 0) {
+      const el = document.getElementById('netNotice');
+      if (!el) return;
+      el.textContent = text;
+      el.classList.toggle('ok', kind === 'ok');
+      el.style.display = 'block';
+      clearTimeout(netNoticeTimer);
+      if (ms > 0) netNoticeTimer = setTimeout(hideNetNotice, ms);
+    }
+    function hideNetNotice() {
+      clearTimeout(netNoticeTimer);
+      const el = document.getElementById('netNotice');
+      if (el) el.style.display = 'none';
+    }
+
     function updateP2PBadge(status, text) {
       const badge = document.getElementById('p2pStatus');
       const dot = document.getElementById('p2pDot');
@@ -1278,6 +1301,7 @@
     function handlePlayerAbandoned(abandonedIndex, abandonedName, reason) {
       if (!isGameActive || hasMatchEndedByAbandon || matchFinished) return;
       recordMatchResult(reason === 'timeout' ? 'timeout' : 'abandon', abandonedIndex);
+      hideNetNotice();
       hasMatchEndedByAbandon = true;
       isGameActive = false;
       clearSavedSession();
@@ -1364,6 +1388,7 @@
 
     function confirmExitGame() {
       closeConfirmExitModal();
+      hideNetNotice();
 
       // Saída voluntária de partida online em andamento conta como derrota
       if (isP2P && isGameActive && !hasMatchEndedByAbandon && !matchFinished && myP2PIndex !== null) {
