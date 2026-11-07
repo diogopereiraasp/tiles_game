@@ -1368,6 +1368,8 @@
       // Saída voluntária de partida online em andamento conta como derrota
       if (isP2P && isGameActive && !hasMatchEndedByAbandon && !matchFinished && myP2PIndex !== null) {
         recordMatchResult('abandon', myP2PIndex);
+      } else if (isBotMode && isGameActive && !hasMatchEndedByAbandon && !matchFinished && movesPlayed >= 4) {
+        recordMatchResult('abandon', 0); // sair no meio contra o bot conta como derrota
       }
       matchRecorded = false;
 
@@ -1472,6 +1474,8 @@
         randomizeOnlineStarter();
         broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
       } else if (isBotMode) {
+        // Reiniciar no meio da partida conta como derrota (senão dava para fugir de perder Elo)
+        if (isGameActive && !matchFinished && !hasMatchEndedByAbandon && movesPlayed >= 4) recordMatchResult('abandon', 0);
         initGame(['Você', 'Bot']);
       } else {
         const names = players ? players.map(p => p.name) : null;

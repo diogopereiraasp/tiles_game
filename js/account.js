@@ -411,7 +411,11 @@
         if (res && typeof res.elo_after === 'number') {
           const diff = res.elo_after - res.elo_before;
           authProfile = { ...(authProfile || {}), elo: res.elo_after };
+          const BOT_ELO_CAP = { easy: 100, medium: 300, hard: 600 };
           if (diff !== 0) showEloChange(diff, res.elo_after);
+          else if (mode === 'bot' && res.elo_before >= (BOT_ELO_CAP[String(botDifficulty)] || 0)) {
+            showResultBanner('Acima do teto deste nível: contra o bot o Elo não muda. Para subir mais, jogue a Partida Ranqueada.', 'info');
+          }
         }
         renderAuthBar();
       } catch (e) {
