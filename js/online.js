@@ -824,13 +824,21 @@
           try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
           return;
         }
+        // Versão: se o convidado não está alinhado (perdeu/duplicou mensagem), o estado do anfitrião prevalece
+        if (Number.isInteger(msg.ver) && msg.ver !== stateVer + 1) {
+          try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
+          return;
+        }
         executeGameAction(msg.action, false);
-        // Repassa para os outros convidados
+        // Repassa para os outros convidados, com a versão do anfitrião
+        const relay = { type: 'ACTION', action: msg.action, ver: stateVer };
         hostGuestConnections.forEach(c => {
           if (c !== senderConn && c.open) {
-            c.send(msg);
+            c.send(relay);
           }
         });
+      } else if (msg.type === 'RESYNC') {
+        try { senderConn.send({ type: 'SYNC_STATE', state: getFullGameState() }); } catch (e) { }
       } else if (msg.type === 'REQUEST_SYNC') {
         const idx = (Number.isInteger(msg.requestedIndex) && msg.requestedIndex >= 0 && msg.requestedIndex < targetOnlinePlayers && msg.requestedIndex !== myP2PIndex)
           ? msg.requestedIndex
@@ -968,6 +976,10 @@
       } else if (msg.type === 'WALL_CHOICE') {
         receiveWallChoice(msg);
       } else if (msg.type === 'ACTION') {
+        if (Number.isInteger(msg.ver)) {
+          if (msg.ver <= stateVer) return; // duplicada/antiga
+          if (msg.ver > stateVer + 1) { requestResync(); return; } // pulou jogadas: perdemos mensagem
+        }
         executeGameAction(msg.action, false);
       } else if (msg.type === 'CHAT') {
         const isFromMe = (typeof msg.senderIndex === 'number' && myP2PIndex !== null && msg.senderIndex === myP2PIndex);
@@ -1009,9 +1021,25 @@
       }
 
       if (broadcast && isP2P) {
-        broadcastP2P({ type: 'ACTION', action });
+        sendAction(action);
+      } else {
+        stateVer++;
       }
       saveSessionToStorage();
+    }
+
+    // Envia uma jogada local a todos, numerada (stateVer avança junto em todos os aparelhos)
+    function sendAction(action) {
+      stateVer++;
+      broadcastP2P({ type: 'ACTION', action, ver: stateVer });
+    }
+
+    // Convidado detectou que perdeu jogadas: pede o estado completo ao anfitrião (no máx. 1x a cada 3 s)
+    function requestResync() {
+      const now = Date.now();
+      if (now - lastResyncAt < 3000 || isHost || !clientHostConn || !clientHostConn.open) return;
+      lastResyncAt = now;
+      try { clientHostConn.send({ type: 'RESYNC' }); } catch (e) { }
     }
 
     function updateHeaderPlayerButtons(count) {
@@ -1041,7 +1069,8 @@
         hostEpoch,
         movesPlayed,
         advancedMode,
-        clockEnabled
+        clockEnabled,
+        stateVer
       };
     }
 
@@ -1093,6 +1122,7 @@
       const out = { ...st };
       out.playerCount = num(st.playerCount, 2, 2, 4);
       out.advancedMode = !!st.advancedMode;
+      out.stateVer = num(st.stateVer, 0, 0, 1000000);
       out.clockEnabled = !!st.clockEnabled;
       const maxClock = CLOCK_MAX_MS;
       out.players = (Array.isArray(st.players) ? st.players : []).slice(0, 4).map((p, i) => {
@@ -1128,6 +1158,7 @@
     function applyFullGameState(state) {
       state = sanitizeIncomingState(state);
       advancedMode = !!state.advancedMode;
+      stateVer = state.stateVer;
       clockEnabled = !!state.clockEnabled;
       playerCount = state.playerCount;
       players = state.players;

@@ -7,7 +7,7 @@
       renderAll();
 
       if (broadcast && isP2P) {
-        broadcastP2P({ type: 'ACTION', action: { type: 'PICK_FACTORY', fIdx, color } });
+        sendAction({ type: 'PICK_FACTORY', fIdx, color });
       }
     }
 
@@ -20,7 +20,7 @@
       renderAll();
 
       if (broadcast && isP2P) {
-        broadcastP2P({ type: 'ACTION', action: { type: 'PICK_CENTER', color } });
+        sendAction({ type: 'PICK_CENTER', color });
       }
     }
 
@@ -43,9 +43,9 @@
 
       if (broadcast && isP2P) {
         if (target === 'row') {
-          broadcastP2P({ type: 'ACTION', action: { type: 'STAGE_ROW', rIdx } });
+          sendAction({ type: 'STAGE_ROW', rIdx });
         } else {
-          broadcastP2P({ type: 'ACTION', action: { type: 'STAGE_FLOOR' } });
+          sendAction({ type: 'STAGE_FLOOR' });
         }
       }
     }
@@ -58,7 +58,7 @@
       renderAll();
 
       if (broadcast && isP2P) {
-        broadcastP2P({ type: 'ACTION', action: { type: 'CANCEL_MOVE' } });
+        sendAction({ type: 'CANCEL_MOVE' });
       }
     }
 
@@ -89,7 +89,7 @@
       }
 
       if (broadcast && isP2P) {
-        broadcastP2P({ type: 'ACTION', action: { type: 'CONFIRM_MOVE' } });
+        sendAction({ type: 'CONFIRM_MOVE' });
       }
 
       movesPlayed++;

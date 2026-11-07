@@ -43,6 +43,7 @@
 
     function initGame(names = null) {
       hasMatchEndedByAbandon = false;
+      stateVer = 0;
       matchFinished = false;
       matchRecorded = false;
       movesPlayed = 0;
