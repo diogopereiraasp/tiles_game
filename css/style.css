@@ -1573,3 +1573,11 @@
     .adv-option input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent-active); flex-shrink: 0; }
     .adv-option strong { color: #fff; }
     .adv-option small { display: block; margin-top: 2px; font-size: 10px; color: var(--text-mid); }
+
+/* Aviso de escolha de coluna: compacto no celular e sem bloquear toques */
+.wall-hint { pointer-events: none; }
+@media (max-width: 600px) {
+  .wall-hint { top: 6px; width: calc(100vw - 16px); gap: 8px; padding: 6px 10px; border-width: 1.5px; border-radius: 10px; font-size: 11px; line-height: 1.25; }
+  .wall-hint strong { font-size: 12px; }
+  .wall-hint .tile { width: 24px; height: 24px; }
+}
