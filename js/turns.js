@@ -225,7 +225,7 @@
             resolve: (c) => {
               // envia o pedido e aguarda a confirmação do anfitrião
               try { clientHostConn.send({ type: 'WALL_PICK', round, playerId: p.id, r, c }); } catch (e) { }
-              showWallWaitHint(p, r, color, 'Confirmando a sua escolha...');
+              showWallWaitHint(p, r, color, 'Confirmando...');
             }
           };
           showWallChoiceHint(p, r, color);
@@ -293,14 +293,14 @@
       const tx = document.getElementById('wallChoiceText');
       const sw = document.getElementById('wallChoiceSwatch');
       if (nm) nm.textContent = p.name || `Jogador ${p.id + 1}`;
-      if (tx) tx.textContent = `Escolha a coluna da peça ${COLOR_LABEL_PT[color] || ''} na linha ${r + 1} (toque numa casa destacada).`;
+      if (tx) tx.textContent = `Sua vez: escolha a coluna (${COLOR_LABEL_PT[color] || ''}, linha ${r + 1})`;
       if (sw) sw.className = `tile ${color}`;
       box.style.display = 'flex';
     }
     function showWallWaitHint(p, r, color, text) {
       showWallChoiceHint(p, r, color);
       const tx = document.getElementById('wallChoiceText');
-      if (tx) tx.textContent = text || `Aguardando ${p.name || 'o jogador'} escolher a coluna da peça ${COLOR_LABEL_PT[color] || ''} (linha ${r + 1})...`;
+      if (tx) tx.textContent = text || `Escolhendo a coluna (${COLOR_LABEL_PT[color] || ''}, linha ${r + 1})`;
       const nm = document.getElementById('wallChoiceName');
       if (nm) nm.textContent = text ? '' : (p.name || '');
     }
