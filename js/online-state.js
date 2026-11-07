@@ -4,6 +4,7 @@
     let rtRoom = null; // Sala online via Supabase Realtime
     let isP2P = false;
     let isHost = false;
+    let scoreHistory = []; // pontos de cada jogador ao fim de cada rodada: [[p0,p1,...], ...] (resumo do fim de partida)
     let stateVer = 0; // nº de jogadas (ACTION) aplicadas; todos os aparelhos avançam juntos. Salto = mensagem perdida => ressincroniza
     let lastResyncAt = 0;
     let myP2PIndex = null; // 0 = Host (P1), 1 = P2, 2 = P3, 3 = P4

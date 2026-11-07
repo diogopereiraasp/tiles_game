@@ -1639,3 +1639,24 @@ header .opt-row { justify-content: flex-start; }
   }
   .tile.selected, .tile:hover, .factory-disc .tile:hover, .center-table-disc .tile:hover { transform: none !important; }
 }
+
+/* Resumo do fim de partida */
+.end-summary { margin-top: 14px; text-align: left; }
+.es-title { font-size: 11px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: #94a3b8; margin: 12px 0 6px; }
+.es-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.es-table th, .es-table td { padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+.es-table th:first-child, .es-table td:first-child { text-align: left; color: #94a3b8; }
+.es-table th { font-weight: 700; white-space: nowrap; color: var(--text-pri); }
+.es-table .es-total td { font-weight: 800; color: #fff; border-bottom: 0; }
+.es-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 0; }
+.es-chart { width: 100%; height: auto; display: block; background: rgba(0, 0, 0, 0.12); border-radius: 8px; }
+.es-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 11px; color: #cbd5e1; }
+.es-lead { margin-top: 6px; font-size: 12px; color: #cbd5e1; }
+.es-lead strong { color: #fff; }
+
+/* Fim de partida: a janela rola quando o conteúdo é maior que a tela (resumo aberto) */
+#endModal .modal-box { max-height: 92vh; overflow-y: auto; }
+.end-summary > summary.es-sum { cursor: pointer; list-style: none; margin-top: 4px; padding: 8px 10px; background: rgba(0, 0, 0, 0.14); border-radius: 8px; color: #cbd5e1; }
+.end-summary > summary.es-sum::-webkit-details-marker { display: none; }
+.end-summary > summary.es-sum::after { content: 'ver'; float: right; font-weight: 700; color: var(--accent-active); }
+.end-summary[open] > summary.es-sum::after { content: 'ocultar'; }

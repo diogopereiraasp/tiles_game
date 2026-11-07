@@ -403,6 +403,7 @@
 
       await waitMs(500);
       isScoringAnimationActive = false;
+      scoreHistory.push(players.map(p => p.score)); // para o resumo do fim de partida
 
       if (gameEnds) {
         endGame();
@@ -632,6 +633,8 @@
         </div>
         ${tiedOnScore ? `<div style="margin-top:10px;font-size:11px;color:#94a3b8;">Empate em pontos: desempate por linhas horizontais completas${rankOf[0] === rankOf[1] ? ' (persistiu o empate: vitória dividida)' : ''}.</div>` : ''}
       `;
+      lastShareText = buildShareText(sorted, rankOf);
+      desc.insertAdjacentHTML('beforeend', buildEndSummaryHtml());
       modal.style.display = 'flex';
       matchFinished = true;
       updateEndModalButtons();
@@ -642,6 +645,69 @@
     // Linhas horizontais completas da parede (critério de desempate do Azul)
     function completedRows(p) {
       return (p.wall || []).filter(row => row.every(v => v === true)).length;
+    }
+
+    // ── Resumo do fim de partida: pontos por rodada, gráfico de quem liderou e compartilhar ──
+    const PLAYER_COLORS = ['#60a5fa', '#fbbf24', '#f87171', '#4ade80'];
+    let lastShareText = '';
+
+    function buildEndSummaryHtml() {
+      const n = players.length;
+      const rounds = (scoreHistory || []).filter(r => Array.isArray(r) && r.length === n);
+      if (!rounds.length) return '';
+      const finals = players.map(p => p.score);
+      const last = rounds[rounds.length - 1];
+      const bonus = finals.map((v, k) => v - last[k]);
+      const hasBonus = bonus.some(b => b > 0);
+      const names = players.map(p => escapeHtml((p.name || `Jogador ${p.id + 1}`).slice(0, 9)));
+      const dot = k => `<span class="es-dot" style="background:${PLAYER_COLORS[k % 4]}"></span>`;
+
+      // linhas: pontos GANHOS em cada rodada
+      const gain = (row, i, k) => row[k] - (i ? rounds[i - 1][k] : 0);
+      const fmt = v => (v > 0 ? '+' + v : String(v));
+      const body = rounds.map((row, i) => `<tr><td>Rodada ${i + 1}</td>${row.map((_, k) => `<td>${fmt(gain(row, i, k))}</td>`).join('')}</tr>`).join('');
+      const bonusRow = hasBonus ? `<tr><td>Bônus finais</td>${bonus.map(b => `<td>${fmt(b)}</td>`).join('')}</tr>` : '';
+      const table = `<table class="es-table"><thead><tr><th></th>${names.map((nm, k) => `<th>${dot(k)}${nm}</th>`).join('')}</tr></thead><tbody>${body}${bonusRow}<tr class="es-total"><td>Total</td>${finals.map(v => `<td>${v}</td>`).join('')}</tr></tbody></table>`;
+
+      // gráfico: pontos acumulados ao longo das rodadas (quem estava na frente)
+      const series = [Array(n).fill(0)].concat(rounds, hasBonus ? [finals] : []);
+      const maxY = Math.max(10, ...series.flat());
+      const W = 300, H = 104, padL = 6, padR = 6, padT = 8, padB = 8;
+      const X = i => padL + (series.length === 1 ? 0 : i * (W - padL - padR) / (series.length - 1));
+      const Y = v => H - padB - (v / maxY) * (H - padT - padB);
+      const lines = players.map((_, k) => `<polyline fill="none" stroke="${PLAYER_COLORS[k % 4]}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="${series.map((row, i) => `${X(i).toFixed(1)},${Y(row[k]).toFixed(1)}`).join(' ')}"/>`).join('');
+      const chart = `<svg class="es-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pontos acumulados por rodada"><line x1="${padL}" x2="${W - padR}" y1="${H - padB}" y2="${H - padB}" stroke="rgba(148,163,184,.35)"/>${lines}</svg>`;
+
+      // quem liderou mais rodadas (empate no topo não conta para ninguém)
+      const lead = Array(n).fill(0);
+      rounds.forEach(row => { const m = Math.max(...row); const tops = row.map((v, k) => v === m ? k : -1).filter(k => k >= 0); if (tops.length === 1) lead[tops[0]]++; });
+      const best = Math.max(...lead);
+      const leaders = lead.map((c, k) => c === best ? k : -1).filter(k => k >= 0);
+      const leadTxt = best > 0 && leaders.length === 1 ? `Liderou mais rodadas: <strong>${names[leaders[0]]}</strong> (${best} de ${rounds.length})` : 'Liderança dividida entre as rodadas';
+      const legend = `<div class="es-legend">${players.map((_, k) => `<span>${dot(k)}${names[k]}</span>`).join('')}</div>`;
+
+      const openAttr = (window.innerWidth > 700 && window.innerHeight > 820) ? ' open' : ''; // no celular fica recolhido (toque para ver)
+      return `<details class="end-summary"${openAttr}><summary class="es-title es-sum">Resumo da partida</summary>${table}<div class="es-title">Pontos acumulados</div>${chart}${legend}<div class="es-lead">${leadTxt}</div><button class="btn-toggle" style="width:100%;padding:9px;margin-top:10px;font-weight:600;" onclick="shareResult()">Compartilhar resultado</button></details>`;
+    }
+
+    function buildShareText(sorted, rankOf) {
+      const lines = sorted.map((p, i) => `${rankOf[i]}º ${cleanName(p.name) || 'Jogador ' + (p.id + 1)} - ${p.score} pts`);
+      return `Azul - Fim de jogo\n${lines.join('\n')}\nJogue também: ${location.origin}${location.pathname}`;
+    }
+
+    // Compartilhar: menu nativo do celular; senão copia; senão mostra o texto para copiar
+    async function shareResult() {
+      const text = lastShareText;
+      if (!text) return;
+      try {
+        if (navigator.share) { await navigator.share({ text }); return; }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        gameToast('Resultado copiado! Cole onde quiser.');
+      } catch (e) {
+        gameDialog({ title: 'Resultado', text: 'Copie e envie:', inputValue: text.replace(/\n/g, ' | ') });
+      }
     }
 
     async function endGame() {

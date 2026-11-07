@@ -1085,7 +1085,8 @@
         movesPlayed,
         advancedMode,
         clockEnabled,
-        stateVer
+        stateVer,
+        scoreHistory
       };
     }
 
@@ -1139,6 +1140,8 @@
       out.playerCount = num(st.playerCount, 2, 2, 4);
       out.advancedMode = !!st.advancedMode;
       out.stateVer = num(st.stateVer, 0, 0, 1000000);
+      out.scoreHistory = (Array.isArray(st.scoreHistory) ? st.scoreHistory : []).slice(0, 60)
+        .filter(r => Array.isArray(r)).map(r => r.slice(0, 4).map(v => num(v, 0, 0, 1000)));
       out.clockEnabled = !!st.clockEnabled;
       const maxClock = CLOCK_MAX_MS;
       out.players = (Array.isArray(st.players) ? st.players : []).slice(0, 4).map((p, i) => {
@@ -1175,6 +1178,7 @@
       state = sanitizeIncomingState(state);
       advancedMode = !!state.advancedMode;
       stateVer = state.stateVer;
+      scoreHistory = state.scoreHistory || [];
       clockEnabled = !!state.clockEnabled;
       playerCount = state.playerCount;
       players = state.players;

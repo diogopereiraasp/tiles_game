@@ -138,6 +138,18 @@ run(`
     assert.ok(run('__out.some(m => m.type === "WALL_CHOICE" && m.playerId === 2)'));
   });
 
+  await test('scoreHistory viaja no estado, é saneado e zera ao iniciar partida nova', () => {
+    run(`__newGame(2); scoreHistory = [[3, 5], [10, 12]];`);
+    const st = run('getFullGameState()');
+    assert.deepStrictEqual(st.scoreHistory, [[3, 5], [10, 12]]);
+    run(`var __bad = Object.assign(getFullGameState(), { scoreHistory: [[1, 2], 'lixo', [999999, -4, 7, 8, 9], null] }); __clean = sanitizeIncomingState(__bad);`);
+    assert.deepStrictEqual(run('__clean.scoreHistory'), [[1, 2], [1000, 0, 7, 8]], 'lixo descartado, números limitados, no máximo 4 jogadores');
+    run(`applyFullGameState(getFullGameState())`);
+    assert.deepStrictEqual(run('scoreHistory'), [[3, 5], [10, 12]]);
+    run(`initGame(['A','B'])`);
+    assert.deepStrictEqual(run('scoreHistory'), [], 'partida nova começa sem histórico');
+  });
+
   await test('randomizeOnlineStarter sorteia entre todas as posições', () => {
     const seen = new Set();
     for (let i = 0; i < 300; i++) { run('playerCount = 4; randomizeOnlineStarter()'); seen.add(run('turn')); assert.strictEqual(run('turn'), run('nextStartPlayer')); }

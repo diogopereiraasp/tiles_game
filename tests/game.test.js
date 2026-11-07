@@ -70,6 +70,31 @@ const test = async (name, fn) => {
     });
   }
 
+  await test('resumo do fim de partida: um registro por rodada, tabela e gráfico coerentes, nomes escapados', async () => {
+    run(`window.__nm = 0`);
+    const r = await playGame(3, false, ['v1']);
+    assert.ok(!r.error, r.error);
+    const info = run(`(() => {
+      players[1].name = '<img src=x onerror=alert(1)>';
+      const h = buildEndSummaryHtml();
+      return { h, rounds: scoreHistory.length, ok: scoreHistory.every(row => row.length === 3),
+        mono: scoreHistory.every((row, i) => i === 0 || row.every((v, k) => v >= scoreHistory[i - 1][k] - 7)),
+        finals: players.map(p => p.score) };
+    })()`);
+    assert.ok(info.rounds >= 2, 'deveria haver ao menos 2 rodadas (' + info.rounds + ')');
+    assert.ok(info.ok, 'cada rodada guarda os pontos dos 3 jogadores');
+    assert.strictEqual((info.h.match(/Rodada \d+/g) || []).length, info.rounds, 'uma linha por rodada');
+    assert.ok(info.h.includes('<svg') && (info.h.match(/<polyline/g) || []).length === 3, 'gráfico com 3 linhas');
+    assert.ok(!info.h.includes('<img'), 'nome do jogador não pode virar HTML');
+    assert.ok(info.h.includes('&lt;img'), 'nome aparece escapado');
+    const totals = (info.h.match(/class="es-total">(.*?)<\/tr>/) || [])[1] || '';
+    info.finals.forEach(f => assert.ok(totals.includes('<td>' + f + '</td>'), 'total ' + f + ' na tabela'));
+  });
+
+  await test('resumo sem histórico (sessão antiga) não quebra: devolve vazio', () => {
+    assert.strictEqual(run(`(() => { scoreHistory = []; return buildEndSummaryHtml(); })()`), '');
+  });
+
   await test(`bateria bot: v4 x v1, ${BATTERY} partidas alternando quem começa (vitórias do v4 > 70%)`, async () => {
     let w4 = 0, tie = 0, err = 0, ok = 0;
     for (let i = 0; i < BATTERY; i++) {
