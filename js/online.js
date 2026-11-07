@@ -665,6 +665,7 @@
             updateP2PBadge('online', `${hostName} (Host - ${targetOnlinePlayers}P)`);
             updateChatVisibility();
             appendChatSystemMessage('Todos os jogadores conectados! A partida começou.');
+            randomizeOnlineStarter();
             const fullState = getFullGameState();
             conn.send({ type: 'SYNC_STATE', state: fullState });
             broadcastP2P({ type: 'SYNC_STATE', state: fullState });
@@ -1174,6 +1175,14 @@
       });
     }
 
+    // Sorteia quem começa (o host não começa sempre); a ordem de jogo segue as posições a partir dele
+    function randomizeOnlineStarter() {
+      const n = Math.max(2, Math.min(4, playerCount || targetOnlinePlayers || 2));
+      nextStartPlayer = turn = Math.floor(Math.random() * n);
+      clockLastTick = Date.now();
+      if (typeof renderAll === 'function') renderAll();
+    }
+
     let currentOnlineTab = 'create';
 
     function switchOnlineTab(tab) {
@@ -1420,6 +1429,7 @@
         }
         if (!confirm('Deseja reiniciar a partida para todos os jogadores?')) return;
         initGame();
+        randomizeOnlineStarter();
         broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
       } else if (isBotMode) {
         initGame(['Você', 'Bot']);
