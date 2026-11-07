@@ -783,7 +783,7 @@
       try {
         if (sb && sb.realtime && !sb.realtime.isConnected()) sb.realtime.connect();
       } catch (e) { }
-      checkRealtimeHealth();
+      return checkRealtimeHealth();
     }
 
     // O canal pode parecer "joined" localmente mas estar morto no servidor (ex: após suspensão).
@@ -1440,11 +1440,25 @@
     }
 
     // Ao desbloquear a tela / voltar para a aba: garante o socket do Realtime ativo
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && isP2P && rtRoom) {
-        ensureRealtimeConnected();
+    // Também ao voltar a rede ('online') e ao restaurar a página do cache (pageshow). Convidado ainda conectado
+    // pede o estado completo: mensagens podem ter se perdido enquanto a tela estava bloqueada.
+    let lastReturnAt = 0;
+    async function onReturnToApp() {
+      if (!isP2P || !rtRoom || document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastReturnAt < 2000) return; // visibilitychange + pageshow/online podem vir juntos
+      lastReturnAt = now;
+      const room = rtRoom;
+      await ensureRealtimeConnected();
+      if (rtRoom !== room || room.destroyed) return;
+      if (!isHost && isGameActive && !hasMatchEndedByAbandon && clientHostConn && clientHostConn.open) {
+        lastResyncAt = 0; // pedido deliberado: ignora o limite de 3 s
+        requestResync();
       }
-    });
+    }
+    document.addEventListener('visibilitychange', onReturnToApp);
+    window.addEventListener('online', onReturnToApp);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) onReturnToApp(); });
 
     function restartLocalGame() {
       if (isP2P) {
