@@ -760,8 +760,10 @@ as $$
     max(m.score) as best_score
   from public.matches m
   join public.profiles p on p.id = m.user_id
-  where m.mode = p_mode
-    and (p_mode <> 'online' or m.elo_after is not null)
+  -- Ranking de Elo ('online'): quem jogou ranqueada, bot ou amigos aparece (mesmo com uma partida só).
+  -- Outros valores de p_mode filtram exatamente aquele modo.
+  where (p_mode = 'online' and m.mode in ('online', 'bot', 'friends'))
+     or (p_mode <> 'online' and m.mode = p_mode)
   group by m.user_id, p.display_name, p.elo
   order by
     case when p_mode = 'online' then p.elo end desc nulls last,
@@ -771,3 +773,55 @@ as $$
 $$;
 
 grant execute on function public.get_leaderboard(text, int) to anon, authenticated;
+
+-- Ranking de Elo paginado. Página 0: top p_limit; se quem está logado ficou abaixo, ele entra NO LUGAR do último
+-- (com a posição real). Páginas seguintes (p_offset > 0): posições p_offset+1 .. p_offset+p_limit.
+-- 'total' = quantos jogadores estão no ranking (o cliente usa para saber se há mais páginas).
+drop function if exists public.get_elo_ranking(int, int);
+create or replace function public.get_elo_ranking(p_offset int default 0, p_limit int default 10)
+returns table (
+  pos bigint,
+  user_id uuid,
+  display_name text,
+  elo int,
+  games bigint,
+  wins bigint,
+  win_rate numeric,
+  best_score int,
+  is_me boolean,
+  total bigint
+)
+language sql
+stable
+security definer set search_path = public
+as $$
+  with agg as (
+    select m.user_id, p.display_name, p.elo,
+           count(*) as games,
+           count(*) filter (where m.won) as wins,
+           round(100.0 * count(*) filter (where m.won) / count(*), 0) as win_rate,
+           max(m.score) as best_score
+    from public.matches m
+    join public.profiles p on p.id = m.user_id
+    where m.mode in ('online', 'bot', 'friends')
+    group by m.user_id, p.display_name, p.elo
+  ),
+  ranked as (
+    select a.*,
+           row_number() over (order by a.elo desc, a.wins desc, a.best_score desc, a.user_id) as pos,
+           count(*) over () as total
+    from agg a
+  )
+  select r.pos, r.user_id, r.display_name, r.elo, r.games, r.wins, r.win_rate, r.best_score,
+         coalesce(r.user_id = auth.uid(), false) as is_me, r.total
+  from ranked r
+  where case
+    when greatest(p_offset, 0) = 0 then
+      r.pos <= least(greatest(p_limit, 1), 50)
+                - (case when coalesce((select x.pos from ranked x where x.user_id = auth.uid()), 0) > least(greatest(p_limit, 1), 50) then 1 else 0 end)
+      or r.user_id = auth.uid()
+    else r.pos > p_offset and r.pos <= p_offset + least(greatest(p_limit, 1), 50)
+  end
+  order by r.pos;
+$$;
+grant execute on function public.get_elo_ranking(int, int) to anon, authenticated;

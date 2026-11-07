@@ -21,4 +21,4 @@ for n in 1 2; do
   if P -d az -f "$ROOT/supabase/schema.sql" 2>&1 | grep -i "error"; then echo "FALHOU: schema.sql com erro (rodada $n)"; exit 1; fi
 done
 echo "schema.sql: roda 2x sem erro"
-for f in record_match_elo friends_elo rate_limit; do P -d az -f "$HERE/$f.sql" | tail -1; done
+for f in record_match_elo friends_elo rate_limit leaderboard; do P -d az -f "$HERE/$f.sql" | tail -1; done

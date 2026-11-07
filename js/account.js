@@ -504,8 +504,97 @@
       document.getElementById('leaderboardModal').style.display = 'none';
     }
 
+    // Ranking de Elo e "Minhas partidas" com paginação (10 por vez)
+    const HISTORY_PAGE = 10, ELO_PAGE = 10;
+    let lbToken = 0, historyShown = 0, eloPageNo = 0, eloSeen = new Set();
+
+    function historyRowHtml(m) {
+      const reasonLabel = { normal: '', timeout: ' · por tempo', abandon: ' · por abandono' };
+      const opp = (m.opponents || []).map(o => `${escapeHtml(o.name)} (${Number(o.score) || 0})`).join(', ');
+      const date = new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="lb-row">
+          <span class="lb-pos ${m.won ? 'lb-win' : 'lb-loss'}">${m.won ? 'V' : 'D'}</span>
+          <div style="min-width:0;">
+            <div class="lb-name">vs ${opp || '—'}</div>
+            <div class="lb-sub">${m.mode === 'online' ? 'Ranqueada' : m.mode === 'friends' ? 'Amigos' : 'Treino vs Bot'} · ${m.placement}º de ${m.player_count}${reasonLabel[m.end_reason] || ''} · ${date}</div>
+          </div>
+          <span class="lb-stat">${m.score} pts${typeof m.elo_after === 'number' && typeof m.elo_before === 'number'
+            ? `<div class="lb-sub ${m.elo_after >= m.elo_before ? 'lb-win' : 'lb-loss'}">${m.elo_after >= m.elo_before ? '+' : ''}${m.elo_after - m.elo_before} Elo</div>` : ''}</span>
+        </div>`;
+    }
+
+    function eloRowHtml(r) {
+      const tier = getEloTier(r.elo);
+      const pos = Number(r.pos);
+      const isMe = !!r.is_me || (authUser && r.user_id === authUser.id);
+      return `
+        <div class="lb-row ${isMe ? 'me' : ''}">
+          <span class="lb-pos">${pos <= 3 ? `<span class="medal m${pos}">${pos}</span>` : `${pos}º`}</span>
+          <div style="min-width:0;">
+            <div class="lb-name">${escapeHtml(r.display_name)}${isMe ? ' (você)' : ''}</div>
+            <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
+          </div>
+          <div class="lb-stat">${r.elo}<div class="lb-sub ${tier.cls}" style="font-weight:800;">${tier.name}</div></div>
+        </div>`;
+    }
+
+    function setMoreButton(onclick, show) {
+      const more = document.getElementById('lbMore');
+      if (more) more.innerHTML = show ? `<button class="btn-toggle" style="width:100%;padding:9px;margin-top:8px;font-weight:600;" onclick="${onclick}">Carregar mais</button>` : '';
+    }
+
+    // Próxima página de "Minhas partidas" (pede 11 para saber se existe mais)
+    async function loadHistoryPage() {
+      const token = lbToken;
+      const list = document.getElementById('lbList');
+      if (!list || !authUser) return;
+      const more = document.getElementById('lbMore');
+      if (more) more.innerHTML = '<div class="lb-empty">Carregando...</div>';
+      const from = historyShown;
+      const { data, error } = await sb.from('matches')
+        .select('mode, player_count, score, placement, won, end_reason, opponents, elo_before, elo_after, created_at')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + HISTORY_PAGE);
+      if (token !== lbToken) return;
+      if (error) { list.insertAdjacentHTML('beforeend', `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`); setMoreButton('loadHistoryPage()', true); return; }
+      if (from === 0 && !data.length) { list.innerHTML = '<div class="lb-empty">Nenhuma partida registrada ainda.</div>'; setMoreButton('', false); return; }
+      const rows = data.slice(0, HISTORY_PAGE);
+      list.insertAdjacentHTML('beforeend', rows.map(historyRowHtml).join(''));
+      historyShown += rows.length;
+      setMoreButton('loadHistoryPage()', data.length > HISTORY_PAGE);
+    }
+
+    // Próxima página do ranking de Elo. Página 0: top 10 (quem está logado e ficou abaixo entra no lugar do 10º, com a posição real).
+    async function loadEloPage() {
+      const token = lbToken;
+      const list = document.getElementById('lbList');
+      if (!list) return;
+      const more = document.getElementById('lbMore');
+      if (more) more.innerHTML = '<div class="lb-empty">Carregando...</div>';
+      const page = eloPageNo;
+      let { data, error } = await sb.rpc('get_elo_ranking', { p_offset: page * ELO_PAGE, p_limit: ELO_PAGE });
+      if (error && page === 0 && /get_elo_ranking|schema cache|does not exist/i.test(String(error.message || ''))) {
+        // SQL novo ainda não foi rodado no Supabase: usa o ranking antigo (50 primeiros, sem paginação) em vez de dar erro
+        const old = await sb.rpc('get_leaderboard', { p_mode: 'online', p_limit: 50 });
+        if (!old.error) { data = (old.data || []).map((r, i) => ({ ...r, pos: i + 1, total: 0 })); error = null; }
+      }
+      if (token !== lbToken) return;
+      if (error) { list.insertAdjacentHTML('beforeend', `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`); setMoreButton('loadEloPage()', true); return; }
+      if (page === 0 && (!data || !data.length)) { list.innerHTML = '<div class="lb-empty">Ninguém no ranking ainda.<br>Jogue uma partida (ranqueada, amigos ou bot) para entrar!</div>'; setMoreButton('', false); return; }
+      const fresh = (data || []).filter(r => !eloSeen.has(r.user_id)); // a minha linha pode repetir numa página mais à frente
+      fresh.forEach(r => eloSeen.add(r.user_id));
+      list.insertAdjacentHTML('beforeend', fresh.map(eloRowHtml).join(''));
+      eloPageNo++;
+      const total = data && data.length ? Number(data[0].total) : 0;
+      setMoreButton('loadEloPage()', eloPageNo * ELO_PAGE < total);
+    }
+
     async function switchLeaderboardTab(tab) {
       leaderboardTab = tab;
+      const token = ++lbToken;
       ['online', 'history'].forEach(t => {
         const id = t === 'online' ? 'lbTabOnline' : 'lbTabHistory';
         document.getElementById(id).classList.toggle('active', t === tab);
@@ -514,51 +603,18 @@
       if (!sb) { box.innerHTML = '<div class="lb-empty">Não foi possível conectar ao servidor.</div>'; return; }
       box.innerHTML = '<div class="lb-empty">Carregando...</div>';
       await ensureSignedIn();
-      if (leaderboardTab !== tab) return;
+      if (token !== lbToken) return;
 
       if (tab === 'history') {
         if (!authUser) { box.innerHTML = '<div class="lb-empty">Faça login para ver suas partidas.</div>'; return; }
-        const { data, error } = await sb.from('matches')
-          .select('mode, player_count, score, placement, won, end_reason, opponents, elo_before, elo_after, created_at')
-          .eq('user_id', authUser.id)
-          .order('created_at', { ascending: false })
-          .limit(30);
-        if (leaderboardTab !== tab) return;
-        if (error) { box.innerHTML = `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`; return; }
-        if (!data.length) { box.innerHTML = '<div class="lb-empty">Nenhuma partida registrada ainda.</div>'; return; }
-        const reasonLabel = { normal: '', timeout: ' · por tempo', abandon: ' · por abandono' };
-        box.innerHTML = data.map(m => {
-          const opp = (m.opponents || []).map(o => `${escapeHtml(o.name)} (${Number(o.score) || 0})`).join(', ');
-          const date = new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-          return `
-            <div class="lb-row">
-              <span class="lb-pos ${m.won ? 'lb-win' : 'lb-loss'}">${m.won ? 'V' : 'D'}</span>
-              <div style="min-width:0;">
-                <div class="lb-name">vs ${opp || '—'}</div>
-                <div class="lb-sub">${m.mode === 'online' ? 'Ranqueada' : m.mode === 'friends' ? 'Amigos' : 'Treino vs Bot'} · ${m.placement}º de ${m.player_count}${reasonLabel[m.end_reason] || ''} · ${date}</div>
-              </div>
-              <span class="lb-stat">${m.score} pts${typeof m.elo_after === 'number' && typeof m.elo_before === 'number'
-                ? `<div class="lb-sub ${m.elo_after >= m.elo_before ? 'lb-win' : 'lb-loss'}">${m.elo_after >= m.elo_before ? '+' : ''}${m.elo_after - m.elo_before} Elo</div>` : ''}</span>
-            </div>`;
-        }).join('');
+        box.innerHTML = '<div id="lbList"></div><div id="lbMore"></div>';
+        historyShown = 0;
+        await loadHistoryPage();
         return;
       }
 
-      const { data, error } = await sb.rpc('get_leaderboard', { p_mode: tab, p_limit: 50 });
-      if (leaderboardTab !== tab) return;
-      if (error) { box.innerHTML = `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`; return; }
-      if (!data || !data.length) { box.innerHTML = '<div class="lb-empty">Ninguém no ranking ainda.<br>Jogue uma partida online para entrar!</div>'; return; }
-      box.innerHTML = data.map((r, i) => {
-        const tier = getEloTier(r.elo);
-        return `
-        <div class="lb-row ${authUser && r.user_id === authUser.id ? 'me' : ''}">
-          <span class="lb-pos">${i < 3 ? `<span class="medal m${i + 1}">${i + 1}</span>` : `${i + 1}º`}</span>
-          <div style="min-width:0;">
-            <div class="lb-name">${escapeHtml(r.display_name)}</div>
-            <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
-          </div>
-          <div class="lb-stat">${r.elo}<div class="lb-sub ${tier.cls}" style="font-weight:800;">${tier.name}</div></div>
-        </div>`;
-      }).join('');
+      box.innerHTML = '<div id="lbList"></div><div id="lbMore"></div>';
+      eloPageNo = 0; eloSeen = new Set();
+      await loadEloPage();
     }
 

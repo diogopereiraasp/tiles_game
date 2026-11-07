@@ -1598,3 +1598,6 @@
 /* Aviso de rede (queda de anfitrião/jogador) */
 .net-notice { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 350; width: min(92vw, 420px); padding: 9px 14px; background: var(--bg-header); border: 1.5px solid #f59e0b; border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); font-size: 12px; line-height: 1.35; color: var(--text-pri); text-align: center; pointer-events: none; }
 .net-notice.ok { border-color: #4ade80; }
+
+/* Ranking: a minha linha fica sempre visível (grudada na borda de baixo da lista quando está mais abaixo) */
+.lb-row.me { position: sticky; bottom: 0; z-index: 1; background: linear-gradient(rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.16)), var(--bg-card); border-top: 1px solid rgba(56, 189, 248, 0.45); }
