@@ -39,7 +39,7 @@
           const o = audioCtx.createOscillator(), g = audioCtx.createGain();
           o.type = 'sine'; o.frequency.value = f;
           g.gain.setValueAtTime(0.0001, t + i * 0.09);
-          g.gain.exponentialRampToValueAtTime(0.08, t + i * 0.09 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.22, t + i * 0.09 + 0.02);
           g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.09 + 0.35);
           o.connect(g); g.connect(audioCtx.destination);
           o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.4);
