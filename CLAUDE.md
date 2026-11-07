@@ -48,3 +48,11 @@ Publicado no GitHub Pages (branch `gh-pages`; `main` é a fonte). Para testar lo
 - Ao testar com duas abas: o jogo salva a sessão em `beforeunload`; zere `isGameActive` e o storage antes de recarregar.
 - Publicar = commit em `main` + merge/push em `gh-pages`, só quando o usuário pedir.
 - Cache: as tags `<script>`/`<link>` locais em index.html levam `?v=AAAAMMDDHHMM`. **Ao publicar mudanças em js/ ou css/, atualize esse número** (senão celulares ficam com JS antigo e botões novos não respondem).
+- Sincronia online: cada jogada (`ACTION`) é numerada por `stateVer` (online-state.js; `sendAction` em online.js; viaja em `getFullGameState`). Convidado ignora número repetido e, se pular, pede `RESYNC` (máx. 1x/3 s; o anfitrião responde com `SYNC_STATE`). O anfitrião rejeita jogada fora de sequência devolvendo o estado. Ao voltar à aba/rede (`onReturnToApp`) o convidado também pede `RESYNC`.
+- O descarte reembaralhado em `drawTiles` usa `seededShuffle` (semente: rodada, `stateVer`, tamanho do descarte) no online, senão cada aparelho sortearia fábricas diferentes. **Nunca** use `Math.random()` em lógica de jogo que roda em todos os aparelhos.
+- Relato ranqueado: `sendRankedReport` (account.js) tenta de novo em 2/5/10 s e guarda o relato pendente em `sessionStorage['azul_pending_report']` (reenviado ao abrir o jogo; o servidor guarda só o primeiro relato). Fim normal marca `matchFinished`: sair/"jogar novamente" depois disso NÃO é abandono.
+- Sessão salva (`saveSessionToStorage`) tem `savedAt`: online > 10 min e offline > 12 h não são restauradas.
+- Modo avançado online: o convidado reenvia `WALL_PICK` ao reconectar (`resendPendingWallPick`) caso o anfitrião tenha caído antes de confirmar.
+- Quem começa a partida online é sorteado (`randomizeOnlineStarter`); ordem de jogo segue as posições a partir dele.
+- Desempenho do 3D: **sem desfoque (blur) em `box-shadow`/`filter`** nas peças e na parede (medido: ~108 ms -> ~16 ms por atualização no celular). Relevo só com linhas nítidas.
+- Fluxo de trabalho: desenvolver na branch `dev`; `main`/`gh-pages` só quando o usuário pedir para publicar.
