@@ -970,6 +970,14 @@
       } else if (msg.type === 'ROOM_FULL') {
         alert('Esta sala já atingiu o número máximo de jogadores.');
       } else if (msg.type === 'SYNC_STATE') {
+        // Revanche: já tinha acabado e chega um estado de partida nova (menos jogadas) => reabre a partida
+        if (matchFinished && msg.state && Number.isFinite(Number(msg.state.movesPlayed)) && Number(msg.state.movesPlayed) < movesPlayed) {
+          matchFinished = false;
+          matchRecorded = false;
+          const em = document.getElementById('endModal');
+          if (em) { em.style.display = 'none'; const t = em.querySelector('h2'); if (t) t.textContent = 'Fim de Jogo'; }
+          updateEndModalButtons();
+        }
         isGameActive = true;
         applyFullGameState(msg.state);
         closeMultiplayerModal();
@@ -1384,6 +1392,7 @@
 
       if (modal) modal.style.display = 'flex';
       updateP2PBadge('offline', 'Partida Finalizada');
+      updateEndModalButtons();
     }
 
     function confirmExitGame() {
@@ -1487,6 +1496,36 @@
     document.addEventListener('visibilitychange', onReturnToApp);
     window.addEventListener('online', onReturnToApp);
     window.addEventListener('pageshow', (e) => { if (e.persisted) onReturnToApp(); });
+
+    // Fim normal numa sala de amigos: o anfitrião pode propor revanche na mesma sala; os convidados aguardam ou saem.
+    function updateEndModalButtons() {
+      const rematch = document.getElementById('rematchBtn');
+      const hint = document.getElementById('rematchHint');
+      const leave = document.getElementById('endLeaveBtn');
+      const friendsRoom = isP2P && !rankedMatchId && matchFinished; // revanche só após fim normal
+      if (rematch) rematch.style.display = (friendsRoom && isHost) ? 'block' : 'none';
+      if (hint) {
+        hint.style.display = (friendsRoom && !isHost) ? 'block' : 'none';
+        hint.textContent = 'O anfitrião pode iniciar uma revanche. Aguarde ou saia da sala.';
+      }
+      if (leave) leave.textContent = isP2P ? 'Sair da sala' : 'Jogar Novamente';
+    }
+
+    // Anfitrião: nova partida na mesma sala (mesmos jogadores e nomes), com quem começa sorteado
+    function startRematch() {
+      if (!isP2P || !isHost || rankedMatchId || !matchFinished) return;
+      const names = players ? players.map(p => p.name) : null;
+      const endModal = document.getElementById('endModal');
+      if (endModal) endModal.style.display = 'none';
+      const title = endModal ? endModal.querySelector('h2') : null;
+      if (title) title.textContent = 'Fim de Jogo';
+      initGame(names); // zera matchFinished/matchRecorded/stateVer
+      isGameActive = true;
+      randomizeOnlineStarter();
+      updateP2PBadge('online', `${(players[0] && players[0].name) || 'P1'} (Host - ${targetOnlinePlayers}P)${advancedMode ? ' · Avançado' : ''}`);
+      broadcastP2P({ type: 'SYNC_STATE', state: getFullGameState() });
+      saveSessionToStorage();
+    }
 
     function restartLocalGame() {
       if (isP2P) {

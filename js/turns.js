@@ -623,6 +623,7 @@
       `;
       modal.style.display = 'flex';
       matchFinished = true;
+      updateEndModalButtons();
       recordMatchResult('normal');
       saveSessionToStorage();
     }

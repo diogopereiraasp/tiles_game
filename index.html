@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611062328">
+  <link rel="stylesheet" href="css/style.css?v=202611062330">
 </head>
 
 <body>
@@ -74,7 +74,10 @@
     <div class="modal-box">
       <h2>Fim de Jogo</h2>
       <p id="winnerDesc"></p>
-      <button class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar
+      <div id="rematchHint" class="acc-hint" style="display: none; text-align: center; margin-bottom: 8px;"></div>
+      <button id="rematchBtn" class="btn-toggle btn-online" style="display: none; width: 100%; padding: 10px; margin-bottom: 8px; font-weight: 700;"
+        onclick="startRematch()">Revanche (mesma sala)</button>
+      <button id="endLeaveBtn" class="btn-toggle active" style="width: 100%; padding: 8px;" onclick="closeModalAndRestart()">Jogar
         Novamente</button>
     </div>
   </div>
@@ -480,16 +483,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611062328"></script>
-  <script src="js/chat.js?v=202611062328"></script>
-  <script src="js/online-state.js?v=202611062328"></script>
-  <script src="js/account.js?v=202611062328"></script>
-  <script src="js/online.js?v=202611062328"></script>
-  <script src="js/matchmaking.js?v=202611062328"></script>
-  <script src="js/game-setup.js?v=202611062328"></script>
-  <script src="js/bot.js?v=202611062328"></script>
-  <script src="js/turns.js?v=202611062328"></script>
-  <script src="js/ui.js?v=202611062328"></script>
+  <script src="js/config.js?v=202611062330"></script>
+  <script src="js/chat.js?v=202611062330"></script>
+  <script src="js/online-state.js?v=202611062330"></script>
+  <script src="js/account.js?v=202611062330"></script>
+  <script src="js/online.js?v=202611062330"></script>
+  <script src="js/matchmaking.js?v=202611062330"></script>
+  <script src="js/game-setup.js?v=202611062330"></script>
+  <script src="js/bot.js?v=202611062330"></script>
+  <script src="js/turns.js?v=202611062330"></script>
+  <script src="js/ui.js?v=202611062330"></script>
 </body>
 
 </html>
