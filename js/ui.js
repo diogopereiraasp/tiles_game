@@ -2,6 +2,9 @@
     function renderTileCounts() {
       const bar = document.getElementById('tileCountsBar');
       if (!bar) return;
+      // Só mostra a contagem em partidas de 2 jogadores
+      bar.style.display = playerCount === 2 ? '' : 'none';
+      if (playerCount !== 2) return;
 
       const inBag = { blue: 0, yellow: 0, red: 0, black: 0, white: 0 };
       if (Array.isArray(bag)) {
