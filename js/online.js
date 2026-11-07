@@ -1308,7 +1308,8 @@
 
     function handlePlayerAbandoned(abandonedIndex, abandonedName, reason) {
       if (!isGameActive || hasMatchEndedByAbandon || matchFinished) return;
-      recordMatchResult(reason === 'timeout' ? 'timeout' : 'abandon', abandonedIndex);
+      const cancelled = !(movesPlayed > 0); // ninguém jogou: partida cancelada, sem vitória/derrota
+      if (!cancelled) recordMatchResult(reason === 'timeout' ? 'timeout' : 'abandon', abandonedIndex);
       hideNetNotice();
       hasMatchEndedByAbandon = true;
       isGameActive = false;
@@ -1327,6 +1328,15 @@
 
       const modal = document.getElementById('endModal');
       const title = modal ? modal.querySelector('h2') : null;
+      if (cancelled) {
+        if (title) title.textContent = 'Partida cancelada';
+        const d = document.getElementById('winnerDesc');
+        if (d) d.innerHTML = `<div style="color: #94a3b8; font-size: 13px; text-align: center; line-height: 1.5;"><strong style="color: #f87171;">${escapeHtml(leavingName)}</strong> ${reason === 'timeout' ? 'ficou sem tempo' : 'saiu'} antes da primeira jogada.<br>Nenhuma vitória ou derrota foi registrada.</div>`;
+        if (modal) modal.style.display = 'flex';
+        updateP2PBadge('offline', 'Partida cancelada');
+        updateEndModalButtons();
+        return;
+      }
       if (title) title.innerHTML = icon('trophy') + (reason === 'timeout' ? ' Vitória por Tempo!' : ' Vitória por Abandono!');
 
       const desc = document.getElementById('winnerDesc');

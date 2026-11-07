@@ -100,6 +100,19 @@ run(`
     assert.strictEqual(run('__rec'), 0);
   });
 
+  await test('saída/tempo antes da 1a jogada: partida cancelada, sem registrar abandono; depois da 1a jogada registra', () => {
+    run(`__newGame(2); isHost = true; myP2PIndex = 0; matchFinished = false; hasMatchEndedByAbandon = false; movesPlayed = 0; var __rec = []; recordMatchResult = (r, i) => { __rec.push(r + ':' + i); };`);
+    run(`handlePlayerAbandoned(1, 'Beto', 'abandon')`);
+    assert.strictEqual(run('hasMatchEndedByAbandon'), true, 'a partida termina');
+    assert.deepStrictEqual(run('__rec'), [], 'nada registrado com 0 jogadas');
+    run(`__newGame(2); matchFinished = false; hasMatchEndedByAbandon = false; movesPlayed = 0; __rec = [];`);
+    run(`handlePlayerAbandoned(1, 'Beto', 'timeout')`);
+    assert.deepStrictEqual(run('__rec'), [], 'tempo esgotado sem jogadas também não registra');
+    run(`__newGame(2); matchFinished = false; hasMatchEndedByAbandon = false; movesPlayed = 5; __rec = [];`);
+    run(`handlePlayerAbandoned(1, 'Beto', 'abandon')`);
+    assert.deepStrictEqual(run('__rec'), ['abandon:1'], 'com jogadas registra normalmente');
+  });
+
   await test('escolha de coluna (avançado): convidado reenvia WALL_PICK ao novo anfitrião; novo anfitrião confirma', async () => {
     run(`__newGame(3); advancedMode = true; autoWallChoice = false; isHost = false; myP2PIndex = 1; round = 1; __sent = [];
       clientHostConn = { open: true, send: m => __sent.push(m) };

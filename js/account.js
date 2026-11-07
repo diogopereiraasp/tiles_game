@@ -347,6 +347,8 @@
 
     // Grava o resultado do jogador deste dispositivo
     async function recordMatchResult(endReason, abandonedIndex = null) {
+      // Sem nenhuma jogada confirmada não existe derrota por abandono/tempo (nem vitória do outro lado)
+      if (endReason !== 'normal' && !(movesPlayed > 0)) return;
       if (matchRecorded || !sb || !players || !players.length) return;
 
       let myIdx;
