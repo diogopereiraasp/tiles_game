@@ -291,6 +291,7 @@
       renderAuthBar();
     }
     const authReady = initAuth();
+    authReady.then(() => { try { resendPendingReport(); } catch (e) { } });
     async function ensureSignedIn() { await authReady; return authUser; } // devolve o usuário logado ou null
 
     if (sb) {
@@ -301,6 +302,47 @@
       });
     } else {
       document.addEventListener('DOMContentLoaded', renderAuthBar);
+    }
+
+    // Relato ranqueado com nova tentativa (2 s, 5 s, 10 s). Fica em sessionStorage até o servidor aceitar,
+    // para sobreviver a um recarregamento. O servidor guarda só o primeiro relato, então repetir é seguro.
+    const PENDING_REPORT_KEY = 'azul_pending_report';
+    const REPORT_RETRY_MS = [2000, 5000, 10000];
+    let reportInFlight = null;
+    function setPendingReport(v) {
+      try { if (v) sessionStorage.setItem(PENDING_REPORT_KEY, JSON.stringify(v)); else sessionStorage.removeItem(PENDING_REPORT_KEY); } catch (e) { }
+    }
+    async function sendRankedReport(matchId, report, endReason, attempt) {
+      if (!matchId || !sb) return false;
+      setPendingReport({ matchId, report, endReason });
+      reportInFlight = matchId;
+      let ok = false;
+      try {
+        if (!(await ensureSignedIn())) throw new Error('sem login');
+        const { data, error } = await sb.rpc('report_ranked_result', { p_match_id: matchId, p_report: report });
+        if (error) throw new Error(error.message);
+        ok = true;
+        setPendingReport(null);
+        handleRankedResult(Array.isArray(data) ? data[0] : data, matchId, 0, endReason);
+      } catch (e) {
+        console.warn('Erro ao relatar partida ranqueada:', e && e.message);
+      }
+      if (!ok && attempt < REPORT_RETRY_MS.length) {
+        setTimeout(() => sendRankedReport(matchId, report, endReason, attempt + 1), REPORT_RETRY_MS[attempt]);
+      } else {
+        reportInFlight = null;
+      }
+      return ok;
+    }
+    // Ao abrir o jogo: reenvia um relato que ficou pendente (recarregou antes de o servidor aceitar)
+    function resendPendingReport() {
+      try {
+        const raw = sessionStorage.getItem(PENDING_REPORT_KEY);
+        if (!raw) return;
+        const v = JSON.parse(raw);
+        if (!v || !v.matchId || !v.report || reportInFlight === v.matchId) return;
+        sendRankedReport(v.matchId, v.report, v.endReason || 'normal', 0);
+      } catch (e) { setPendingReport(null); }
     }
 
     // Grava o resultado do jogador deste dispositivo
@@ -345,9 +387,7 @@
             loser: endReason === 'normal' ? null : (abandonedIndex === me.id ? 'me' : 'opp'),
             moves: movesPlayed
           };
-          const { data: rdata, error: rerr } = await sb.rpc('report_ranked_result', { p_match_id: rankedId, p_report: report });
-          if (rerr) { console.warn('Erro ao relatar partida ranqueada:', rerr.message); matchRecorded = false; return; }
-          handleRankedResult(Array.isArray(rdata) ? rdata[0] : rdata, rankedId, 0, endReason);
+          sendRankedReport(rankedId, report, endReason, 0);
           return;
         }
 
