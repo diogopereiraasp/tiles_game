@@ -404,6 +404,11 @@
         document.getElementById('mainMenuModal').style.display = 'none';
         updateChatVisibility();
 
+        if (session.mode === 'online' && (typeof session.currentRoomCode !== 'string' || !session.currentRoomCode)) {
+          clearSavedSession(); // sessão online sem código de sala não dá para retomar
+          return false;
+        }
+
         if (session.mode === 'online') {
           isP2P = true;
           isHost = !!session.isHost;
@@ -464,7 +469,16 @@
     }
 
     // Inicialização e checagem de parâmetros de URL (?sala=...)
+    // PWA: registra o service worker (rede primeiro; só em https ou localhost)
+    function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      const ok = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!ok) return;
+      navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker não registrado:', e && e.message));
+    }
+
     window.onload = () => {
+      registerServiceWorker();
       // 0. Carrega nomes de jogadores salvos no storage e inicializa listeners
       loadSavedPlayerNames();
       setupPlayerNameStorageListeners();
