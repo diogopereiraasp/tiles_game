@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611062321">
+  <link rel="stylesheet" href="css/style.css?v=202611062327">
 </head>
 
 <body>
@@ -39,6 +39,10 @@
         style="display: none; align-items: center; gap: 6px; position: relative;" title="Abrir Chat da Partida">
         <span><span data-icon="chat"></span> Chat</span>
         <span id="chatHeaderBadge" class="chat-badge" style="display: none;">0</span>
+      </button>
+      <button id="soundBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleSound()"
+        title="Som de &quot;sua vez&quot; (ligar/desligar)" aria-label="Som de sua vez" aria-pressed="true">
+        <span id="soundIcon" data-icon="volume"></span>
       </button>
       <button id="fxMotifBtn" class="btn-toggle fx-btn fx-icon active" onclick="toggleMotifs()"
         title="Desenhos de azulejo nas peças (ligar/desligar)" aria-label="Desenhos de azulejo nas peças"
@@ -473,16 +477,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611062321"></script>
-  <script src="js/chat.js?v=202611062321"></script>
-  <script src="js/online-state.js?v=202611062321"></script>
-  <script src="js/account.js?v=202611062321"></script>
-  <script src="js/online.js?v=202611062321"></script>
-  <script src="js/matchmaking.js?v=202611062321"></script>
-  <script src="js/game-setup.js?v=202611062321"></script>
-  <script src="js/bot.js?v=202611062321"></script>
-  <script src="js/turns.js?v=202611062321"></script>
-  <script src="js/ui.js?v=202611062321"></script>
+  <script src="js/config.js?v=202611062327"></script>
+  <script src="js/chat.js?v=202611062327"></script>
+  <script src="js/online-state.js?v=202611062327"></script>
+  <script src="js/account.js?v=202611062327"></script>
+  <script src="js/online.js?v=202611062327"></script>
+  <script src="js/matchmaking.js?v=202611062327"></script>
+  <script src="js/game-setup.js?v=202611062327"></script>
+  <script src="js/bot.js?v=202611062327"></script>
+  <script src="js/turns.js?v=202611062327"></script>
+  <script src="js/ui.js?v=202611062327"></script>
 </body>
 
 </html>

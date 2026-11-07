@@ -31,7 +31,23 @@
 
     // Ping leve quando passa a ser a sua vez (só contra bot e online)
     let audioCtx = null, wasMyTurn = false;
+    const SOUND_KEY = 'azul_sound_v1';
+    let soundOn = true;
+    try { if (localStorage.getItem(SOUND_KEY) === '0') soundOn = false; } catch (e) { }
+    function applySoundBtn() {
+      const b = document.getElementById('soundBtn');
+      const ic = document.getElementById('soundIcon');
+      if (b) { b.classList.toggle('active', soundOn); b.setAttribute('aria-pressed', String(soundOn)); }
+      if (ic) { ic.dataset.icon = soundOn ? 'volume' : 'volume-off'; ic.innerHTML = icon(ic.dataset.icon); }
+    }
+    function toggleSound() {
+      soundOn = !soundOn;
+      try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) { }
+      applySoundBtn();
+      if (soundOn) playTurnPing(); // prévia ao ligar
+    }
     function playTurnPing() {
+      if (!soundOn) return;
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
@@ -522,3 +538,4 @@
     })();
 
         hydrateIcons();
+        applySoundBtn();
