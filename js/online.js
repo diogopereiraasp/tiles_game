@@ -736,6 +736,7 @@
           || (myP2PIndex !== null && players && players[myP2PIndex] && players[myP2PIndex].name)
           || null;
         clientHostConn.send({ type: 'REQUEST_SYNC', requestedIndex: myP2PIndex, playerName: myName });
+        if (typeof resendPendingWallPick === 'function') resendPendingWallPick(); // modo avançado: o pedido pode ter ido ao anfitrião que caiu
       };
 
       if (clientHostConn.open) {

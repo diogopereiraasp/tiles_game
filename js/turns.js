@@ -156,6 +156,7 @@
     // (WALL_CHOICE) para todos; o dono da peça só envia o pedido (WALL_PICK). Assim os dois aparelhos ficam iguais.
     const WALL_CHOICE_TIMEOUT_MS = 60000; // se o dono não escolher em 60s, o anfitrião escolhe a melhor coluna
     const wallChoiceInbox = new Map();    // confirmações que chegaram antes de serem usadas
+    let lastWallPick = null;               // convidado: último pedido enviado (reenviado se o anfitrião mudar antes da confirmação)
     const wallChoiceWaiters = new Map();  // convidado: aguardando a confirmação do anfitrião
     const wallPickInbox = new Map();      // anfitrião: pedidos dos convidados que chegaram antes
     const wallPickWaiters = new Map();    // anfitrião: aguardando o pedido de um convidado
@@ -224,7 +225,8 @@
             playerId: p.id, r, cols, color,
             resolve: (c) => {
               // envia o pedido e aguarda a confirmação do anfitrião
-              try { clientHostConn.send({ type: 'WALL_PICK', round, playerId: p.id, r, c }); } catch (e) { }
+              lastWallPick = { type: 'WALL_PICK', round, playerId: p.id, r, c };
+              try { clientHostConn.send(lastWallPick); } catch (e) { }
               showWallWaitHint(p, r, color, 'Confirmando...');
             }
           };
@@ -234,6 +236,13 @@
           showWallWaitHint(p, r, color);
         }
       });
+    }
+
+    // Convidado reconectou a um anfitrião (talvez novo): se ainda aguardo a confirmação do meu pedido, reenvia
+    function resendPendingWallPick() {
+      const w = lastWallPick;
+      if (!w || w.round !== round || !wallChoiceWaiters.has(wallKey(w.round, w.playerId, w.r))) return;
+      try { clientHostConn.send(w); } catch (e) { }
     }
 
     // Convidado recebeu a confirmação do anfitrião
