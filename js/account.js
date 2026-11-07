@@ -532,10 +532,11 @@
     function eloRowHtml(r) {
       const tier = getEloTier(r.elo);
       const pos = Number(r.pos);
+      const hasPos = Number.isFinite(pos) && pos > 0;
       const isMe = !!r.is_me || (authUser && r.user_id === authUser.id);
       return `
         <div class="lb-row ${isMe ? 'me' : ''}">
-          <span class="lb-pos">${pos <= 3 ? `<span class="medal m${pos}">${pos}</span>` : `${pos}º`}</span>
+          <span class="lb-pos">${!hasPos ? '—' : pos <= 3 ? `<span class="medal m${pos}">${pos}</span>` : `${pos}º`}</span>
           <div style="min-width:0;">
             <div class="lb-name">${escapeHtml(r.display_name)}${isMe ? ' (você)' : ''}</div>
             <div class="lb-sub">${r.games} partidas · ${r.win_rate}% vitórias</div>
@@ -588,12 +589,17 @@
       }
       if (token !== lbToken) return;
       if (error) { list.insertAdjacentHTML('beforeend', `<div class="lb-empty">Erro: ${escapeHtml(error.message)}</div>`); setMoreButton('loadEloPage()', true); return; }
-      if (page === 0 && (!data || !data.length)) { list.innerHTML = '<div class="lb-empty">Ninguém no ranking ainda.<br>Jogue uma partida (ranqueada, amigos ou bot) para entrar!</div>'; setMoreButton('', false); return; }
-      const fresh = (data || []).filter(r => !eloSeen.has(r.user_id)); // a minha linha pode repetir numa página mais à frente
+      if (page === 0 && (!data || !data.length) && !(authUser && authProfile)) { list.innerHTML = '<div class="lb-empty">Ninguém no ranking ainda.<br>Jogue uma partida (ranqueada, amigos ou bot) para entrar!</div>'; setMoreButton('', false); return; }
+      let rows = data || [];
+      // Quem tem conta sempre aparece: se o servidor não devolveu a minha linha (ex.: SQL novo ainda não rodado), uso o meu perfil
+      if (page === 0 && authUser && authProfile && !rows.some(r => r.user_id === authUser.id)) {
+        rows = rows.concat([{ user_id: authUser.id, display_name: authProfile.display_name || 'Você', elo: Number(authProfile.elo) || 0, games: 0, win_rate: 0, is_me: true, pos: null, total: rows.length ? rows[0].total : 0 }]);
+      }
+      const fresh = rows.filter(r => !eloSeen.has(r.user_id)); // a minha linha pode repetir numa página mais à frente
       fresh.forEach(r => eloSeen.add(r.user_id));
       list.insertAdjacentHTML('beforeend', fresh.map(eloRowHtml).join(''));
       eloPageNo++;
-      const total = data && data.length ? Number(data[0].total) : 0;
+      const total = data && data.length ? Number(data[0].total) : 0; // 0 (plano B sem SQL novo) = sem "Carregar mais"
       setMoreButton('loadEloPage()', eloPageNo * ELO_PAGE < total);
     }
 

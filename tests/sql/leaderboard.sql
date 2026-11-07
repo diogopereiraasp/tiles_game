@@ -1,4 +1,4 @@
--- Ranking de Elo: inclui quem jogou bot/amigos/ranqueada (mesmo com 1 partida) e a paginação (top 10 + minha posição).
+-- Ranking de Elo: TODO perfil aparece (mesmo zerado e sem partidas), inclui bot/amigos/ranqueada, e a paginação (top 10 + minha posição).
 set role tester;
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000e1', 'e1@users.azul.invalid', '{"username":"soBot"}'),
@@ -17,13 +17,21 @@ begin
     prev := lb.elo;
     if lb.display_name = 'soBot' then has_bot := true; if lb.games <> 1 or lb.elo <= 0 then raise exception 'FALHOU: soBot games=% elo=%', lb.games, lb.elo; end if; end if;
     if lb.display_name = 'soAmigos' then has_fr := true; if lb.games <> 1 or lb.elo <> 8 then raise exception 'FALHOU: soAmigos games=% elo=%', lb.games, lb.elo; end if; end if;
-    if lb.display_name = 'semPartidas' then has_none := true; end if;
+    if lb.display_name = 'semPartidas' then has_none := true; if lb.games <> 0 or lb.elo <> 0 or lb.win_rate <> 0 then raise exception 'FALHOU: semPartidas deveria ter 0 partidas, Elo 0 e 0%% (veio games=% elo=%)', lb.games, lb.elo; end if; end if;
   end loop;
   if not has_bot then raise exception 'FALHOU: quem jogou so contra o bot nao aparece no ranking'; end if;
   if not has_fr then raise exception 'FALHOU: quem jogou so com amigos nao aparece no ranking'; end if;
-  if has_none then raise exception 'FALHOU: quem nunca jogou apareceu no ranking'; end if;
+  if not has_none then raise exception 'FALHOU: quem tem conta mas nunca jogou deveria aparecer no ranking (zerado)'; end if;
   if not exists (select 1 from public.get_leaderboard('bot', 100) where display_name = 'soBot') then raise exception 'FALHOU: get_leaderboard(bot) deveria listar soBot'; end if;
   if exists (select 1 from public.get_leaderboard('bot', 100) where display_name = 'soAmigos') then raise exception 'FALHOU: get_leaderboard(bot) nao deveria listar quem so jogou amigos'; end if;
+end $$;
+-- quem tem conta mas NUNCA jogou: aparece com a posição real, destacado e zerado (mesmo abaixo do top 10)
+set test.uid = '00000000-0000-0000-0000-0000000000e3';
+do $$ declare r record; found_me boolean := false; begin
+  for r in select * from public.get_elo_ranking(0, 10) loop
+    if r.is_me then found_me := true; if r.games <> 0 or r.elo <> 0 then raise exception 'FALHOU: minha linha zerada veio games=% elo=%', r.games, r.elo; end if; end if;
+  end loop;
+  if not found_me then raise exception 'FALHOU: logado sem partidas nao aparece em get_elo_ranking'; end if;
 end $$;
 reset role;
 select 'leaderboard (inclusão): OK';
@@ -55,7 +63,15 @@ do $$ declare r record; n int := 0; last_is_me boolean; last_pos bigint; tot big
   if n <> 10 then raise exception 'FALHOU: esperava 10 linhas, vieram %', n; end if;
   if not last_is_me then raise exception 'FALHOU: a 10a linha deveria ser eu'; end if;
   if last_pos <= 10 then raise exception 'FALHOU: minha posicao real deveria ser > 10 (veio %)', last_pos; end if;
-  if last_pos <> tot then raise exception 'FALHOU: sou o ultimo do ranking (pos % de %)', last_pos, tot; end if;
+  if last_pos > tot then raise exception 'FALHOU: posicao % maior que o total %', last_pos, tot; end if;
+end $$;
+
+-- logado SEM partidas e abaixo do top 10: também entra no lugar do 10o, zerado
+set test.uid = '00000000-0000-0000-0000-0000000000e3';
+do $$ declare r record; n int := 0; me_pos bigint; begin
+  for r in select * from public.get_elo_ranking(0, 10) loop n := n + 1; if r.is_me then me_pos := r.pos; if r.games <> 0 then raise exception 'FALHOU: deveria estar zerado'; end if; end if; end loop;
+  if n <> 10 then raise exception 'FALHOU: esperava 10 linhas, vieram %', n; end if;
+  if me_pos is null or me_pos <= 10 then raise exception 'FALHOU: minha posicao real deveria ser > 10 (veio %)', me_pos; end if;
 end $$;
 
 -- logado DENTRO do top 10: 10 linhas, sem substituição, eu destacado

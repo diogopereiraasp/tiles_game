@@ -750,31 +750,33 @@ language sql
 stable
 security definer set search_path = public
 as $$
+  -- Ranking de Elo ('online'): TODO jogador com conta aparece (mesmo com Elo 0 e nenhuma partida), contando
+  -- partidas de ranqueada, bot e amigos. Outros valores de p_mode listam só quem jogou exatamente aquele modo.
   select
-    m.user_id,
+    p.id as user_id,
     p.display_name,
     p.elo,
-    count(*) as games,
-    count(*) filter (where m.won) as wins,
-    round(100.0 * count(*) filter (where m.won) / count(*), 0) as win_rate,
-    max(m.score) as best_score
-  from public.matches m
-  join public.profiles p on p.id = m.user_id
-  -- Ranking de Elo ('online'): quem jogou ranqueada, bot ou amigos aparece (mesmo com uma partida só).
-  -- Outros valores de p_mode filtram exatamente aquele modo.
-  where (p_mode = 'online' and m.mode in ('online', 'bot', 'friends'))
-     or (p_mode <> 'online' and m.mode = p_mode)
-  group by m.user_id, p.display_name, p.elo
+    count(m.id) as games,
+    count(m.id) filter (where m.won) as wins,
+    case when count(m.id) = 0 then 0 else round(100.0 * count(m.id) filter (where m.won) / count(m.id), 0) end as win_rate,
+    coalesce(max(m.score), 0) as best_score
+  from public.profiles p
+  left join public.matches m
+    on m.user_id = p.id
+   and ((p_mode = 'online' and m.mode in ('online', 'bot', 'friends')) or (p_mode <> 'online' and m.mode = p_mode))
+  where p_mode = 'online' or m.id is not null
+  group by p.id, p.display_name, p.elo, p.created_at
   order by
     case when p_mode = 'online' then p.elo end desc nulls last,
-    count(*) filter (where m.won) desc,
-    max(m.score) desc
+    count(m.id) filter (where m.won) desc,
+    coalesce(max(m.score), 0) desc,
+    p.created_at asc,
+    p.id
   limit least(greatest(p_limit, 1), 100);
 $$;
-
 grant execute on function public.get_leaderboard(text, int) to anon, authenticated;
 
--- Ranking de Elo paginado. Página 0: top p_limit; se quem está logado ficou abaixo, ele entra NO LUGAR do último
+-- Ranking de Elo paginado (todos os perfis, mesmo zerados). Página 0: top p_limit; se quem está logado ficou abaixo, ele entra NO LUGAR do último
 -- (com a posição real). Páginas seguintes (p_offset > 0): posições p_offset+1 .. p_offset+p_limit.
 -- 'total' = quantos jogadores estão no ranking (o cliente usa para saber se há mais páginas).
 drop function if exists public.get_elo_ranking(int, int);
@@ -796,19 +798,19 @@ stable
 security definer set search_path = public
 as $$
   with agg as (
-    select m.user_id, p.display_name, p.elo,
-           count(*) as games,
-           count(*) filter (where m.won) as wins,
-           round(100.0 * count(*) filter (where m.won) / count(*), 0) as win_rate,
-           max(m.score) as best_score
-    from public.matches m
-    join public.profiles p on p.id = m.user_id
-    where m.mode in ('online', 'bot', 'friends')
-    group by m.user_id, p.display_name, p.elo
+    select p.id as user_id, p.display_name, p.elo,
+           count(m.id) as games,
+           count(m.id) filter (where m.won) as wins,
+           case when count(m.id) = 0 then 0 else round(100.0 * count(m.id) filter (where m.won) / count(m.id), 0) end as win_rate,
+           coalesce(max(m.score), 0) as best_score,
+           p.created_at
+    from public.profiles p
+    left join public.matches m on m.user_id = p.id and m.mode in ('online', 'bot', 'friends')
+    group by p.id, p.display_name, p.elo, p.created_at
   ),
   ranked as (
     select a.*,
-           row_number() over (order by a.elo desc, a.wins desc, a.best_score desc, a.user_id) as pos,
+           row_number() over (order by a.elo desc, a.wins desc, a.best_score desc, a.created_at asc, a.user_id) as pos,
            count(*) over () as total
     from agg a
   )
@@ -825,3 +827,6 @@ as $$
   order by r.pos;
 $$;
 grant execute on function public.get_elo_ranking(int, int) to anon, authenticated;
+
+-- Pede ao PostgREST (API do Supabase) para recarregar o cache de funções, senão uma função nova pode dar 'not found in the schema cache'
+notify pgrst, 'reload schema';
