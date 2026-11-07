@@ -510,8 +510,14 @@
 
     function historyRowHtml(m) {
       const reasonLabel = { normal: '', timeout: ' · por tempo', abandon: ' · por abandono' };
-      const opp = (m.opponents || []).map(o => `${escapeHtml(o.name)} (${Number(o.score) || 0})`).join(', ');
+      // Pontos da partida não valem nada no ranking: mostra só os nomes e a variação de Elo
+      const opp = (m.opponents || []).map(o => escapeHtml(o.name)).join(', ');
       const date = new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const hasElo = typeof m.elo_after === 'number' && typeof m.elo_before === 'number';
+      const diff = hasElo ? m.elo_after - m.elo_before : 0;
+      const right = hasElo
+        ? `<span class="lb-stat ${diff > 0 ? 'lb-win' : diff < 0 ? 'lb-loss' : ''}">${diff > 0 ? '+' : ''}${diff} Elo<div class="lb-sub">→ ${m.elo_after}</div></span>`
+        : `<span class="lb-stat"><div class="lb-sub">sem Elo</div></span>`;
       return `
         <div class="lb-row">
           <span class="lb-pos ${m.won ? 'lb-win' : 'lb-loss'}">${m.won ? 'V' : 'D'}</span>
@@ -519,8 +525,7 @@
             <div class="lb-name">vs ${opp || '—'}</div>
             <div class="lb-sub">${m.mode === 'online' ? 'Ranqueada' : m.mode === 'friends' ? 'Amigos' : 'Treino vs Bot'} · ${m.placement}º de ${m.player_count}${reasonLabel[m.end_reason] || ''} · ${date}</div>
           </div>
-          <span class="lb-stat">${m.score} pts${typeof m.elo_after === 'number' && typeof m.elo_before === 'number'
-            ? `<div class="lb-sub ${m.elo_after >= m.elo_before ? 'lb-win' : 'lb-loss'}">${m.elo_after >= m.elo_before ? '+' : ''}${m.elo_after - m.elo_before} Elo</div>` : ''}</span>
+          ${right}
         </div>`;
     }
 
