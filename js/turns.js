@@ -637,6 +637,16 @@
       await animateEndGameBonuses();
     }
 
+    // Fim de partida em qualquer modo: volta ao menu inicial (online: sai da sala)
+    function closeModalAndMenu() {
+      const modal = document.getElementById('endModal');
+      if (modal) modal.style.display = 'none';
+      const title = modal ? modal.querySelector('h2') : null;
+      if (title) title.textContent = 'Fim de Jogo';
+      hasMatchEndedByAbandon = false;
+      confirmExitGame();
+    }
+
     function closeModalAndRestart() {
       const modal = document.getElementById('endModal');
       if (modal) modal.style.display = 'none';

@@ -1506,9 +1506,13 @@
       if (rematch) rematch.style.display = (friendsRoom && isHost) ? 'block' : 'none';
       if (hint) {
         hint.style.display = (friendsRoom && !isHost) ? 'block' : 'none';
-        hint.textContent = 'O anfitrião pode iniciar uma revanche. Aguarde ou saia da sala.';
+        hint.textContent = 'O anfitrião pode iniciar uma revanche. Aguarde ou volte ao menu.';
       }
-      if (leave) leave.textContent = isP2P ? 'Sair da sala' : 'Jogar Novamente';
+      // "Jogar novamente" só contra o bot / mesmo aparelho (online: revanche do anfitrião ou voltar ao menu)
+      if (leave) { leave.textContent = 'Jogar Novamente'; leave.style.display = (!isP2P && !hasMatchEndedByAbandon) ? 'block' : 'none'; }
+      // "Voltar ao menu" existe em TODO fim de partida
+      const menu = document.getElementById('endMenuBtn');
+      if (menu) menu.style.display = 'block';
     }
 
     // Anfitrião: nova partida na mesma sala (mesmos jogadores e nomes), com quem começa sorteado
