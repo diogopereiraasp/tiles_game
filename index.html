@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
     integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
     crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="css/style.css?v=202611062332">
+  <link rel="stylesheet" href="css/style.css?v=202611070014">
 </head>
 
 <body>
@@ -233,7 +233,7 @@
         <p><strong>Fim da rodada:</strong> cada linha cheia manda 1 peça para a parede e pontua pelas peças vizinhas. A cor não repete na linha nem na coluna.</p>
         <p><strong>Fim do jogo:</strong> quando alguém completa uma linha da parede. Bônus: linha +2, coluna +7, cor completa +10. Desempate: mais linhas completas.</p>
         <p><strong>Modo avançado:</strong> a parede começa cinza e você escolhe a coluna de cada peça.</p>
-        <p><strong>Ranqueada:</strong> vale Elo e cada jogador tem 5 min no relógio (+15 s por jogada). Contra o bot o Elo também muda, mas só até o teto do nível (Fácil 100, Médio 300, Difícil 600). Sair no meio conta como derrota.</p>
+        <p><strong>Ranqueada:</strong> vale Elo e cada jogador tem 5 min no relógio (+15 s por jogada). Contra o bot e com amigos o Elo também muda, mas pouco e só até um teto (bot: Fácil 100, Médio 300, Difícil 600; amigos: 300). Sair no meio conta como derrota.</p>
       </div>
       <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 12px; font-weight: 600;"
         onclick="closeHowToModal()">Entendi</button>
@@ -251,7 +251,7 @@
       </div>
       <div id="leaderboardContent" class="lb-content">Carregando...</div>
       <div class="acc-hint" style="text-align:center;">Todos começam com 0 Elo. Vencer online sobe, perder desce. Contra o
-        bot o Elo só se move até o teto do nível (Fácil 100, Médio 300, Difícil 600); acima disso só a ranqueada vale.</div>
+        bot o Elo só se move até o teto do nível (Fácil 100, Médio 300, Difícil 600) e com amigos até 300 (pouco por partida, até 10 por hora); acima disso só a ranqueada vale.</div>
       <button class="btn-toggle" style="width: 100%; padding: 10px; margin-top: 14px; font-weight: 600;"
         onclick="closeLeaderboardModal()">Fechar</button>
     </div>
@@ -484,16 +484,16 @@
     </form>
   </div>
 
-  <script src="js/config.js?v=202611062332"></script>
-  <script src="js/chat.js?v=202611062332"></script>
-  <script src="js/online-state.js?v=202611062332"></script>
-  <script src="js/account.js?v=202611062332"></script>
-  <script src="js/online.js?v=202611062332"></script>
-  <script src="js/matchmaking.js?v=202611062332"></script>
-  <script src="js/game-setup.js?v=202611062332"></script>
-  <script src="js/bot.js?v=202611062332"></script>
-  <script src="js/turns.js?v=202611062332"></script>
-  <script src="js/ui.js?v=202611062332"></script>
+  <script src="js/config.js?v=202611070014"></script>
+  <script src="js/chat.js?v=202611070014"></script>
+  <script src="js/online-state.js?v=202611070014"></script>
+  <script src="js/account.js?v=202611070014"></script>
+  <script src="js/online.js?v=202611070014"></script>
+  <script src="js/matchmaking.js?v=202611070014"></script>
+  <script src="js/game-setup.js?v=202611070014"></script>
+  <script src="js/bot.js?v=202611070014"></script>
+  <script src="js/turns.js?v=202611070014"></script>
+  <script src="js/ui.js?v=202611070014"></script>
 </body>
 
 </html>

@@ -240,13 +240,14 @@ begin
 end;
 $$;
 
--- ───────────────────────── Registro de partida: amigos (sem Elo) e bot (Elo limitado) ─────────────────────────
+-- ───────────────────────── Registro de partida: amigos e bot (ambos com Elo LIMITADO) ─────────────────────────
 -- Partidas contra pessoas valendo Elo ('online') NÃO passam por aqui: só por report_ranked_result.
 -- Contra o bot o resultado vem do cliente (não dá para conferir), então o Elo é LIMITADO:
 --   cada nível tem um rating virtual e um TETO; o Elo só se move enquanto estiver abaixo do teto
 --   (Fácil: rating 50, teto 100 | Médio: 250, teto 300 | Difícil: 500, teto 600). Acima do teto não muda.
 --   Isso impede forjar vitórias para chegar ao topo: acima disso só a Partida Ranqueada vale.
 --   Taxa: só as 20 primeiras partidas contra o bot por hora mexem no Elo; acima de 100 resultados/hora o registro é recusado.
+--   Amigos também dão Elo, mais limitado ainda (K=16 pela colocação, teto 300, 10 partidas/h): ver o bloco 'Amigos' abaixo.
 drop function if exists public.record_match(text, int, int, int, boolean, text, text, jsonb);
 create or replace function public.record_match(
   p_mode text,
@@ -272,6 +273,8 @@ declare
   v_s numeric;
   v_k constant numeric := 24;
   v_recent int;
+  v_recent_bot int;
+  v_recent_fr int;
 begin
   if v_uid is null then
     raise exception 'not authenticated';
@@ -286,7 +289,9 @@ begin
   v_new := v_elo;
 
   -- Limite de taxa: evita inundar o histórico e farmar Elo com resultados forjados
-  select count(*) into v_recent from public.matches m
+  select count(*), count(*) filter (where m.mode = 'bot'), count(*) filter (where m.mode = 'friends')
+    into v_recent, v_recent_bot, v_recent_fr
+    from public.matches m
    where m.user_id = v_uid and m.mode in ('bot', 'friends') and m.created_at > now() - interval '1 hour';
   if v_recent >= 100 then
     raise exception 'rate limit' using errcode = '54000';
@@ -297,7 +302,7 @@ begin
   end if;
 
   -- Contra o bot, só as 20 primeiras partidas por hora mexem no Elo (as demais ficam só no histórico)
-  if p_mode = 'bot' and v_recent < 20 then
+  if p_mode = 'bot' and v_recent_bot < 20 then
     select x.rating, x.cap into v_rating, v_cap
     from (values ('easy', 50, 100), ('medium', 250, 300), ('hard', 500, 600)) as x(d, rating, cap)
     where x.d = p_bot_difficulty;
@@ -310,12 +315,24 @@ begin
     end if;
   end if;
 
+  -- Amigos: Elo LIMITADO (o servidor não conhece o adversário, então não dá para ser um Elo entre pessoas):
+  -- K=16 pela colocação (1º sobe, último desce; 2 jogadores: +8/-8), só até o TETO de 300, no máx. 10 partidas por hora.
+  if p_mode = 'friends' and (p_player_count not between 2 and 4 or p_placement not between 1 and p_player_count) then
+    raise exception 'invalid placement';
+  end if;
+  if p_mode = 'friends' and v_recent_fr < 10 and v_elo < 300 then
+    v_s := (p_player_count - p_placement)::numeric / (p_player_count - 1);   -- 1 = 1º lugar ... 0 = último
+    v_exp := 1.0 / p_player_count;
+    v_new := least(300, greatest(0, round(v_elo + 16 * (v_s - v_exp))::int));
+    update public.profiles set elo = v_new where id = v_uid;
+  end if;
+
   insert into public.matches (
     user_id, mode, player_count, score, placement, won, end_reason, bot_difficulty, opponents, elo_before, elo_after
   ) values (
     v_uid, p_mode, p_player_count, p_score, p_placement, p_won, p_end_reason,
     p_bot_difficulty, coalesce(p_opponents, '[]'::jsonb),
-    case when p_mode = 'bot' then v_elo end, case when p_mode = 'bot' then v_new end
+    v_elo, v_new
   );
 
   return query select v_elo, v_new;

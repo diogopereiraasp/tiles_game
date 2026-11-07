@@ -415,6 +415,8 @@
           if (diff !== 0) showEloChange(diff, res.elo_after);
           else if (mode === 'bot' && res.elo_before >= (BOT_ELO_CAP[String(botDifficulty)] || 0)) {
             showResultBanner('Acima do teto deste nível: contra o bot o Elo não muda. Para subir mais, jogue a Partida Ranqueada.', 'info');
+          } else if (mode === 'friends' && res.elo_before >= 300) {
+            showResultBanner('Acima do teto das partidas com amigos (300): o Elo não muda. Para subir mais, jogue a Partida Ranqueada.', 'info');
           }
         }
         renderAuthBar();
